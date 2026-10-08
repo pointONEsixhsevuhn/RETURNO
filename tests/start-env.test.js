@@ -24,4 +24,3 @@ test("direct startup loads the project .env regardless of working directory and 
   assert.match((await start()).stdout, /SETTING=from-host/);
  } finally { await rm(directory, { recursive: true, force: true }); }
 });
-
