@@ -121,6 +121,15 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   await expect(input).toHaveValue("no-match-browser-test");
   await input.fill("");
   await expect(page.getByRole("heading", { name: "What are you looking for?" })).toBeVisible();
+  for (const category of await page.locator(".category").all()) {
+    const image = category.locator("img");
+    await expect(image).toBeVisible();
+    const imageBounds = await image.boundingBox();
+    const categoryBounds = await category.boundingBox();
+    expect(imageBounds.height).toBeGreaterThan(0);
+    expect(imageBounds.y + imageBounds.height).toBeLessThanOrEqual(categoryBounds.y + categoryBounds.height);
+    await expect(image).toHaveCSS("object-fit", "contain");
+  }
   await noOverflow(page);
   await logout(page);
 });

@@ -81,6 +81,8 @@ Completed private claim API (2026-10-08): the user approved active Found reports
 
 Product reversal (2026-10-08): student claims are excluded at the user's request. Removed unpublished student screens and published claim endpoints; migration 3 preserves retired submissions without restricting administrator report deletion. Administrators manage claims/returns; earlier student-claim proposals and approval are superseded.
 
+Completed search-picture fix (2026-10-08): category images use the available tile space instead of a percentage height, preserving the full picture with contain sizing. Report image frames no longer shrink inside cards. Full suite: **67 passed**; **20 browser cases passed**, with focused category-image bounds/contain checks across desktop, mobile, narrow-phone and tablet viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
