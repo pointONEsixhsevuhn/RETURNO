@@ -91,6 +91,8 @@ Admin layout adjustment (2026-10-08): Lost/Returned/Found/Claimed totals are bac
 
 Completed header adjustment (2026-10-08): search and profile icons share a non-wrapping group so they stay beside each other when header actions wrap on smaller screens. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
 
+Registered-user layout correction (2026-10-08): Admin users and Student users use a single column on every screen size, with Student users below Admin users. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
