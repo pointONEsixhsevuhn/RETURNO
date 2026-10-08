@@ -1085,3 +1085,10 @@ dialog input {
   background: transparent;
   border: 1px solid #000;
 }
+
+.password-recovery { margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.password-recovery .logo { width: min(280px, 85%); }
+.password-recovery #recovery-form { width: min(320px, 100%); margin: 24px 0 12px; }
+.password-recovery .auth-field input { background: transparent; border: 1px solid #000; }
+.send-reset-code { background: transparent; border: 0; font-weight: 700; font-size: 16px; padding: 8px; }
+.back-to-login { background: transparent; border: 0; text-decoration: underline; text-underline-offset: 3px; padding: 8px; }

@@ -262,7 +262,7 @@ test("student recovers a forgotten password using the emailed code and signs in 
  await logout(page);
  await page.getByRole("button",{name:"Student",exact:true}).click();
  await page.getByRole("button",{name:"Forgot password?",exact:true}).click();
- await page.getByLabel("Registered email",{exact:true}).fill(email);
+ await page.getByLabel("Enter your registered email",{exact:true}).fill(email);
  await page.getByRole("button",{name:"Send reset code",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Reset password",exact:true})).toBeVisible();
  await page.getByLabel("Reset code",{exact:true}).fill("000000");
