@@ -1,0 +1,549 @@
+"use strict";
+const app = document.querySelector("#app");
+const dialog = document.querySelector("#dialog");
+const state = {
+  user: null,
+  role: "student",
+  filter: "All",
+  query: "",
+  posts: [],
+  edit: null,
+  back: "mine",
+};
+let renderVersion = 0;
+const esc = (value) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+const logo = '<img class="logo" src="assets/logo.png" alt="RETURNO">';
+const searchIcon =
+  '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="#191919"/><circle cx="43" cy="42" r="20" fill="none" stroke="white" stroke-width="6"/><path d="M58 57 74 73" stroke="white" stroke-width="6" stroke-linecap="round"/></svg>';
+const profileIcon =
+  '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="28" r="27" fill="#191919"/><path d="M3 98V85Q10 55 35 54Q50 65 65 54Q90 56 97 85V98Z" fill="#191919"/></svg>';
+const api = globalThis.RetornoAPI.request;
+function go(route, { replace = false } = {}) {
+  const target = "#" + route;
+  if (location.hash === target) {
+    render();
+    return;
+  }
+  if (replace) history.replaceState(null, "", target);
+  else history.pushState(null, "", target);
+  if (route !== "post") state.edit = null;
+  window.scrollTo(0, 0);
+  render();
+}
+function errorAt(target, error) {
+  target.textContent = error.message || error;
+}
+function header(search = true, welcome = true) {
+  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">WELCOME, ${state.user.role.toUpperCase()}!</h1>` : ""}<div class="header-actions">${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin" : "mine"}" aria-label="${state.user.role === "admin" ? "Manage posts" : "Your posts"}">${profileIcon}</button></div></header>`;
+}
+function bindNavigation() {
+  app
+    .querySelectorAll("[data-go]")
+    .forEach((el) => (el.onclick = () => go(el.dataset.go)));
+}
+function authField(
+  name,
+  label,
+  type,
+  css = "",
+  autocomplete = "",
+  togglePassword = false,
+) {
+  const input = `<input class="pill" id="${name}" name="${name}" type="${type}" ${type === "password" ? 'minlength="8" maxlength="128"' : ""} ${type === "email" ? 'maxlength="254"' : ""} ${name === "fullName" ? 'maxlength="100"' : ""} required autocomplete="${autocomplete}">`;
+  const control = togglePassword
+    ? `<div class="password-entry">${input}<button class="password-toggle" type="button" data-toggle-password="${name}" aria-label="Show password" aria-pressed="false">Show</button></div>`
+    : input;
+  return `<div class="auth-field ${css}">${control}<label for="${name}">${label}</label></div>`;
+}
+function authScreen(register = false) {
+  register = register && state.role === "student";
+  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><form id="auth-form">${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password") + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password") + '<button class="register-link" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="register-link" type="button" data-go="register">Register</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form>${register ? "" : '<footer class="legal">Privacy Act<br>Terms &amp; Conditions</footer>'}</section>`;
+  bindNavigation();
+  app.querySelectorAll("[data-toggle-password]").forEach(
+    (toggle) =>
+      (toggle.onclick = () => {
+        const input = document.getElementById(toggle.dataset.togglePassword),
+          visible = input.type === "password";
+        input.type = visible ? "text" : "password";
+        toggle.textContent = visible ? "Hide" : "Show";
+        toggle.setAttribute(
+          "aria-label",
+          visible ? "Hide password" : "Show password",
+        );
+        toggle.setAttribute("aria-pressed", String(visible));
+        input.focus();
+      }),
+  );
+  document.querySelector("#auth-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget,
+      button = form.querySelector("[type=submit]");
+    const data = Object.fromEntries(new FormData(form));
+    data.role = state.role;
+    const output = document.querySelector("#auth-error");
+    output.textContent = "";
+    if (register && data.password !== data.confirmPassword)
+      return errorAt(output, "Passwords do not match.");
+    button.disabled = true;
+    try {
+      const result = await api(register ? "/register" : "/login", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      state.user = result.user;
+      state.role = result.user.role;
+      try {
+        sessionStorage.setItem("retorno-role", state.role);
+      } catch {}
+      state.filter = "All";
+      go("feed");
+    } catch (error) {
+      errorAt(output, error);
+      button.disabled = false;
+    }
+  };
+}
+function itemImage(post, css = "item-image") {
+  return `<div class="${css}">${post.image ? `<img src="${esc(post.image)}" alt="${esc(post.item_name)}">` : "Image"}</div>`;
+}
+function dateText(value) {
+  if (!value) return "";
+  return value.replace("T", " ");
+}
+function fields(post, own = false) {
+  return `<div class="card-data"><p>Item name: ${esc(post.item_name)}</p><p>${own ? `Date &amp; ${post.kind === "Found" ? "Time found" : "time lost"}` : "Date &amp; time" + (post.kind === "Lost" ? " lost" : "")}: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div>`;
+}
+function menu(post) {
+  if (state.user?.role !== "admin") return "";
+  return `<div class="menu" data-menu="${post.id}" hidden><button data-edit="${post.id}">Edit</button><button data-update="${post.id}">Update</button><button data-delete="${post.id}">Delete</button></div>`;
+}
+function card(post, own = false) {
+  const manage = own && state.user?.role === "admin";
+  return `<article class="card" data-detail="${esc(post.id)}" role="${manage ? "group" : "button"}" tabindex="0" aria-label="View details for ${esc(post.item_name)}"><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status">${post.status}</span></div>${itemImage(post)}${fields(post, own)}${manage ? menu(post) : ""}</article>`;
+}
+function filters() {
+  return `<nav class="filters" aria-label="Post type">${["All", "Lost", "Found"].map((x) => `<button data-filter="${x}" class="${state.filter === x ? "active" : ""}">${x.toUpperCase()}</button>`).join("")}</nav>`;
+}
+function errorDialog(error) {
+  dialog.innerHTML = `<p>${esc(error.message || error)}</p><div class="dialog-actions"><button data-close>Close</button></div>`;
+  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  if (!dialog.open) dialog.showModal();
+}
+function showDetails(id) {
+  const post = state.posts.find((p) => p.id === id);
+  if (!post) return;
+  dialog.innerHTML = `<h2>${esc(post.item_name || "Item name")}</h2>${post.image ? `<img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}">` : ""}<div class="detail-data"><p>Posted by: <strong>${esc(post.author)}</strong></p><p>Status: ${esc(post.status)}</p><p>Date &amp; time found/lost: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div><div class="dialog-actions"><button data-close>Close</button></div>`;
+  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.showModal();
+}
+function bindPostActions() {
+  app.querySelectorAll("[data-detail]").forEach((card) => {
+    if (!card.matches(".card")) {
+      card.onclick = () => showDetails(card.dataset.detail);
+      return;
+    }
+    card.onclick = (event) => {
+      if (event.target.closest("button,a,input,select,textarea,.menu")) return;
+      showDetails(card.dataset.detail);
+    };
+    card.onkeydown = (event) => {
+      if (
+        (event.key === "Enter" || event.key === " ") &&
+        !event.target.closest("button,a,input,select,textarea,.menu")
+      ) {
+        event.preventDefault();
+        showDetails(card.dataset.detail);
+      }
+    };
+  });
+  if (state.user?.role !== "admin") return;
+  app
+    .querySelectorAll("[data-add-admin]")
+    .forEach((button) => (button.onclick = () => showAdminRegistration()));
+  app.querySelectorAll("[data-more]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        const target = app.querySelector(
+            `[data-menu="${button.dataset.more}"]`,
+          ),
+          show = target.hidden;
+        app.querySelectorAll("[data-menu]").forEach((x) => (x.hidden = true));
+        app
+          .querySelectorAll("[data-more]")
+          .forEach((x) => x.setAttribute("aria-expanded", "false"));
+        target.hidden = !show;
+        button.setAttribute("aria-expanded", String(show));
+      }),
+  );
+  app.querySelectorAll("[data-edit]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        state.edit = state.posts.find((p) => p.id === button.dataset.edit);
+        state.back = location.hash.slice(1);
+        go("post");
+      }),
+  );
+  app.querySelectorAll("[data-update]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        const post = state.posts.find((p) => p.id === button.dataset.update);
+        dialog.innerHTML = `<form id="update-form"><h2>Update</h2><label for="update-status">Status:</label><select id="update-status" name="status">${["Lost", "Found", "Claimed", "Returned"].map((s) => `<option ${s === post.status ? "selected" : ""}>${s}</option>`).join("")}</select><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button>Update</button></div></form>`;
+        dialog.querySelector("[data-close]").onclick = () => dialog.close();
+        dialog.querySelector("form").onsubmit = async (event) => {
+          event.preventDefault();
+          const submit = event.submitter;
+          submit.disabled = true;
+          try {
+            await api("/posts/" + post.id, {
+              method: "PATCH",
+              body: JSON.stringify({
+                status: dialog.querySelector("select").value,
+              }),
+            });
+            dialog.close();
+            await render();
+          } catch (e) {
+            errorAt(dialog.querySelector(".error"), e);
+            submit.disabled = false;
+          }
+        };
+        dialog.showModal();
+      }),
+  );
+  app.querySelectorAll("[data-delete]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        const id = button.dataset.delete;
+        dialog.innerHTML =
+          '<h2>Delete post?</h2><p class="error" role="alert"></p><div class="dialog-actions"><button data-close>Cancel</button><button data-confirm>Delete</button></div>';
+        dialog.querySelector("[data-close]").onclick = () => dialog.close();
+        dialog.querySelector("[data-confirm]").onclick = async (event) => {
+          event.currentTarget.disabled = true;
+          try {
+            await api("/posts/" + id, { method: "DELETE" });
+            dialog.close();
+            await render();
+          } catch (e) {
+            errorAt(dialog.querySelector(".error"), e);
+            dialog.querySelector("[data-confirm]").disabled = false;
+          }
+        };
+        dialog.showModal();
+      }),
+  );
+}
+async function feed(own, version) {
+  const params = new URLSearchParams();
+  if (own) params.set("mine", "1");
+  else if (state.filter !== "All") params.set("kind", state.filter);
+  const { posts } = await api("/posts?" + params);
+  if (version !== renderVersion) return;
+  state.posts = posts;
+  app.innerHTML = `<section class="screen page ${own ? "own" : ""}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!own && !posts.length ? '<p class="empty">No posts found.</p>' : ""}</section>`;
+  bindNavigation();
+  bindPostActions();
+  if (own)
+    document.querySelector("#add-post").onclick = () => {
+      state.edit = null;
+      state.back = "mine";
+      go("post");
+    };
+  app.querySelectorAll("[data-filter]").forEach(
+    (el) =>
+      (el.onclick = () => {
+        state.filter = el.dataset.filter;
+        render();
+      }),
+  );
+}
+function editor() {
+  const post = state.user?.role === "admin" ? state.edit : null;
+  let kind = post?.kind || "",
+    image = post?.image || null,
+    reading = false;
+  app.innerHTML = `<section class="screen editor"><form class="editor-panel" id="post-form"><div class="editor-head"><button type="button" class="editor-logo" data-go="${state.user.role === "admin" ? state.back : "feed"}" aria-label="${state.user.role === "admin" ? "Back" : "Home"}">${logo}</button><div class="editor-actions"><button type="button" class="pill cancel-post-button" data-cancel-post>Cancel</button><button class="pill post-button" type="submit">${post ? "Update" : "Post"}</button></div></div><label class="upload-area" id="upload-area"><span id="upload-preview">${image ? `<img src="${esc(image)}" alt="Selected item">` : "Upload your image here"}</span><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" aria-label="Upload your image here"></label><div class="post-fields"><div class="post-field status-field"><span>Status:</span><button id="status-trigger" class="pill status-trigger" type="button" aria-expanded="false" aria-controls="status-options"><span id="chosen-kind">${kind}</span><span class="triangle"></span></button><div class="status-options" id="status-options" hidden><button type="button" data-kind="Lost">Lost</button><button type="button" data-kind="Found">Found</button></div></div><label class="post-field"><span>Item name:</span><input name="item_name" required maxlength="200" value="${esc(post?.item_name)}"></label><label class="post-field"><span>Date &amp; time found/lost:</span><input name="event_at" type="datetime-local" required value="${esc(post?.event_at)}"></label><label class="post-field"><span>Location/Address :</span><input name="location" required maxlength="500" value="${esc(post?.location)}"></label><label class="post-field"><span>Description:</span><textarea name="description" required maxlength="3000">${esc(post?.description)}</textarea></label></div><p id="post-error" class="error" role="alert"></p></form></section>`;
+  bindNavigation();
+  document.querySelector("[data-cancel-post]").onclick = () => {
+    state.edit = null;
+    go(state.user.role === "admin" ? state.back : "feed", { replace: true });
+  };
+  const options = document.querySelector("#status-options"),
+    trigger = document.querySelector("#status-trigger"),
+    output = document.querySelector("#post-error");
+  trigger.onclick = () => {
+    options.hidden = !options.hidden;
+    trigger.setAttribute("aria-expanded", String(!options.hidden));
+  };
+  app.querySelectorAll("[data-kind]").forEach(
+    (el) =>
+      (el.onclick = () => {
+        kind = el.dataset.kind;
+        document.querySelector("#chosen-kind").textContent = kind;
+        options.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+      }),
+  );
+  document.querySelector("#image-input").onchange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (
+      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+      file.size > 2 * 1024 * 1024
+    ) {
+      event.target.value = "";
+      return errorAt(
+        output,
+        "Use a PNG, JPEG, or WebP image smaller than 2 MB.",
+      );
+    }
+    reading = true;
+    output.textContent = "";
+    try {
+      image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Unable to read image."));
+        reader.readAsDataURL(file);
+      });
+      document.querySelector("#upload-preview").innerHTML =
+        `<img src="${esc(image)}" alt="Selected item">`;
+    } catch (e) {
+      errorAt(output, e);
+    } finally {
+      reading = false;
+    }
+  };
+  document.querySelector("#post-form").onsubmit = async (event) => {
+    event.preventDefault();
+    output.textContent = "";
+    if (!kind) return errorAt(output, "Select Lost or Found.");
+    if (reading) return errorAt(output, "Please wait for the image.");
+    const data = {
+      ...Object.fromEntries(new FormData(event.currentTarget)),
+      kind,
+      image,
+    };
+    if (post)
+      data.status = ["Lost", "Found"].includes(post.status)
+        ? kind
+        : post.status;
+    const button = event.submitter;
+    button.disabled = true;
+    try {
+      await api("/posts" + (post ? "/" + post.id : ""), {
+        method: post ? "PUT" : "POST",
+        body: JSON.stringify(data),
+      });
+      state.edit = null;
+      state.filter = "All";
+      state.query = "";
+      go(state.user.role === "admin" ? state.back : "feed", { replace: true });
+    } catch (e) {
+      errorAt(output, e);
+      button.disabled = false;
+    }
+  };
+}
+function showAdminRegistration() {
+  dialog.innerHTML = `<form id="admin-register-form"><h2>Register another admin</h2><label>Email<input name="email" type="email" required maxlength="254" autocomplete="email"></label><label>Full name<input name="fullName" required maxlength="100" autocomplete="name"></label><label>Password<input name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><label>Confirm password<input name="confirmPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Register admin</button></div></form>`;
+  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget,
+      submit = event.submitter,
+      output = dialog.querySelector(".error");
+    const data = Object.fromEntries(new FormData(form));
+    output.textContent = "";
+    if (data.password !== data.confirmPassword) {
+      errorAt(output, "Passwords do not match.");
+      return;
+    }
+    submit.disabled = true;
+    try {
+      await api("/admins", { method: "POST", body: JSON.stringify(data) });
+      dialog.close();
+    } catch (error) {
+      errorAt(output, error);
+      submit.disabled = false;
+    }
+  };
+  dialog.showModal();
+}
+async function admin(version, status = "") {
+  const [result, totals, userResult] = await Promise.all([
+    api("/posts" + (status ? "?status=" + status : "")),
+    api("/stats"),
+    api("/users"),
+  ]);
+  if (version !== renderVersion) return;
+  state.posts = result.posts;
+  app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((s) => `<button class="stat" data-stat="${s}">${s.toUpperCase()}<span>${totals.stats[s]}</span></button>`).join("")}</div><section class="registered-users" aria-labelledby="users-heading"><div class="registered-users-head"><h2 id="users-heading">Registered users</h2><span>${userResult.users.length}</span></div><div class="registered-user-list">${userResult.users.length ? userResult.users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${user.role === "admin" ? "Admin" : "Student"}</span></article>`).join("") : '<p class="empty">No registered users yet.</p>'}</div></section><div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  bindNavigation();
+  bindPostActions();
+  app
+    .querySelectorAll("[data-stat]")
+    .forEach(
+      (el) =>
+        (el.onclick = () =>
+          admin(++renderVersion, el.dataset.stat).catch(errorDialog)),
+    );
+  document.querySelector("#all-posts").onclick = () => render();
+}
+function searchPage() {
+  const suggestions = () =>
+    `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
+  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search item name, description, or location" aria-label="Search posts" value="${esc(state.query)}"></form><div id="search-content">${suggestions()}</div></section>`;
+  bindNavigation();
+  let searchVersion = 0,
+    timer;
+  const showSuggestions = () => {
+    ++searchVersion;
+    state.query = "";
+    document.querySelector("#search-content").innerHTML = suggestions();
+    app
+      .querySelectorAll("[data-category]")
+      .forEach((el) => (el.onclick = () => run(el.dataset.category)));
+  };
+  const run = async (value) => {
+    const q = value.trim();
+    state.query = q;
+    if (!q) {
+      showSuggestions();
+      return;
+    }
+    const version = ++searchVersion,
+      pageVersion = renderVersion;
+    app.querySelector("[name=q]").value = value;
+    try {
+      const { posts } = await api("/posts?q=" + encodeURIComponent(q));
+      if (version !== searchVersion || pageVersion !== renderVersion) return;
+      state.posts = posts;
+      document.querySelector("#search-content").innerHTML =
+        `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
+      bindPostActions();
+    } catch (e) {
+      if (version === searchVersion) errorDialog(e);
+    }
+  };
+  const input = app.querySelector("[name=q]");
+  input.oninput = () => {
+    clearTimeout(timer);
+    if (!input.value.trim()) showSuggestions();
+    else timer = setTimeout(() => run(input.value), 220);
+  };
+  document.querySelector("#search-form").onsubmit = (event) => {
+    event.preventDefault();
+    clearTimeout(timer);
+    run(input.value);
+  };
+  app.querySelectorAll("[data-category]").forEach(
+    (el) =>
+      (el.onclick = () => {
+        input.value = el.dataset.category;
+        run(input.value);
+      }),
+  );
+}
+async function render() {
+  const version = ++renderVersion;
+  const route = location.hash.slice(1) || "splash";
+  if (dialog.open) dialog.close();
+  try {
+    if (
+      ["feed", "mine", "post", "admin", "search"].includes(route) &&
+      !state.user
+    ) {
+      go("login");
+      return;
+    }
+    if (route === "splash") {
+      app.innerHTML =
+        '<section class="screen"><button class="splash" aria-label="Continue"><img src="assets/splash-logo.png" alt="NVSU RETURNO LOST & FOUND SYSTEM"></button></section>';
+      const next = () => {
+        if (version === renderVersion) go("role", { replace: true });
+      };
+      app.querySelector("button").onclick = next;
+      setTimeout(next, 1800);
+      return;
+    }
+    if (route === "role") {
+      app.innerHTML =
+        '<section class="screen role-screen"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><button class="pill role-button student-button" data-role="student">Student</button><button class="pill role-button admin-button" data-role="admin">Admin</button></section>';
+      app.querySelectorAll("[data-role]").forEach(
+        (el) =>
+          (el.onclick = () => {
+            state.role = el.dataset.role;
+            try {
+              sessionStorage.setItem("retorno-role", state.role);
+            } catch {}
+            go("login");
+          }),
+      );
+      return;
+    }
+    if (route === "login" || route === "register")
+      return authScreen(route === "register");
+    if ((route === "feed" || route === "mine") && state.user.role === "admin")
+      return go("admin");
+    if (route === "feed" || route === "mine")
+      return await feed(route === "mine", version);
+    if (route === "post") {
+      if (state.user.role === "admin" && !state.edit) return go("admin");
+      return editor();
+    }
+    if (route === "search") return searchPage();
+    if (route === "admin") {
+      if (state.user.role !== "admin") return go("feed");
+      return await admin(version);
+    }
+    go(state.user ? "feed" : "role");
+  } catch (e) {
+    if (e.status === 401) {
+      state.user = null;
+      go("login");
+    } else errorDialog(e);
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener("popstate", () => {
+  window.scrollTo(0, 0);
+  render();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    app.querySelectorAll("[data-menu]").forEach((el) => (el.hidden = true));
+    app
+      .querySelectorAll("[data-more]")
+      .forEach((el) => el.setAttribute("aria-expanded", "false"));
+  }
+});
+async function start() {
+  try {
+    state.role =
+      sessionStorage.getItem("retorno-role") === "admin" ? "admin" : "student";
+  } catch {}
+  try {
+    const health = await api("/health");
+    if (health.service !== "retorno")
+      throw new Error("Open RETURNO using the address printed by npm start.");
+    try {
+      const { user } = await api("/me");
+      state.user = user;
+      state.role = user.role;
+    } catch (e) {
+      if (e.status !== 401) throw e;
+    }
+    await render();
+  } catch (e) {
+    app.innerHTML = `<section class="connection-screen"><img src="assets/logo.png" alt="RETURNO"><h1>Unable to connect</h1><p role="alert">${esc(e.message)}</p><button class="pill" id="retry-connection">Retry</button><p><a href="http://localhost:3000/">Open local system</a></p></section>`;
+    document.querySelector("#retry-connection").onclick = start;
+  }
+}
+start();

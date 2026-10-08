@@ -1,0 +1,20 @@
+{
+  "name": "retorno",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "description": "NVSU Bayombong Lost & Found System",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node scripts/start.js",
+    "admin": "node scripts/admin.js",
+    "admin:reset": "node scripts/admin-recovery.js",
+    "demo": "node scripts/demo.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  }
+}
