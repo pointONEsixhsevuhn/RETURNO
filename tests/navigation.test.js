@@ -482,6 +482,149 @@ test("search suggestions return when input clears and typing queries all post co
   ])
     assert.ok(server.includes("lower(" + field + ")"), field);
 });
+test("typing immediately invalidates an older search before the debounce runs", async () => {
+  const h = harness();
+  let queued;
+  h.ctx.setTimeout = (callback) => { queued = callback; return 1; };
+  h.ctx.clearTimeout = () => {};
+  let finish;
+  h.ctx.RetornoAPI.request = () => new Promise((resolve) => { finish = resolve; });
+  vm.runInContext("searchPage()", h.ctx);
+  const input = h.element("[name=q]");
+  input.value = "wallet";
+  const old = h.element("#search-form").onsubmit({ preventDefault() {} });
+  input.value = "phone";
+  input.oninput();
+  finish({ posts: [{ id: "old-wallet" }] });
+  await old;
+  assert.doesNotMatch(h.element("#search-content").innerHTML, /old-wallet/);
+  assert.equal(vm.runInContext("state.query", h.ctx), "phone");
+  h.ctx.RetornoAPI.request = async (url) => {
+    assert.equal(url, "/posts?q=phone");
+    return { posts: [{ id: "new-phone" }] };
+  };
+  await queued();
+  assert.match(h.element("#search-content").innerHTML, /new-phone/);
+});
+
+test("pending search debounce does not request or change state after navigation", async () => {
+  const h = harness();
+  let queued;
+  h.ctx.setTimeout = (callback) => { queued = callback; return 1; };
+  h.ctx.clearTimeout = () => {};
+  vm.runInContext("searchPage()", h.ctx);
+  h.element("[name=q]").value = "wallet";
+  h.element("[name=q]").oninput();
+  vm.runInContext("++renderVersion;state.query='new page';app.innerHTML='New page'", h.ctx);
+  await queued();
+  assert.equal(h.requests.length, 0);
+  assert.equal(vm.runInContext("state.query", h.ctx), "new page");
+  assert.equal(h.element("#app").innerHTML, "New page");
+});
+
+test("category search cancels a previously queued typed query", async () => {
+  const h = harness();
+  const timers = new Map();
+  h.ctx.setTimeout = (callback) => { timers.set(1, callback); return 1; };
+  h.ctx.clearTimeout = (id) => timers.delete(id);
+  vm.runInContext("searchPage()", h.ctx);
+  h.element("[name=q]").value = "wallet";
+  h.element("[name=q]").oninput();
+  h.categories[2].onclick();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(timers.size, 0);
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].url, "/posts?q=Phone");
+});
+
+function imageReaders(h) {
+  const readers = [];
+  h.ctx.FileReader = class {
+    constructor() { readers.push(this); }
+    readAsDataURL() {}
+  };
+  vm.runInContext("editor()", h.ctx);
+  h.kinds[0].onclick();
+  return readers;
+}
+const imageEvent = (type = "image/png") => ({ target: { files: [{ type, size: 100 }], value: "file" } });
+
+test("older image completion cannot overwrite the latest selection or unblock submission", async () => {
+  const h = harness();
+  const readers = imageReaders(h);
+  const change = h.element("#image-input").onchange;
+  const old = change(imageEvent());
+  const latest = change(imageEvent());
+  readers[0].result = "old-image";
+  readers[0].onload();
+  await old;
+  assert.doesNotMatch(h.element("#upload-preview").innerHTML, /old-image/);
+  const submit = () => h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: { disabled: false } });
+  await submit();
+  assert.equal(h.requests.length, 0);
+  assert.match(h.element("#post-error").textContent, /wait for the image/);
+  readers[1].result = "new-image";
+  readers[1].onload();
+  await latest;
+  await submit();
+  assert.equal(JSON.parse(h.requests[0].options.body).image, "new-image");
+});
+
+test("an outdated image failure cannot erase a successful newer preview", async () => {
+  const h = harness();
+  const readers = imageReaders(h);
+  const change = h.element("#image-input").onchange;
+  const old = change(imageEvent());
+  const latest = change(imageEvent());
+  readers[1].result = "new-image";
+  readers[1].onload();
+  await latest;
+  readers[0].onerror();
+  await old;
+  assert.match(h.element("#upload-preview").innerHTML, /new-image/);
+  assert.equal(h.element("#post-error").textContent, "");
+});
+
+test("image reads finishing after navigation leave the next editor unchanged", async () => {
+  const h = harness();
+  const readers = imageReaders(h);
+  const pending = h.element("#image-input").onchange(imageEvent());
+  vm.runInContext("++renderVersion;editor()", h.ctx);
+  h.element("#upload-preview").innerHTML = "New editor preview";
+  readers[0].result = "old-image";
+  readers[0].onload();
+  await pending;
+  assert.equal(h.element("#upload-preview").innerHTML, "New editor preview");
+});
+
+test("invalid image selection invalidates an older pending read", async () => {
+  const h = harness();
+  const readers = imageReaders(h);
+  const change = h.element("#image-input").onchange;
+  const pending = change(imageEvent());
+  await change(imageEvent("image/svg+xml"));
+  readers[0].result = "old-image";
+  readers[0].onload();
+  await pending;
+  assert.doesNotMatch(h.element("#upload-preview").innerHTML, /old-image/);
+  assert.match(h.element("#post-error").textContent, /PNG, JPEG, or WebP/);
+});
+
+test("a post saved after navigation cannot redirect away from the new screen", async () => {
+  const h = harness();
+  vm.runInContext("editor()", h.ctx);
+  h.kinds[0].onclick();
+  let finish;
+  h.ctx.RetornoAPI.request = () => new Promise((resolve) => { finish = resolve; });
+  const pending = h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: { disabled: false } });
+  vm.runInContext("++renderVersion;location.hash='#search';state.query='phone';app.innerHTML='Search screen'", h.ctx);
+  finish({ post: { id: "saved" } });
+  await pending;
+  assert.equal(h.location.hash, "#search");
+  assert.equal(vm.runInContext("state.query", h.ctx), "phone");
+  assert.equal(h.element("#app").innerHTML, "Search screen");
+});
+
 test("successful student posting replaces the editor entry so Back skips the submitted form", async () => {
   const h = harness();
   vm.runInContext("state.filter='Lost';editor()", h.ctx);

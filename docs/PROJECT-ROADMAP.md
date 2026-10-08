@@ -35,7 +35,7 @@ On Windows, use `npm.cmd test` and `npm.cmd start` if PowerShell blocks `npm.ps1
 | Medium | Images are checked by size and magic bytes, not by decoding the entire image. | Add decoding/dimension limits if public uploads are enabled. |
 | Medium | Status changes and deletion leave no administrator audit history. Claimant identity and return proof are not represented in the schema. | Define a claim-review process; record actor, timestamps and status transitions. |
 | Medium | Schema creation uses `CREATE TABLE IF NOT EXISTS`; there is no versioned migration or backup/restore workflow. | Add migration tracking and a tested SQLite-aware backup/restore procedure. |
-| Medium | Frontend search and image reading are asynchronous. Navigation and overlapping requests need real-browser race checks. | Test slow requests, rapid search, navigation during requests and repeated image selection. |
+| Automated checks complete | Search invalidates outdated responses immediately on typing; queued searches cannot run after navigation. Image reads use selection/page versions, and delayed post saves cannot redirect a newer screen. | 49 automated tests pass; real-browser race checks remain pending. |
 | Medium | No GitHub Actions workflow or actual browser automation exists. CSS source assertions do not prove visual layout. | Add CI and browser tests; inspect mobile/desktop rendering and keyboard use. |
 | Product gap | Student recovery/email verification are absent; privacy/terms are displayed as text. | Decide account verification/recovery requirements and supply approved policy content before launch. |
 
@@ -63,7 +63,9 @@ Completed fix (2026-10-08): **strict calendar validation and campus timezone con
 
 Completed feature (2026-10-08): **loading, empty, and retry states** for feed, own posts, search, and administrator lists. Loading replaces stale results; empty own-post lists retain Add post; administrator status filters explain zero results. Network/server failures offer explicit manual retries preserving the original filter or query. Protected-session failures keep the login redirect. Delayed list failures are ignored after navigation. Full suite: **41 passed, 0 failed**; browser/device verification remains pending.
 
-Suggested next task: **remaining asynchronous navigation and image-selection races**, including rapid search typing, navigation while a search debounce is pending, and overlapping image reads. Complete it as its own tested fix and push.
+Completed fix (2026-10-08): **search, navigation and image-selection races**. Typing invalidates old searches before the debounce runs; submitting/category selection cancels queued typing; queued searches check the original page before requesting or changing state. Older image successes/failures cannot replace newer previews, clear newer validation errors, or unblock a newer pending read. Leaving the editor invalidates its image callbacks and prevents delayed post saves from redirecting a new screen. Invalid image selections invalidate earlier pending reads while retaining the last completed preview. Full suite: **49 passed, 0 failed**, including controlled out-of-order requests/read callbacks. Real-browser/device verification remains pending.
+
+Suggested next task: **GitHub Actions continuous integration for Node 24 on Windows and Linux**, running the test suite for pushes and pull requests. Verify actual workflow results after publishing it. Browser end-to-end testing follows as a separate feature.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

@@ -340,6 +340,8 @@ async function feed(own, version) {
   );
 }
 function editor() {
+  const pageVersion = renderVersion;
+  let imageVersion = 0;
   const post = state.user?.role === "admin" ? state.edit : null;
   let kind = post?.kind || "",
     image = post?.image || null,
@@ -369,6 +371,8 @@ function editor() {
   document.querySelector("#image-input").onchange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    const version = ++imageVersion;
+    reading = false;
     if (
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
       file.size > 2 * 1024 * 1024
@@ -382,18 +386,22 @@ function editor() {
     reading = true;
     output.textContent = "";
     try {
-      image = await new Promise((resolve, reject) => {
+      const selectedImage = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(new Error("Unable to read image."));
         reader.readAsDataURL(file);
       });
+      if (version !== imageVersion || pageVersion !== renderVersion) return;
+      image = selectedImage;
       document.querySelector("#upload-preview").innerHTML =
         `<img src="${esc(image)}" alt="Selected item">`;
     } catch (e) {
-      errorAt(output, e);
+      if (version === imageVersion && pageVersion === renderVersion)
+        errorAt(output, e);
     } finally {
-      reading = false;
+      if (version === imageVersion && pageVersion === renderVersion)
+        reading = false;
     }
   };
   document.querySelector("#post-form").onsubmit = async (event) => {
@@ -417,11 +425,13 @@ function editor() {
         method: post ? "PUT" : "POST",
         body: JSON.stringify(data),
       });
+      if (pageVersion !== renderVersion) return;
       state.edit = null;
       state.filter = "All";
       state.query = "";
       go(state.user.role === "admin" ? state.back : "feed", { replace: true });
     } catch (e) {
+      if (pageVersion !== renderVersion) return;
       errorAt(output, e);
       button.disabled = false;
     }
@@ -483,6 +493,7 @@ async function admin(version, status = "") {
   document.querySelector("#all-posts").onclick = () => render();
 }
 function searchPage() {
+  const pageVersion = renderVersion;
   const suggestions = () =>
     `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
   app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search item name, description, or location" aria-label="Search posts" value="${esc(state.query)}"></form><div id="search-content">${suggestions()}</div></section>`;
@@ -491,6 +502,7 @@ function searchPage() {
     timer;
   const content = document.querySelector("#search-content");
   const showSuggestions = () => {
+    clearTimeout(timer);
     ++searchVersion;
     state.query = "";
     state.posts = [];
@@ -501,14 +513,15 @@ function searchPage() {
       .forEach((el) => (el.onclick = () => run(el.dataset.category)));
   };
   const run = async (value) => {
+    if (pageVersion !== renderVersion) return;
+    clearTimeout(timer);
     const q = value.trim();
     state.query = q;
     if (!q) {
       showSuggestions();
       return;
     }
-    const version = ++searchVersion,
-      pageVersion = renderVersion;
+    const version = ++searchVersion;
     app.querySelector("[name=q]").value = value;
     state.posts = [];
     content.setAttribute("aria-busy", "true");
@@ -531,8 +544,16 @@ function searchPage() {
   const input = app.querySelector("[name=q]");
   input.oninput = () => {
     clearTimeout(timer);
+    ++searchVersion;
+    state.query = input.value.trim();
+    state.posts = [];
     if (!input.value.trim()) showSuggestions();
-    else timer = setTimeout(() => run(input.value), 220);
+    else {
+      content.setAttribute("aria-busy", "true");
+      content.innerHTML = '<p class="empty" role="status">Searching posts...</p>';
+      const value = input.value;
+      timer = setTimeout(() => run(value), 220);
+    }
   };
   document.querySelector("#search-form").onsubmit = (event) => {
     event.preventDefault();
