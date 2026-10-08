@@ -180,7 +180,8 @@ img {
 .login .legal {
   position: absolute;
   bottom: 16px;
-  left: 16px;
+  right: 16px;
+  text-align: right;
   margin: 0;
   padding-top: 0;
 }
@@ -1069,10 +1070,14 @@ dialog input {
 .auth-page > button { margin: 4px; }
 
 .forgot-password-link {
-  align-self: flex-end;
-  margin-top: -10px;
+  align-self: center;
+  margin-top: -8px;
   font-size: 12px;
+  font-weight: 700;
   padding: 2px 0;
   border: 0;
   text-decoration: none;
 }
+
+.login-title { font-size: 14px; font-weight: 400; line-height: 1.4; margin: 0 0 6px; }
+.login .register-link { margin-top: 20px; text-decoration: underline; text-underline-offset: 3px; border-bottom: 0; }
