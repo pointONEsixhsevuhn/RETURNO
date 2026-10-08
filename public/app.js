@@ -295,14 +295,34 @@ function bindPostActions() {
       }),
   );
 }
+function listLoading(message) {
+  state.posts = [];
+  app.innerHTML = `<section class="screen page">${header()}<p class="empty" role="status" aria-live="polite" aria-busy="true">${esc(message)}</p></section>`;
+  bindNavigation();
+  bindPostActions();
+}
+function listFailure(error, version, retry) {
+  if (error.handled || version !== renderVersion) return;
+  app.innerHTML = `<section class="screen page">${header()}<div class="list-feedback"><p role="alert">${esc(error.message || error)}</p><button type="button" class="pill" data-retry-list>Retry</button></div></section>`;
+  bindNavigation();
+  bindPostActions();
+  app.querySelector("[data-retry-list]").onclick = retry;
+}
 async function feed(own, version) {
   const params = new URLSearchParams();
   if (own) params.set("mine", "1");
   else if (state.filter !== "All") params.set("kind", state.filter);
-  const { posts } = await api("/posts?" + params);
+  listLoading(own ? "Loading your posts..." : "Loading posts...");
+  let posts;
+  try {
+    ({ posts } = await api("/posts?" + params));
+  } catch (error) {
+    listFailure(error, version, () => feed(own, ++renderVersion));
+    return;
+  }
   if (version !== renderVersion) return;
   state.posts = posts;
-  app.innerHTML = `<section class="screen page ${own ? "own" : ""}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!own && !posts.length ? '<p class="empty">No posts found.</p>' : ""}</section>`;
+  app.innerHTML = `<section class="screen page ${own ? "own" : ""}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!posts.length ? `<p class="empty" role="status">${own ? "You have not posted any items yet. Use Add post to report an item." : "No posts match this filter."}</p>` : ""}</section>`;
   bindNavigation();
   bindPostActions();
   if (own)
@@ -433,16 +453,26 @@ function showAdminRegistration() {
   dialog.showModal();
 }
 async function admin(version, status = "") {
-  const [result, totals, userResult] = await Promise.all([
-    api("/posts" + (status ? "?status=" + status : "")),
-    api("/stats"),
-    api("/users"),
-  ]);
+  listLoading("Loading dashboard...");
+  let result, totals, userResult;
+  try {
+    [result, totals, userResult] = await Promise.all([
+      api("/posts" + (status ? "?status=" + status : "")),
+      api("/stats"),
+      api("/users"),
+    ]);
+  } catch (error) {
+    listFailure(error, version, () => admin(++renderVersion, status));
+    return;
+  }
   if (version !== renderVersion) return;
   state.posts = result.posts;
   app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((s) => `<button class="stat" data-stat="${s}">${s.toUpperCase()}<span>${totals.stats[s]}</span></button>`).join("")}</div><section class="registered-users" aria-labelledby="users-heading"><div class="registered-users-head"><h2 id="users-heading">Registered users</h2><span>${userResult.users.length}</span></div><div class="registered-user-list">${userResult.users.length ? userResult.users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${user.role === "admin" ? "Admin" : "Student"}</span></article>`).join("") : '<p class="empty">No registered users yet.</p>'}</div></section><div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
   bindNavigation();
   bindPostActions();
+  if (!result.posts.length)
+    app.querySelector(".admin-list").innerHTML =
+      `<p class="empty" role="status">${status ? `No ${esc(status.toLowerCase())} posts.` : "No reports have been posted yet."}</p>`;
   app
     .querySelectorAll("[data-stat]")
     .forEach(
@@ -459,10 +489,13 @@ function searchPage() {
   bindNavigation();
   let searchVersion = 0,
     timer;
+  const content = document.querySelector("#search-content");
   const showSuggestions = () => {
     ++searchVersion;
     state.query = "";
-    document.querySelector("#search-content").innerHTML = suggestions();
+    state.posts = [];
+    content.setAttribute("aria-busy", "false");
+    content.innerHTML = suggestions();
     app
       .querySelectorAll("[data-category]")
       .forEach((el) => (el.onclick = () => run(el.dataset.category)));
@@ -477,15 +510,22 @@ function searchPage() {
     const version = ++searchVersion,
       pageVersion = renderVersion;
     app.querySelector("[name=q]").value = value;
+    state.posts = [];
+    content.setAttribute("aria-busy", "true");
+    content.innerHTML = '<p class="empty" role="status">Searching posts...</p>';
     try {
       const { posts } = await api("/posts?q=" + encodeURIComponent(q));
       if (version !== searchVersion || pageVersion !== renderVersion) return;
       state.posts = posts;
-      document.querySelector("#search-content").innerHTML =
+      content.setAttribute("aria-busy", "false");
+      content.innerHTML =
         `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
       bindPostActions();
     } catch (e) {
-      if (version === searchVersion) errorDialog(e);
+      if (e.handled || version !== searchVersion || pageVersion !== renderVersion) return;
+      content.setAttribute("aria-busy", "false");
+      content.innerHTML = `<div class="list-feedback"><p role="alert">${esc(e.message || e)}</p><button type="button" class="pill" data-retry-search>Retry search</button></div>`;
+      content.querySelector("[data-retry-search]").onclick = () => run(value);
     }
   };
   const input = app.querySelector("[name=q]");
@@ -497,7 +537,7 @@ function searchPage() {
   document.querySelector("#search-form").onsubmit = (event) => {
     event.preventDefault();
     clearTimeout(timer);
-    run(input.value);
+    return run(input.value);
   };
   app.querySelectorAll("[data-category]").forEach(
     (el) =>

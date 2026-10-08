@@ -68,6 +68,8 @@ Demo credentials are for local testing only. The command refuses to modify a dat
 
 ## Use
 
+Feed, own posts, search, and administrator lists show loading and empty-result messages. If a list cannot load, use **Retry** or **Retry search** after reconnecting; the current filter or query is preserved. Retries reload lists only and do not automatically resubmit forms.
+
 Report dates and times use **Philippine campus time (PHT, UTC+08:00 / Asia/Manila)**. Enter the time at the campus, even if your device is in another timezone. Forms, post previews, and details use the same convention. The API stores `event_at` as `YYYY-MM-DDTHH:mm` without converting it using the server timezone. Impossible dates are rejected, including invalid leap days. Existing reports retain their original values; audit previously entered dates if needed.
 
 - Logo: feed. Magnifier: search. Profile: Your post for students; management for admins.

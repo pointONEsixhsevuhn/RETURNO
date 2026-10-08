@@ -61,7 +61,9 @@ Completed feature (2026-10-08): **consistent expired-session handling** across p
 
 Completed fix (2026-10-08): **strict calendar validation and campus timezone convention**. Reject impossible dates and out-of-range times on creation and editing; invalid edits leave the stored event time unchanged. Accept valid leap days and years 0001 through 9999. Event times are stored and displayed as Philippine campus wall time (PHT, UTC+08:00 / Asia/Manila), without server timezone conversion. Existing records are preserved. Tests cover calendar boundaries, invalid formats, century leap years, and three server timezones. Full suite: **36 passed, 0 failed**; browser/device verification remains pending.
 
-Suggested next task: **loading and empty states for feed, search, and admin lists**, with clear error/retry behavior. Address remaining asynchronous navigation/image races as a subsequent independent fix.
+Completed feature (2026-10-08): **loading, empty, and retry states** for feed, own posts, search, and administrator lists. Loading replaces stale results; empty own-post lists retain Add post; administrator status filters explain zero results. Network/server failures offer explicit manual retries preserving the original filter or query. Protected-session failures keep the login redirect. Delayed list failures are ignored after navigation. Full suite: **41 passed, 0 failed**; browser/device verification remains pending.
+
+Suggested next task: **remaining asynchronous navigation and image-selection races**, including rapid search typing, navigation while a search debounce is pending, and overlapping image reads. Complete it as its own tested fix and push.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

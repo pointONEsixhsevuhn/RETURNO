@@ -17,7 +17,8 @@ function harness({ role = "student", failure = false } = {}) {
         disabled: false,
         value: "",
         open: false,
-        setAttribute() {},
+        attributes: {},
+        setAttribute(name, value) { this.attributes[name] = value; },
         querySelector(selector) {
           return selector === "[data-close]"
             ? { onclick: null }
@@ -105,6 +106,7 @@ function harness({ role = "student", failure = false } = {}) {
     RetornoAPI: { request: api },
     setTimeout,
     clearTimeout,
+    URLSearchParams,
     FormData: class {
       constructor() {
         return new Map(
@@ -285,6 +287,91 @@ test("event forms and displays explicitly identify Philippine campus time", () =
   assert.match(h.element("#app").innerHTML, /PHT, UTC\+08:00/);
   assert.equal(vm.runInContext("dateText('2026-10-06T12:30')", h.ctx), "2026-10-06 12:30 PHT");
   assert.equal(vm.runInContext("dateText('')", h.ctx), "");
+});
+
+test("feed shows loading, then empty results and an own-post creation action", async () => {
+  const h = harness();
+  let finish;
+  h.ctx.RetornoAPI.request = () => new Promise((resolve) => { finish = resolve; });
+  const pending = vm.runInContext("feed(false,renderVersion)", h.ctx);
+  assert.match(h.element("#app").innerHTML, /Loading posts/);
+  assert.match(h.element("#app").innerHTML, /aria-busy="true"/);
+  finish({ posts: [] });
+  await pending;
+  assert.match(h.element("#app").innerHTML, /No posts match this filter/);
+  h.ctx.RetornoAPI.request = async () => ({ posts: [] });
+  await vm.runInContext("feed(true,renderVersion)", h.ctx);
+  assert.match(h.element("#app").innerHTML, /not posted any items yet/);
+  assert.match(h.element("#app").innerHTML, /aria-label="Add post"/);
+});
+
+test("feed failure offers a manual retry with the original filter", async () => {
+  const h = harness({ failure: true });
+  vm.runInContext("state.filter='Lost'", h.ctx);
+  await vm.runInContext("feed(false,renderVersion)", h.ctx);
+  assert.match(h.element("#app").innerHTML, /role="alert"/);
+  assert.equal(h.requests.length, 1);
+  h.ctx.RetornoAPI.request = async (url) => {
+    assert.equal(url, "/posts?kind=Lost");
+    return { posts: [{ id: "recovered", kind: "Lost", status: "Lost" }] };
+  };
+  await h.element("[data-retry-list]").onclick();
+  assert.match(h.element("#app").innerHTML, /recovered/);
+  assert.doesNotMatch(h.element("#app").innerHTML, /data-retry-list/);
+});
+
+test("admin loading and retry preserve status and render an empty report list", async () => {
+  const h = harness({ role: "admin", failure: true });
+  const pending = vm.runInContext("admin(renderVersion,'Returned')", h.ctx);
+  assert.match(h.element("#app").innerHTML, /Loading dashboard/);
+  await pending;
+  assert.match(h.element("#app").innerHTML, /data-retry-list/);
+  h.ctx.RetornoAPI.request = async (url) => {
+    if (url.startsWith("/posts")) {
+      assert.equal(url, "/posts?status=Returned");
+      return { posts: [] };
+    }
+    return url === "/stats" ? { stats: { Lost: 0, Found: 0, Claimed: 0, Returned: 0 } } : { users: [] };
+  };
+  await h.element("[data-retry-list]").onclick();
+  assert.match(h.element(".admin-list").innerHTML, /No returned posts/);
+  assert.match(h.element("#app").innerHTML, /No registered users yet/);
+});
+
+test("search shows loading, retry and empty results without changing the query", async () => {
+  const h = harness();
+  let fail;
+  h.ctx.RetornoAPI.request = () => new Promise((_resolve, reject) => { fail = reject; });
+  vm.runInContext("searchPage()", h.ctx);
+  h.element("[name=q]").value = "wallet";
+  const pending = h.element("#search-form").onsubmit({ preventDefault() {} });
+  assert.match(h.element("#search-content").innerHTML, /Searching posts/);
+  assert.equal(h.element("#search-content").attributes["aria-busy"], "true");
+  fail(new Error("Disconnected"));
+  await pending;
+  assert.match(h.element("#search-content").innerHTML, /Disconnected/);
+  assert.equal(h.element("#search-content").attributes["aria-busy"], "false");
+  h.ctx.RetornoAPI.request = async (url) => {
+    assert.equal(url, "/posts?q=wallet");
+    return { posts: [] };
+  };
+  await h.element("[data-retry-search]").onclick();
+  assert.match(h.element("#search-content").innerHTML, /No posts found/);
+  assert.equal(h.element("[name=q]").value, "wallet");
+  h.element("[name=q]").value = "";
+  h.element("[name=q]").oninput();
+  assert.match(h.element("#search-content").innerHTML, /What are you looking for/);
+});
+
+test("late list failures cannot replace a newly navigated screen", async () => {
+  const h = harness();
+  let fail;
+  h.ctx.RetornoAPI.request = () => new Promise((_resolve, reject) => { fail = reject; });
+  const pending = vm.runInContext("feed(false,renderVersion)", h.ctx);
+  vm.runInContext("++renderVersion;app.innerHTML='New screen'", h.ctx);
+  fail(new Error("Old failure"));
+  await pending;
+  assert.equal(h.element("#app").innerHTML, "New screen");
 });
 
 test("normal navigation stacks screens and browser Back returns to the prior screen", () => {

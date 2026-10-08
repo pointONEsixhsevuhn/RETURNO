@@ -26,6 +26,8 @@ Version 1.3.0. Scope: the provided Lost & Found designs plus the requested remov
 
 ## 2. User workflow
 
+List requests show a loading status before results arrive. Empty feeds, own-post lists, search results and administrator report lists display explicit messages. List failures show an inline manual retry preserving the filter/query, while navigation and logout remain available. Expired-session responses still return to login. Version checks prevent old list failures from replacing a new screen; no mutation is automatically retried.
+
 Report `event_at` values are Philippine campus wall time (PHT, UTC+08:00, Asia/Manila), stored as `YYYY-MM-DDTHH:mm`. Explicit Gregorian calendar checks reject impossible dates, invalid leap days, and out-of-range hours/minutes. Years 0001 through 9999 are supported. API inputs containing seconds or timezone suffixes are rejected. Server/device timezone settings do not convert report values. Existing records are not rewritten; SQLite `created_at`/`updated_at` remain UTC database timestamps and are separate from report event time.
 
 ```mermaid

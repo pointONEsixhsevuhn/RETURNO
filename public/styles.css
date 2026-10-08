@@ -767,6 +767,14 @@ img {
   font-size: 15px;
   margin: 24px 0;
 }
+.list-feedback {
+  text-align: center;
+  margin: 24px 0;
+  overflow-wrap: anywhere;
+}
+.list-feedback button {
+  padding: 8px 20px;
+}
 dialog {
   border: 2px solid #666;
   border-radius: 22px;
