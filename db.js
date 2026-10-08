@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
+import { migrate } from "./migrations.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
@@ -15,7 +16,12 @@ export const dataDir = process.env.DATA_DIR
 mkdirSync(dataDir, { recursive: true });
 export const db = new DatabaseSync(path.join(dataDir, "retorno.sqlite"));
 db.exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");
-db.exec(readFileSync(path.join(root, "schema.sql"), "utf8"));
+try {
+  migrate(db);
+} catch (error) {
+  db.close();
+  throw error;
+}
 export function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;

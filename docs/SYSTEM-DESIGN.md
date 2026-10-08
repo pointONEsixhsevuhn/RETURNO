@@ -110,7 +110,7 @@ flowchart TD
 | UI controller | `public/app.js` | Hash routes, forms, dialogs, role-specific views, safe text rendering. |
 | Transport | `public/api.js` | Same-origin cookies, JSON checks, request timeout and connection messages. |
 | HTTP application | `server.js` | Static allowlist, API routing, field/image validation, authentication, admin permission checks and response headers. |
-| Persistence | `db.js`, `schema.sql` | SQLite setup, hashing, user creation, tables and indexes. |
+| Persistence | `db.js`, `migrations.js`, `migrations/` | SQLite setup, transactional versioned schema upgrades, hashing and user creation. `schema.sql` documents the original schema. |
 | Startup / setup | `scripts/start.js`, `start.cmd`, `scripts/admin.js` | Node version check, server startup and controlled admin creation. |
 | Demo fixture | `scripts/demo.js` | Explicit optional screenshot data on a fresh database. Never automatic. |
 | Verification | `tests/api.test.js`, `tests/client.test.js` | API integration, persistence, constraints, authorization and transport failures. |
@@ -177,13 +177,13 @@ erDiagram
 
 **Database/API boundary:** SQL handles relational and enumerated-value integrity; API handles text lengths, nonblank required values, dates, password rules and images. Optional screenshot fixtures intentionally contain blank item details, so nonblank text checks are not imposed on the table. This is explicit demo behavior rather than accepting blank real posts.
 
-**Existing data:** this update preserves all table names and columns. Startup only creates missing tables/indexes; it does not drop or recreate data. New session-user and kind/date indexes are additive and idempotent. Preserve the existing `data/` folder when replacing source files. Earlier records with inconsistent type/status are not silently rewritten; editing/updating them applies the current rule. Future destructive schema changes must use a versioned migration and backup; none is required by this release.
+**Existing data:** version 1 enrolls the existing schema using additive table/index creation and adds a migration ledger without rewriting accounts, sessions or reports. Startup validates recorded migration names/checksums and applies pending versions transactionally, checking foreign keys before commit. Preserve the existing `data/` folder when replacing source files. Earlier records with inconsistent type/status are not silently rewritten; editing/updating them applies the current rule. Future changes require a new immutable migration and a verified backup before production deployment. See [migration procedure](DATABASE-MIGRATIONS.md).
 
 ## 6. Verification and remaining boundaries
 
 Run `npm test`. Tests use disposable directories and never change the user's database. The suite verifies registration/login, session use and revocation, rollback, role boundaries for both owned and other posts, CRUD, filters/search, images, admin counts, active status consistency, SQLite integrity and transport errors.
 
-The 57-test suite includes eight real CLI subprocess checks: administrator setup, recovery validation/rollback and selective session revocation, demo creation/refusal, startup errors, and account/report persistence across process termination and restart. Data is isolated in disposable directories. The unsupported-Node startup guard is simulated; power-loss recovery and backup restoration remain unverified.
+The 65-test suite includes eight real CLI subprocess checks and eight migration checks. These verify administrator setup, recovery validation/rollback and selective session revocation, demo creation/refusal, startup errors, process-restart persistence, legacy migration preservation, rollback/retry, history/integrity validation and line-ending compatibility. Data is isolated in disposable directories. The unsupported-Node startup guard is simulated; power-loss recovery and backup restoration remain unverified.
 
 Playwright additionally verifies 20 Chromium cases across desktop, Pixel 5, 320px phone and 768px tablet viewports, including keyboard navigation and dialog focus. Physical devices, landscape, 200% zoom, phone keyboards, other browser engines and a complete accessibility audit remain pending. See the roadmap for hosted CI evidence.
 
