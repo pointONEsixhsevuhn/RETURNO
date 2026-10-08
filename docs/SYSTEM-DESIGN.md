@@ -24,6 +24,8 @@ Version 1.3.0. Scope: the provided Lost & Found designs plus the requested remov
 
 **Acceptance boundary:** automated checks verify the API, data and client request handling. They do not prove pixel-identical rendering or behavior on every browser/device. The exact font is still unavailable; source logo/category images are retained.
 
+Browser verification update (2026-10-08): Playwright now exercises actual Chromium on desktop and Pixel 5 viewport configurations. Six local browser cases cover student account/report flows with image upload, administrator management, role enforcement, logout/session recovery and search retry/clearing. Browser page errors, horizontal overflow and card keyboard activation/Escape are checked. Each worker uses a new temporary database and port and cleans up only its own data. Physical devices, other browser engines, a full accessibility audit and pixel-identical rendering remain outside this evidence. CI runs the browser suite alongside the 49 API/client tests on Windows and Linux.
+
 ## 2. User workflow
 
 Search responses are invalidated as soon as new input arrives. Search submissions and category choices cancel queued typing, and queued callbacks check the original page before running. Image reads check both selection and page versions before changing previews/errors or submission readiness. Post saves finishing after navigation may still persist on the backend, but do not redirect or change the newly opened page. These races have controlled automated coverage; real-browser verification remains pending.

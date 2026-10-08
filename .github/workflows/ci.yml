@@ -16,7 +16,7 @@ jobs:
   test:
     name: Node 24 / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +31,23 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      # Runtime and tests use Node built-ins; no dependency installation is needed.
+      - name: Install test dependencies
+        shell: bash
+        run: npm ci
       - name: Run full test suite
         shell: bash
         run: npm test
+      - name: Install Chromium and system dependencies
+        shell: bash
+        run: npx playwright install --with-deps chromium
+      - name: Run desktop and mobile browser tests
+        shell: bash
+        run: npm run test:e2e
+      - name: Save failed browser traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-failures-${{ matrix.os }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

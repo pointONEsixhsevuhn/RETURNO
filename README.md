@@ -68,7 +68,7 @@ Demo credentials are for local testing only. The command refuses to modify a dat
 
 ## Use
 
-GitHub Actions runs the full automated test suite on Node 24 for Windows and Linux on every push and pull request. You can also run it manually from the repository's **Actions → Tests** page. These checks exercise the backend and simulated frontend; real-browser testing remains a separate verification step.
+GitHub Actions runs the API/client tests and desktop/mobile Chromium end-to-end tests on Node 24 for Windows and Linux on every push and pull request. You can also run it manually from the repository's **Actions → Tests** page. Failed browser runs save traces/screenshots as seven-day artifacts containing only isolated test data.
 
 Search results follow the latest query, and queued searches stop when you leave the page. When selecting images quickly, only the latest valid selection updates the preview. Posting waits for that image to finish reading. If you leave while a post is saving, the save may still complete; check your posts before submitting it again.
 
@@ -83,7 +83,7 @@ Report dates and times use **Philippine campus time (PHT, UTC+08:00 / Asia/Manil
 - Admin list: view details, edit, update status or delete; counts are computed from saved records.
 - Registered users: the admin dashboard lists account names, email addresses, and roles.
 - Images: PNG, JPEG or WebP, up to 2 MB; optional. Item name, local date/time, location and description are required.
-- Leaving the post form replaces its history entry; Browser Back does not reopen a submitted form. Session expiry is seven days; no additional logout button has been added to the supplied UI.
+- Leaving the post form replaces its history entry; Browser Back does not reopen a submitted form. Sessions expire after seven days; use Log out to end the current session sooner.
 
 ## Project structure
 
@@ -115,4 +115,16 @@ npm test
 
 Automated API/client tests cover account creation, login after registration, failed-session rollback, permissions, saved data, CRUD, search, statuses, images, schema constraints, wrong-server responses and network failures. Tests use a disposable database.
 
-Browser visual/device testing was unavailable. Responsive rules target phones, tablets and desktops; the verification checklist is in SYSTEM-DESIGN.md. Original artwork is retained; fonts use available Century Gothic / Avenir Next / Arial, so exact lettering depends on the device. No additional product features or Organization page were added.
+Run real-browser tests after installing the development dependencies and Chromium:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+On Windows PowerShell, use `npm.cmd` and `npx.cmd` if script execution is restricted. On Linux CI, install Chromium with `npx playwright install --with-deps chromium`.
+
+Playwright runs three scenarios on both desktop and Pixel 5 Chromium viewports: student report creation with an image and administrator management; expired-session recovery; and search retry/clearing. Checks include role restrictions, session revocation, keyboard card activation/Escape, and horizontal overflow. Each worker starts its own temporary SQLite database and server on an available localhost port, seeds a test administrator, and removes only its own data afterward. It never uses the running application or existing `data/` directory. Failure traces/screenshots are saved under ignored `test-results/`.
+
+These are automated Chromium checks and mobile emulation, not physical-device testing or a complete accessibility/visual audit. Firefox, Safari/WebKit, tablets and broader keyboard checks remain pending. Original artwork is retained; fonts use available Century Gothic / Avenir Next / Arial, so exact lettering depends on the device.

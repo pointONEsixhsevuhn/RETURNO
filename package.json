@@ -12,9 +12,11 @@
     "admin": "node scripts/admin.js",
     "admin:reset": "node scripts/admin-recovery.js",
     "demo": "node scripts/demo.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "prettier": "^3.9.9"
   }
 }

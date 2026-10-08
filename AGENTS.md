@@ -6,6 +6,7 @@ The user requests continued guidance and a separate Git commit and GitHub push f
 - Work on one agreed feature at a time. Define its behavior and acceptance checks before implementing it.
 - Preserve student/admin separation. Students currently create and view posts; admins manage posts and register additional admins. Do not broaden permissions without an explicit product decision.
 - Test each change appropriately. Run the full `npm.cmd test` suite on Windows before committing code changes. Use `npm test` on other platforms.
+- For frontend, authentication or report workflow changes, also run `npm.cmd run test:e2e` (Windows) or `npm run test:e2e` after installing test dependencies and Chromium. Browser tests must keep their isolated database/server fixtures.
 - Run `git diff --check` and review the staged diff. Stage only files belonging to the current feature; preserve unrelated user edits.
 - Give each feature or independently useful fix its own descriptive commit (for example `feat: add logout controls` or `fix: reject impossible event dates`). Avoid combining unrelated features.
 - Push completed, passing commits to the configured GitHub remote. Never force-push or rewrite published history without explicit authorization.
