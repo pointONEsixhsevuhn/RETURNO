@@ -605,6 +605,8 @@ img {
   border-radius: 20px;
   padding: 14px;
 }
+.user-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+.registered-users-head h3 { margin: 0; }
 .registered-users-head {
   display: flex;
   justify-content: space-between;

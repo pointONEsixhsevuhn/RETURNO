@@ -335,7 +335,7 @@ test("admin loading and retry preserve status and render an empty report list", 
   };
   await h.element("[data-retry-list]").onclick();
   assert.match(h.element(".admin-list").innerHTML, /No returned posts/);
-  assert.match(h.element("#app").innerHTML, /No registered users yet/);
+  assert.doesNotMatch(h.element("#app").innerHTML, /Registered users|class="stats"/);
 });
 
 test("search shows loading, retry and empty results without changing the query", async () => {

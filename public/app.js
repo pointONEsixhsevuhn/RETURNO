@@ -73,7 +73,7 @@ function errorAt(target, error) {
   target.textContent = error.message || error;
 }
 function header(search = true, welcome = true) {
-  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">WELCOME, ${state.user.role.toUpperCase()}!</h1>` : ""}<div class="header-actions"><button type="button" class="pill logout-button" data-logout>Log out</button>${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin" : "mine"}" aria-label="${state.user.role === "admin" ? "Manage posts" : "Your posts"}">${profileIcon}</button></div></header>`;
+  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">WELCOME, ${state.user.role.toUpperCase()}!</h1>` : ""}<div class="header-actions"><button type="button" class="pill logout-button" data-logout>Log out</button>${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin-profile" : "mine"}" aria-label="${state.user.role === "admin" ? "Admin profile" : "Your posts"}">${profileIcon}</button></div></header>`;
 }
 function bindNavigation() {
   app
@@ -468,20 +468,16 @@ function showAdminRegistration() {
 }
 async function admin(version, status = "") {
   listLoading("Loading dashboard...");
-  let result, totals, userResult;
+  let result;
   try {
-    [result, totals, userResult] = await Promise.all([
-      api("/posts" + (status ? "?status=" + status : "")),
-      api("/stats"),
-      api("/users"),
-    ]);
+    result = await api("/posts" + (status ? "?status=" + status : ""));
   } catch (error) {
     listFailure(error, version, () => admin(++renderVersion, status));
     return;
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((s) => `<button class="stat" data-stat="${s}">${s.toUpperCase()}<span>${totals.stats[s]}</span></button>`).join("")}</div><section class="registered-users" aria-labelledby="users-heading"><div class="registered-users-head"><h2 id="users-heading">Registered users</h2><span>${userResult.users.length}</span></div><div class="registered-user-list">${userResult.users.length ? userResult.users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${user.role === "admin" ? "Admin" : "Student"}</span></article>`).join("") : '<p class="empty">No registered users yet.</p>'}</div></section><div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}<div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
   bindNavigation();
   bindPostActions();
   if (!result.posts.length)
@@ -495,6 +491,24 @@ async function admin(version, status = "") {
           admin(++renderVersion, el.dataset.stat).catch(errorDialog)),
     );
   document.querySelector("#all-posts").onclick = () => render();
+}
+async function adminProfile(version) {
+  listLoading("Loading admin profile...");
+  let totals, result;
+  try { [totals, result] = await Promise.all([api("/stats"), api("/users")]); }
+  catch (error) { listFailure(error, version, () => adminProfile(++renderVersion)); return; }
+  if (version !== renderVersion) return;
+  const group = (role, title) => {
+    const users = result.users.filter((user) => user.role === role);
+    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
+  };
+  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((status) => `<button class="stat" data-stat="${status}">${status.toUpperCase()}<span>${totals.stats[status]}</span></button>`).join("")}</div><h2>Registered users</h2><div class="user-groups">${group("student", "Student users")}${group("admin", "Admin users")}</div></section>`;
+  bindNavigation();
+  bindPostActions();
+  app.querySelectorAll("[data-stat]").forEach((button) => button.onclick = () => {
+    go("admin");
+    admin(++renderVersion, button.dataset.stat).catch(errorDialog);
+  });
 }
 function searchPage() {
   const pageVersion = renderVersion;
@@ -578,7 +592,7 @@ async function render() {
   if (dialog.open) dialog.close();
   try {
     if (
-      ["feed", "mine", "post", "admin", "search"].includes(route) &&
+      ["feed", "mine", "post", "admin", "admin-profile", "search"].includes(route) &&
       !state.user
     ) {
       go("login");
@@ -620,6 +634,10 @@ async function render() {
       return editor();
     }
     if (route === "search") return searchPage();
+    if (route === "admin-profile") {
+      if (state.user.role !== "admin") return go("feed");
+      return await adminProfile(version);
+    }
     if (route === "admin") {
       if (state.user.role !== "admin") return go("feed");
       return await admin(version);
