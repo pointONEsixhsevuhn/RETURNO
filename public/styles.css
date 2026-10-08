@@ -1091,3 +1091,15 @@ dialog input {
 .password-recovery #recovery-form { width: min(320px, 100%); margin: 24px 0 12px; }
 .password-recovery .auth-field input { background: transparent; border: 1px solid #000; }
 .send-reset-code { background: transparent; border: 0; font-weight: 700; font-size: 16px; padding: 8px; text-decoration: underline; text-underline-offset: 3px; }
+
+.registered-user-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.registered-user-actions .registered-user-role,
+.registered-user-actions .delete-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
