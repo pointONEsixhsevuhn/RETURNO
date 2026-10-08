@@ -15,10 +15,8 @@ export const test = base.extend({
       process.env.NODE_ENV = "test";
       setMailTransport({
         async sendMail(message) {
-          verificationCodes.set(
-            message.to,
-            message.text.match(/code is (\d{6})/)[1],
-          );
+          const match = message.text.match(/code is (\d{6})/);
+          if (match) verificationCodes.set(message.to, match[1]);
           return {};
         },
       });

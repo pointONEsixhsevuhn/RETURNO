@@ -256,3 +256,28 @@ test("admin confirms account deletion, removes its reports and invalidates the s
  await page.context().addCookies(studentCookies);
  expect((await page.request.get("/api/me")).status()).toBe(401);
 });
+
+test("student recovers a forgotten password using the emailed code and signs in again", async ({ page }) => {
+ const email=await register(page);
+ await logout(page);
+ await page.getByRole("button",{name:"Student",exact:true}).click();
+ await page.getByRole("button",{name:"Forgot password?",exact:true}).click();
+ await page.getByLabel("Registered email",{exact:true}).fill(email);
+ await page.getByRole("button",{name:"Send reset code",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Reset password",exact:true})).toBeVisible();
+ await page.getByLabel("Reset code",{exact:true}).fill("000000");
+ const newPassword="RecoveredStudent123!";
+ await page.getByLabel("New password",{exact:true}).fill(newPassword);
+ await page.getByLabel("Confirm new password",{exact:true}).fill(newPassword);
+ await page.getByRole("button",{name:"Change password",exact:true}).click();
+ await expect(page.getByRole("alert")).toContainText("Invalid or expired reset code");
+ await page.getByLabel("Reset code",{exact:true}).fill(verificationCodes.get(email));
+ await noOverflow(page);
+ await page.getByRole("button",{name:"Change password",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Log In",exact:true})).toBeVisible();
+ await expect(page.getByRole("alert")).toContainText("Password changed");
+ await page.getByLabel("Email",{exact:true}).fill(email);
+ await page.getByLabel("Password",{exact:true}).fill(newPassword);
+ await page.getByRole("button",{name:"Log In",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"WELCOME, STUDENT!"})).toBeVisible();
+});

@@ -35,6 +35,7 @@ export const migrations = [
       "utf8",
     ),
   },
+  { version: 5, name: "password-recovery", sql: readFileSync(new URL("./migrations/005-password-recovery.sql", import.meta.url), "utf8") },
 ];
 
 export function migrate(db, steps = migrations) {

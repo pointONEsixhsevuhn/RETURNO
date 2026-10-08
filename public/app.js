@@ -124,7 +124,7 @@ function authField(
 }
 function authScreen(register = false) {
   register = register && state.role === "student";
-  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><form id="auth-form">${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password") + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password") + '<button class="register-link" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="register-link" type="button" data-go="register">Register</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form>${register ? "" : '<footer class="legal">Privacy Act<br>Terms &amp; Conditions</footer>'}</section>`;
+  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><form id="auth-form">${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password") + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password") + '<button class="register-link" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="register-link" type="button" data-go="register">Register</button><button class="register-link" type="button" data-go="forgot-password">Forgot password?</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form>${register ? "" : '<footer class="legal">Privacy Act<br>Terms &amp; Conditions</footer>'}</section>`;
   bindNavigation();
   app.querySelectorAll("[data-toggle-password]").forEach(
     (toggle) =>
@@ -203,6 +203,38 @@ function verificationScreen(email) {
     }
   };
   document.querySelector("#verification-code").focus();
+}
+function passwordRecoveryScreen(email = "") {
+  const version = renderVersion;
+  const resetting = Boolean(email);
+  app.innerHTML = `<main class="auth-page">${logo}<h1>${resetting ? "Reset password" : "Forgot password?"}</h1><p>${resetting ? "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. It expires in 10 minutes. Wait one minute before requesting another code. If no email arrives, contact the administrator." : "Enter your registered email to request a password reset code."}</p><form id="recovery-form">${resetting ? '<label for="reset-code">Reset code</label><input class="pill" id="reset-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>' + authField("password", "New password", "password", "", "new-password") + authField("confirmPassword", "Confirm new password", "password", "", "new-password") : authField("email", "Registered email", "email", "", "email")}<p class="error" id="recovery-error" role="alert"></p><button type="submit" class="pill">${resetting ? "Change password" : "Send reset code"}</button></form>${resetting ? '<button type="button" class="pill" id="resend-reset">Request another code</button>' : ""}<button type="button" class="pill" data-go="login">Back to login</button></main>`;
+  bindNavigation();
+  if (resetting) document.querySelector("#resend-reset").onclick = () => passwordRecoveryScreen();
+  document.querySelector("#recovery-form").onsubmit = async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector("[type=submit]");
+    const output = document.querySelector("#recovery-error");
+    const data = Object.fromEntries(new FormData(form));
+    if (resetting) data.email = email;
+    output.textContent = "";
+    if (resetting && data.password !== data.confirmPassword) return errorAt(output,"Passwords do not match.");
+    button.disabled = true;
+    try {
+      await api(resetting ? "/reset-password" : "/forgot-password", { method: "POST", body: JSON.stringify(data) });
+      if (version !== renderVersion || !form.isConnected) return;
+      if (!resetting) return passwordRecoveryScreen(data.email);
+      clearSession();
+      state.role = "student";
+      go("login", { replace: true });
+      document.querySelector("#auth-error").textContent = "Password changed. Please log in with your new password.";
+    } catch (error) {
+      if (version !== renderVersion || !form.isConnected) return;
+      errorAt(output,error);
+      button.disabled = false;
+    }
+  };
+  document.querySelector(resetting ? "#reset-code" : "#email").focus();
 }
 function itemImage(post, css = "item-image") {
   return `<div class="${css}">${post.image ? `<img src="${esc(post.image)}" alt="${esc(post.item_name)}">` : "Image"}</div>`;
@@ -697,6 +729,10 @@ async function render() {
           }),
       );
       return;
+    }
+    if (route === "forgot-password") {
+      if (state.role !== "student") return go("login");
+      return passwordRecoveryScreen();
     }
     if (route === "login" || route === "register")
       return authScreen(route === "register");

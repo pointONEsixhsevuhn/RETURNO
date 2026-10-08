@@ -5,7 +5,7 @@ let transport;
 export function setMailTransport(value) {
   transport = value;
 }
-export async function sendVerification(email, code) {
+async function sendEmail(email, subject, text) {
   if (!transport) {
     const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM } =
       process.env;
@@ -28,8 +28,18 @@ export async function sendVerification(email, code) {
   const result = await transport.sendMail({
     from: process.env.MAIL_FROM || "RETURNO <no-reply@retorno.example>",
     to: email,
-    subject: "Confirm your RETURNO email address",
-    text: `Your RETURNO verification code is ${code}.\n\nEnter it on the registration screen within 10 minutes to confirm your email. Do not share this code. If you did not register, ignore this message.`,
+    subject,
+    text,
   });
   if (result.rejected?.length) throw new Error("Email delivery rejected.");
+}
+
+export function sendVerification(email, code) {
+  return sendEmail(email, "Confirm your RETURNO email address", `Your RETURNO verification code is ${code}.\n\nEnter it on the registration screen within 10 minutes to confirm your email. Do not share this code. If you did not register, ignore this message.`);
+}
+export function sendPasswordReset(email, code) {
+  return sendEmail(email, "Reset your RETURNO password", `Your RETURNO password reset code is ${code}.\n\nEnter it on the password recovery screen within 10 minutes. Do not share this code. If you did not request a password reset, ignore this email; your password has not changed.`);
+}
+export function sendPasswordChanged(email) {
+  return sendEmail(email, "Your RETURNO password was changed", "Your RETURNO password has been reset. All existing sessions have been signed out. If you did not make this change, contact the administrator immediately. Your password is never included in emails.");
 }

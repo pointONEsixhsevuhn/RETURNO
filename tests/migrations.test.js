@@ -65,7 +65,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 2);
+    assert.equal(migrate(db), 3);
     assert.equal(
       db
         .prepare(

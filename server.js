@@ -11,7 +11,7 @@ import {
   studentRowScope,
 } from "./access-control.js";
 
-import { sendVerification } from "./mail.js";
+import { sendVerification, sendPasswordReset, sendPasswordChanged } from "./mail.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -290,6 +290,54 @@ export const server = http.createServer(async (req, res) => {
         }
         cookie(res, token);
         return json(res, 201, { user: publicUser(user) });
+      }
+      if (route === "/api/forgot-password" && req.method === "POST") {
+        rateLimit(req);
+        const data = await body(req);
+        const email = textField(data, "email", 254).toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, "Enter a valid email.");
+        const target = db.prepare("SELECT id,email,password_hash FROM users WHERE email=? AND role='student'").get(email);
+        const now = Date.now();
+        db.prepare("DELETE FROM password_resets WHERE expires_at<=?").run(now);
+        const pending = target && db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
+        if (target && (!pending || now - pending.sent_at >= 60000)) {
+          const code = String(randomInt(100000, 1000000));
+          const codeHash = hash(code);
+          db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
+            VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,
+            password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`)
+            .run(target.id,codeHash,target.password_hash,now+10*60000,now);
+          // SMTP runs off the response path so account existence is not exposed by delivery timing.
+          void sendPasswordReset(target.email, code).catch(() => {
+            db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
+            console.error("Password reset email delivery failed.");
+          });
+        }
+        return json(res, 202, { message: "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
+      }
+      if (route === "/api/reset-password" && req.method === "POST") {
+        rateLimit(req);
+        const data = await body(req);
+        const { email, password } = credentials(data);
+        if (data.confirmPassword !== password) fail(400, "Passwords do not match.");
+        const code = textField(data,"code",6);
+        const target = db.prepare(`SELECT u.id,u.email,u.password_hash,r.code_hash,r.password_version,r.expires_at,r.attempts
+          FROM users u JOIN password_resets r ON r.user_id=u.id WHERE u.email=? AND u.role='student'`).get(email);
+        const invalid = "Invalid or expired reset code. Request a new code.";
+        if (!target || target.expires_at<=Date.now() || target.attempts>=5 || target.password_hash!==target.password_version) fail(400,invalid);
+        db.prepare("UPDATE password_resets SET attempts=attempts+1 WHERE user_id=?").run(target.id);
+        if (!/^\d{6}$/.test(code) || hash(code)!==target.code_hash) fail(400,invalid);
+        const passwordHash = hashPassword(password);
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const updated = db.prepare("UPDATE users SET password_hash=? WHERE id=? AND role='student' AND password_hash=?").run(passwordHash,target.id,target.password_version);
+          if (!updated.changes) fail(400,invalid);
+          db.prepare("DELETE FROM sessions WHERE user_id=?").run(target.id);
+          db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
+          db.exec("COMMIT");
+        } catch (error) { db.exec("ROLLBACK"); throw error; }
+        void sendPasswordChanged(target.email).catch(() => console.error("Password change notification delivery failed."));
+        return json(res, 200, { message: "Password changed. Please log in with your new password." });
       }
       if (route === "/api/login" && req.method === "POST") {
         rateLimit(req);

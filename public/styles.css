@@ -1063,3 +1063,7 @@ dialog input {
 
 .delete-account { color: #a40000; justify-self: start; }
 #delete-account-form > input { width: 100%; margin-top: 8px; }
+
+#recovery-form { display: grid; gap: 12px; margin: 24px 0; }
+#reset-code { width: 100%; text-align: center; letter-spacing: 6px; }
+.auth-page > button { margin: 4px; }
