@@ -108,10 +108,13 @@ test("keyboard login errors, password toggle and loading/retry states", async ({
   await expect(page.getByRole("alert")).toContainText("Cannot connect");
   await activate(page, retry);
   await expect(page.getByRole("heading", { name: "Registered users" })).toHaveCount(0);
+  await expect(page.locator(".stats .stat")).toHaveCount(4);
   await activate(page, page.getByRole("button", { name: "Admin profile", exact: true }));
   await expect(page.getByRole("heading", { name: "Registered users" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Student users", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Admin users", exact: true })).toBeVisible();
+  await expect(page.locator(".stats")).toHaveCount(0);
+  await expect(page.locator(".user-groups > section").first()).toHaveAttribute("aria-label", "Admin users");
   await fits(page);
   await activate(page, page.getByRole("button", { name: "Log out", exact: true }));
   await expect(page.getByRole("button", { name: "Student", exact: true })).toBeVisible();

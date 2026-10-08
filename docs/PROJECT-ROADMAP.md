@@ -87,6 +87,8 @@ Completed item artwork replacement (2026-10-08): the six supplied wallet/key/pho
 
 Completed admin layout update (2026-10-08): admin home shows reports; Lost/Returned/Found/Claimed totals and registered users move to an admin-only profile route reached through the profile icon. Student and administrator accounts appear in separate labeled boxes with separate counts. Profile status buttons open the matching report filter; registration, loading/retry and role restrictions are preserved. Full suite: **67 passed**; **20 browser cases passed**, including keyboard profile navigation and separate user sections on four viewports.
 
+Admin layout adjustment (2026-10-08): Lost/Returned/Found/Claimed totals are back on administrator home with their report filters. Registered users remain on the admin profile, ordered Admin users first and Student users second. Local suite: **67 passed**; **20 browser cases passed** across four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.

@@ -468,16 +468,16 @@ function showAdminRegistration() {
 }
 async function admin(version, status = "") {
   listLoading("Loading dashboard...");
-  let result;
+  let result, totals;
   try {
-    result = await api("/posts" + (status ? "?status=" + status : ""));
+    [result, totals] = await Promise.all([api("/posts" + (status ? "?status=" + status : "")), api("/stats")]);
   } catch (error) {
     listFailure(error, version, () => admin(++renderVersion, status));
     return;
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}<div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((status) => `<button class="stat" data-stat="${status}">${status.toUpperCase()}<span>${totals.stats[status]}</span></button>`).join("")}</div><div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
   bindNavigation();
   bindPostActions();
   if (!result.posts.length)
@@ -494,21 +494,17 @@ async function admin(version, status = "") {
 }
 async function adminProfile(version) {
   listLoading("Loading admin profile...");
-  let totals, result;
-  try { [totals, result] = await Promise.all([api("/stats"), api("/users")]); }
+  let result;
+  try { result = await api("/users"); }
   catch (error) { listFailure(error, version, () => adminProfile(++renderVersion)); return; }
   if (version !== renderVersion) return;
   const group = (role, title) => {
     const users = result.users.filter((user) => user.role === role);
     return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
   };
-  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((status) => `<button class="stat" data-stat="${status}">${status.toUpperCase()}<span>${totals.stats[status]}</span></button>`).join("")}</div><h2>Registered users</h2><div class="user-groups">${group("student", "Student users")}${group("admin", "Admin users")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
   bindNavigation();
   bindPostActions();
-  app.querySelectorAll("[data-stat]").forEach((button) => button.onclick = () => {
-    go("admin");
-    admin(++renderVersion, button.dataset.stat).catch(errorDialog);
-  });
 }
 function searchPage() {
   const pageVersion = renderVersion;
