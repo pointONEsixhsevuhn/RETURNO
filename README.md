@@ -1,6 +1,6 @@
 # NVSU RETURNO — Lost & Found System
 
-Version 1.3.0: HTML/CSS/JavaScript frontend, Node.js backend, persistent SQLite database. No npm dependencies or build step.
+Version 1.3.0: HTML/CSS/JavaScript frontend, Node.js backend, persistent SQLite database. No runtime npm dependencies or build step; browser tests use Playwright as a development dependency.
 
 ## Start on Windows / VS Code
 
