@@ -247,6 +247,14 @@ img {
   grid-row: 1;
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: min(55vw, 300px);
+}
+.logout-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 .icon {
   width: 44px;

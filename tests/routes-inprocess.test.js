@@ -82,6 +82,24 @@ async function send(url, method = "GET", data, cookie) {
     cookie: headers["set-cookie"]?.split(";")[0],
   };
 }
+test("logout revokes each role's session and clears its cookie", async () => {
+  for (const role of ["student", "admin"]) {
+    const login = await send("/api/login", "POST", {
+      email: `${role}@example.test`,
+      password: role === "admin" ? "FirstAdmin123!" : "StudentTest123!",
+      role,
+    });
+    assert.equal(login.status, 200);
+    const logout = await send("/api/logout", "POST", undefined, login.cookie);
+    assert.equal(logout.status, 200);
+    assert.match(logout.headers["set-cookie"], /Max-Age=0/);
+    assert.equal((await send("/api/me", "GET", undefined, login.cookie)).status, 401);
+    assert.equal((await send("/api/posts", "GET", undefined, login.cookie)).status, 401);
+    // Other active sessions remain usable.
+    assert.equal((await send("/api/me", "GET", undefined, role === "admin" ? adminCookie : studentCookie)).status, 200);
+  }
+});
+
 test("only an existing admin can create additional administrators", async () => {
   assert.equal(
     (

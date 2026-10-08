@@ -28,7 +28,7 @@ On Windows, use `npm.cmd test` and `npm.cmd start` if PowerShell blocks `npm.ps1
 
 | Priority | Finding and evidence | Next action |
 | --- | --- | --- |
-| High | `/api/logout` exists, but the frontend has no logout control. Sessions last seven days. | Add visible logout for both roles, clear client state, and test expired-session handling. |
+| Completed | Visible logout is available in student/admin page headers. It revokes the current session and clears client state; expired sessions also exit cleanly. | Verified by UI simulation and backend session tests. Broader expired-session flows remain a subsequent task. |
 | Medium | `server.js` checks dates using a regex plus `Date.parse`. A direct runtime probe accepts `2026-02-30T12:00` and normalizes it into March. | Reject impossible calendar dates explicitly; define the campus timezone convention. |
 | High before public hosting | HTTPS cookies require `COOKIE_SECURE=true`; authentication throttling uses an in-memory map keyed by socket IP; scrypt and SQLite operations run synchronously. | Verify production configuration, proxy behavior, abuse controls and concurrent-load response times. |
 | Medium | Post lists return every matching row including base64 images; the admin user list also has no pagination. | Add bounded pagination, lightweight list responses and separate image retrieval. |
@@ -55,7 +55,9 @@ Each semicolon-separated item below should be a separate feature/fix commit and 
 | 5: Data and performance | Schema migrations; safe backup and restore; post/user pagination; separate image delivery; upload dimension limits; measured load testing. | Restore succeeds on isolated data and realistic list/load tests meet agreed limits. |
 | 6: Staging and launch | Select a host supporting Node and persistent SQLite storage; configure HTTPS and secure cookies; validate proxy/throttling; monitoring; staging acceptance; production release and rollback plan. | A fresh deployment and restore are verified, and user acceptance is complete. |
 
-Suggested next task: **visible logout for students and admins**, including session invalidation and a return to role selection. Complete it as one tested commit and push before starting the next feature.
+Completed feature (2026-10-08): **visible logout for students and admins**. The current session is revoked, the cookie is cleared, private client state and the remembered role are cleared, and navigation returns to role selection. Browser Back cannot restore an authenticated screen. Failed network requests retain the session and allow retry; a 401 during logout clears the already-expired client session. Header controls wrap to accommodate the new button. Full suite: **27 passed, 0 failed**. Browser/device visual verification remains pending.
+
+Suggested next task: **consistent expired-session handling** across post submission, search, and administrator actions, so all protected requests clear stale account state and return to login. Strict calendar validation follows as its own fix.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

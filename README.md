@@ -36,6 +36,8 @@ The original fetch failure on your computer was not directly reproduced. Registr
 
 ## Accounts
 
+Use **Log out** in the student or administrator page header to end the current session and return to role selection. If the server cannot be reached, reconnect and retry logout.
+
 Choose Student → Register to create an account. New students are signed in automatically. Returning users choose the correct role and log in.
 
 Create the first administrator in the project terminal:

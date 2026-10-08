@@ -48,7 +48,7 @@ flowchart TD
 - Admin-only Edit reuses the existing form. Update changes status. Delete requires confirmation. Students cannot invoke these operations on their own posts or others’ posts, including direct API requests.
 - Administrators may edit/update/delete any post. Counts refresh from the same posts table used by the feed.
 - The admin dashboard includes a Registered users list showing each account's name, email, and role. The users endpoint requires an admin session and returns no password hashes.
-- No additional logout control was added to the reference UI. The API provides logout; sessions expire in seven days.
+- Student and admin page headers provide Log out. Successful logout revokes the current session, clears private client state and the remembered role, and returns to role selection. An already-expired session also exits cleanly; network failures show an error and allow retry. Sessions otherwise expire in seven days.
 
 ## 3. Account request flow and failure handling
 

@@ -56,7 +56,7 @@ function harness({ role = "student", failure = false } = {}) {
   const api = async (url, options) => {
     if (url === "/health") return new Promise(() => {}); // Keep startup separate from the interaction under test.
     requests.push({ url, options });
-    if (failure) throw new Error("Unable to save.");
+    if (failure) throw (failure instanceof Error ? failure : new Error("Unable to save."));
     if (url.startsWith("/posts?q=")) return { posts: [{ id: "match" }] };
     return { post: { id: "saved" } };
   };
@@ -81,6 +81,7 @@ function harness({ role = "student", failure = false } = {}) {
         entries.splice(historyIndex + 1);
         entries.push(hash);
         historyIndex = entries.length - 1;
+        location.hash = hash;
       },
       back() {
         if (historyIndex > 0) {
@@ -119,7 +120,7 @@ function harness({ role = "student", failure = false } = {}) {
   });
   vm.runInContext(source, ctx);
   vm.runInContext(
-    `state.user={id:'student',role:'${role}'}; state.role='${role}'; render=()=>{globalThis.__renderCount=(globalThis.__renderCount||0)+1};`,
+    `state.user={id:'student',role:'${role}'}; state.role='${role}'; globalThis.__realRender=render; render=()=>{globalThis.__renderCount=(globalThis.__renderCount||0)+1};`,
     ctx,
   );
   return {
@@ -148,6 +149,45 @@ test("student cards never render post-management controls; admin cards retain th
   vm.runInContext("state.user.role='admin'", h.ctx);
   assert.match(vm.runInContext(expression, h.ctx), /data-more/);
   assert.match(vm.runInContext(expression, h.ctx), /data-edit/);
+});
+
+for (const role of ["student", "admin"]) {
+  test(`${role} logout clears private state and Back cannot restore the portal`, async () => {
+    const h = harness({ role });
+    assert.match(vm.runInContext("header()", h.ctx), /data-logout>Log out/);
+    vm.runInContext("go('search');state.posts=[{id:'private'}];state.query='wallet';state.filter='Lost';state.edit={id:'private'};", h.ctx);
+    let removed;
+    h.ctx.sessionStorage.removeItem = (key) => { removed = key; };
+    const button = { disabled: false };
+    h.ctx.logoutButton = button;
+    await vm.runInContext("logout(logoutButton)", h.ctx);
+    assert.equal(h.requests.at(-1).url, "/logout");
+    assert.equal(h.requests.at(-1).options.method, "POST");
+    assert.equal(vm.runInContext("state.user", h.ctx), null);
+    assert.equal(vm.runInContext("state.posts.length", h.ctx), 0);
+    assert.equal(vm.runInContext("state.edit", h.ctx), null);
+    assert.equal(vm.runInContext("state.query", h.ctx), "");
+    assert.equal(vm.runInContext("state.filter", h.ctx), "All");
+    assert.equal(removed, "retorno-role");
+    assert.equal(h.location.hash, "#role");
+    h.ctx.history.back();
+    await vm.runInContext("__realRender()", h.ctx);
+    assert.equal(h.location.hash, "#login");
+  });
+}
+
+test("failed logout keeps the session and enables retry; expired logout clears it", async () => {
+  const h = harness({ failure: true });
+  h.ctx.logoutButton = { disabled: false };
+  await vm.runInContext("logout(logoutButton)", h.ctx);
+  assert.equal(h.ctx.logoutButton.disabled, false);
+  assert.notEqual(vm.runInContext("state.user", h.ctx), null);
+  assert.equal(h.location.hash, "#post");
+  assert.equal(h.element("#dialog").open, true);
+  const expired = harness({ failure: Object.assign(new Error("Please log in."), { status: 401 }) });
+  expired.ctx.logoutButton = { disabled: false };
+  await vm.runInContext("logout(logoutButton)", expired.ctx);
+  assert.equal(expired.location.hash, "#role");
 });
 test("successful student post goes straight home and removes editor from history", async () => {
   const h = harness();

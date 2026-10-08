@@ -41,12 +41,39 @@ function errorAt(target, error) {
   target.textContent = error.message || error;
 }
 function header(search = true, welcome = true) {
-  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">WELCOME, ${state.user.role.toUpperCase()}!</h1>` : ""}<div class="header-actions">${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin" : "mine"}" aria-label="${state.user.role === "admin" ? "Manage posts" : "Your posts"}">${profileIcon}</button></div></header>`;
+  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">WELCOME, ${state.user.role.toUpperCase()}!</h1>` : ""}<div class="header-actions"><button type="button" class="pill logout-button" data-logout>Log out</button>${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin" : "mine"}" aria-label="${state.user.role === "admin" ? "Manage posts" : "Your posts"}">${profileIcon}</button></div></header>`;
 }
 function bindNavigation() {
   app
     .querySelectorAll("[data-go]")
     .forEach((el) => (el.onclick = () => go(el.dataset.go)));
+  app.querySelectorAll("[data-logout]").forEach(
+    (button) => (button.onclick = () => logout(button)),
+  );
+}
+async function logout(button) {
+  button.disabled = true;
+  try {
+    await api("/logout", { method: "POST" });
+  } catch (error) {
+    // An expired session is already signed out. Network failures must remain retryable.
+    if (error.status !== 401) {
+      button.disabled = false;
+      errorDialog(error);
+      return;
+    }
+  }
+  state.user = null;
+  state.role = "student";
+  state.filter = "All";
+  state.query = "";
+  state.posts = [];
+  state.edit = null;
+  state.back = "mine";
+  try {
+    sessionStorage.removeItem("retorno-role");
+  } catch {}
+  go("role", { replace: true });
 }
 function authField(
   name,
