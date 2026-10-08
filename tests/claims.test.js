@@ -68,126 +68,64 @@ after(async () => {
   db.close();
   await rm(directory, { recursive: true, force: true });
 });
-const submit = (cookie, post_id = found, evidence = proof, extra = {}) =>
-  request("/api/claims", "POST", { post_id, evidence, ...extra }, cookie);
 
-test("claims require student authentication and valid private proof", async () => {
-  assert.equal((await submit()).status, 401);
-  assert.equal((await submit(admin)).status, 403);
-  assert.equal(
-    (await request("/api/claims", "GET", undefined, admin)).status,
-    403,
-  );
-  for (const evidence of [
-    null,
-    [],
-    123,
-    " ",
-    "x".repeat(19),
-    "x".repeat(2001),
-    "x".repeat(20) + "\0",
-  ])
-    assert.equal((await submit(claimant, found, evidence)).status, 400);
-  assert.equal((await submit(claimant, "missing")).status, 404);
-  assert.equal((await submit(owner)).status, 403);
-  assert.equal(db.prepare("SELECT count(*) n FROM claims").get().n, 0);
-});
-test("claims enforce Found eligibility without rewriting report statuses", async () => {
-  for (const [kind, status] of [
-    ["Lost", "Lost"],
-    ["Found", "Claimed"],
-    ["Found", "Returned"],
-  ]) {
-    db.prepare("UPDATE posts SET kind=?,status=? WHERE id=?").run(
-      kind,
-      status,
-      found,
-    );
-    assert.equal((await submit(claimant)).status, 409);
+test("student claim endpoints are removed and administrators manage reports", async () => {
+  for (const cookie of [owner, claimant, admin]) {
     assert.equal(
-      db.prepare("SELECT status FROM posts WHERE id=?").get(found).status,
-      status,
+      (await request("/api/claims", "GET", undefined, cookie)).status,
+      404,
+    );
+    assert.equal(
+      (
+        await request(
+          "/api/claims",
+          "POST",
+          { post_id: found, evidence: proof },
+          cookie,
+        )
+      ).status,
+      404,
     );
   }
-  db.prepare("UPDATE posts SET kind='Found',status='Found' WHERE id=?").run(
-    found,
-  );
-});
-test("private claims use server identity/state and prevent simultaneous duplicates", async () => {
-  const results = await Promise.all([
-    submit(claimant, found, " " + proof + " ", {
-      claimant_id: "forged",
-      status: "Returned",
-    }),
-    submit(claimant),
-  ]);
-  assert.deepEqual(results.map((result) => result.status).sort(), [201, 409]);
-  const claim = results.find((result) => result.status === 201).data.claim;
-  assert.equal(claim.status, "Pending");
-  assert.equal(claim.evidence, proof);
-  assert.ok(claim.created_at);
-  assert.equal((await submit(other, found, "x".repeat(2000))).status, 201);
-  const mine = (await request("/api/claims", "GET", undefined, claimant)).data
-    .claims;
-  assert.equal(mine.length, 1);
-  assert.equal(mine[0].id, claim.id);
-  const theirs = (await request("/api/claims", "GET", undefined, other)).data
-    .claims;
-  assert.equal(theirs.length, 1);
-  assert.notEqual(theirs[0].id, claim.id);
-  assert.equal(
-    (await request("/api/claims", "GET", undefined, owner)).data.claims.length,
-    0,
-  );
-  assert.equal(
-    (await request(`/api/claims/${claim.id}`, "GET", undefined, other)).status,
-    404,
-  );
-  const posts = await request("/api/posts", "GET", undefined, other);
-  assert.ok(!JSON.stringify(posts.data).includes(proof));
   assert.equal(
     (
       await request(
-        `/api/posts?q=${encodeURIComponent(proof)}`,
-        "GET",
-        undefined,
-        other,
+        `/api/posts/${found}`,
+        "PATCH",
+        { status: "Claimed" },
+        claimant,
       )
-    ).data.posts.length,
-    0,
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request(
+        `/api/posts/${found}`,
+        "PATCH",
+        { status: "Claimed" },
+        admin,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request(
+        `/api/posts/${found}`,
+        "PATCH",
+        { status: "Returned" },
+        admin,
+      )
+    ).status,
+    200,
   );
   assert.equal(
     (await request(`/api/posts/${found}`, "DELETE", undefined, admin)).status,
-    409,
+    200,
   );
   assert.equal(
-    db.prepare("SELECT status FROM posts WHERE id=?").get(found).status,
-    "Found",
+    db.prepare("SELECT name FROM sqlite_master WHERE name='claims'").get(),
+    undefined,
   );
-});
-test("claim insert failures leave no partial claim and allow retry", async () => {
-  const post = (
-    await request(
-      "/api/posts",
-      "POST",
-      {
-        kind: "Found",
-        item_name: "Book",
-        event_at: "2026-10-08T12:00",
-        location: "Gate",
-        description: "Rollback test",
-      },
-      owner,
-    )
-  ).data.post.id;
-  db.exec(
-    "CREATE TRIGGER reject_claim BEFORE INSERT ON claims BEGIN SELECT RAISE(ABORT,'forced claim failure'); END;",
-  );
-  assert.equal((await submit(claimant, post)).status, 500);
-  assert.equal(
-    db.prepare("SELECT count(*) n FROM claims WHERE post_id=?").get(post).n,
-    0,
-  );
-  db.exec("DROP TRIGGER reject_claim");
-  assert.equal((await submit(claimant, post, "😀".repeat(20))).status, 201);
 });

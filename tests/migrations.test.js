@@ -48,12 +48,12 @@ const snapshot = (db) =>
 const ledger = (db) =>
   db.prepare("SELECT * FROM schema_migrations ORDER BY version").all();
 
-test("version two preserves version-one records and claim data across reopen", () =>
+test("claim retirement preserves stored evidence and restores administrator deletion", () =>
   isolated((db, reopen) => {
     seed(db);
     migrate(db, migrations);
     const before = snapshot(db);
-    assert.equal(migrate(db), 1);
+    assert.equal(migrate(db, allMigrations.slice(0, 2)), 1);
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare("SELECT count(*) n FROM claims").get().n, 0);
     db.prepare(
@@ -65,12 +65,19 @@ test("version two preserves version-one records and claim data across reopen", (
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 0);
+    assert.equal(migrate(db), 1);
     assert.equal(
-      db.prepare("SELECT evidence FROM claims WHERE id='test-claim'").get()
-        .evidence,
+      db
+        .prepare(
+          "SELECT evidence FROM retired_student_claims WHERE id='test-claim'",
+        )
+        .get().evidence,
       "Test private evidence for persistence",
     );
+    assert.equal(migrate(db), 0);
+    assert.deepEqual(snapshot(db), before);
+    db.prepare("DELETE FROM posts WHERE id='claimed'").run();
+    assert.equal(db.prepare("SELECT count(*) n FROM retired_student_claims").get().n, 1);
   }));
 
 test("fresh migrations create the schema and run once across database reopen", () =>

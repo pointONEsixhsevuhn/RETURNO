@@ -19,6 +19,14 @@ export const migrations = [
       "utf8",
     ),
   },
+  {
+    version: 3,
+    name: "retire-student-claims",
+    sql: readFileSync(
+      new URL("./migrations/003-retire-student-claims.sql", import.meta.url),
+      "utf8",
+    ),
+  },
 ];
 
 export function migrate(db, steps = migrations) {

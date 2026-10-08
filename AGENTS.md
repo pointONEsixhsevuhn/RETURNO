@@ -5,6 +5,7 @@ The user requests continued guidance and a separate Git commit and GitHub push f
 - Review `docs/PROJECT-ROADMAP.md` before starting project work. Keep its status and test evidence current.
 - Work on one agreed feature at a time. Define its behavior and acceptance checks before implementing it.
 - Preserve student/admin separation. Students currently create and view posts; admins manage posts and register additional admins. Do not broaden permissions without an explicit product decision.
+- The user reversed student claims on 2026-10-08: exclude My claims, student proof submission and student claim APIs. Administrators manage all claim/return processing. Do not reintroduce student claims from older roadmap entries.
 - Test each change appropriately. Run the full `npm.cmd test` suite on Windows before committing code changes. Use `npm test` on other platforms.
 - For frontend, authentication or report workflow changes, also run `npm.cmd run test:e2e` (Windows) or `npm run test:e2e` after installing test dependencies and Chromium. Browser tests must keep their isolated database/server fixtures.
 - Run `git diff --check` and review the staged diff. Stage only files belonging to the current feature; preserve unrelated user edits.
