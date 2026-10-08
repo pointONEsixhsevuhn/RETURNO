@@ -1079,7 +1079,6 @@ dialog input {
   text-decoration: none;
 }
 
-.login-title { font-size: 14px; font-weight: 400; line-height: 1.4; margin: 0 0 6px; }
 .login .register-link { margin-top: 20px; text-decoration: underline; text-underline-offset: 3px; border-bottom: 0; }
 
 .login .auth-field input.pill {

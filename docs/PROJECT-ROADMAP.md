@@ -139,3 +139,5 @@ Clean login layout (2026-10-08): removed the logo from login only; added Log int
 Login input outlines (2026-10-08): email/password login inputs now have transparent backgrounds and 1px black borders, scoped to login. Full local suite: **90 passed**; **28 browser cases passed** across four viewports. Additional Chromium computed-style inspection confirmed transparent fill and black outlines for both fields.
 
 Login logo restoration (2026-10-08): restored the RETURNO logo above the login heading at the user's request. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
+
+Login heading replacement (2026-10-08): removed Log into Returno and its unused CSS so the RETURNO logo alone appears above the login fields. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
