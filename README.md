@@ -68,6 +68,8 @@ Demo credentials are for local testing only. The command refuses to modify a dat
 
 ## Use
 
+GitHub Actions runs the full automated test suite on Node 24 for Windows and Linux on every push and pull request. You can also run it manually from the repository's **Actions → Tests** page. These checks exercise the backend and simulated frontend; real-browser testing remains a separate verification step.
+
 Search results follow the latest query, and queued searches stop when you leave the page. When selecting images quickly, only the latest valid selection updates the preview. Posting waits for that image to finish reading. If you leave while a post is saving, the save may still complete; check your posts before submitting it again.
 
 Feed, own posts, search, and administrator lists show loading and empty-result messages. If a list cannot load, use **Retry** or **Retry search** after reconnecting; the current filter or query is preserved. Retries reload lists only and do not automatically resubmit forms.
