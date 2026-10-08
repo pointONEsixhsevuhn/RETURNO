@@ -124,6 +124,7 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   for (const category of await page.locator(".category").all()) {
     const image = category.locator("img");
     await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
     const imageBounds = await image.boundingBox();
     const categoryBounds = await category.boundingBox();
     expect(imageBounds.height).toBeGreaterThan(0);

@@ -4,3 +4,4 @@ node_modules/
 *.sqlite*
 test-results/
 playwright-report/
+public/assets/originals/

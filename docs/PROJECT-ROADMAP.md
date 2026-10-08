@@ -83,6 +83,8 @@ Product reversal (2026-10-08): student claims are excluded at the user's request
 
 Completed search-picture fix (2026-10-08): category images use the available tile space instead of a percentage height, preserving the full picture with contain sizing. Report image frames no longer shrink inside cards. Full suite: **67 passed**; **20 browser cases passed**, with focused category-image bounds/contain checks across desktop, mobile, narrow-phone and tablet viewports.
 
+Completed item artwork replacement (2026-10-08): the six supplied wallet/key/phone/tumbler/ID/bracelet images were edited into transparent PNG cutouts and installed under the existing application asset names. Complete objects remain visible with contain sizing; no checkerboard backdrop is used as a substitute for transparency. The supplied originals are preserved locally under ignored `public/assets/originals/` and are not published. Existing attribution markings are retained. Category browser checks now require successfully decoded images as well as containment. Local full suite: **67 passed**; **20 browser cases passed**, including decoded-image/containment checks on four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
