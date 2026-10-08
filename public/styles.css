@@ -247,9 +247,11 @@ img {
   grid-row: 1;
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  max-width: min(55vw, 300px);
+  max-width: none;
+  align-items: center;
+  align-self: center;
 }
 .logout-button {
   padding: 8px 12px;
@@ -897,6 +899,17 @@ dialog select {
   .header-actions {
     gap: 2px;
   }
+  .header-actions .pill {
+    font-size: 11px;
+    padding: 6px;
+    white-space: nowrap;
+  }
+  .header-actions .icon {
+    width: 32px;
+    height: 36px;
+    padding: 3px;
+  }
+  .header-icons { gap: 2px; }
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -948,8 +961,8 @@ dialog select {
     gap: 0;
   }
   .header-actions .icon {
-    width: 40px;
-    padding: 5px;
+    width: 32px;
+    padding: 3px;
   }
   .card-head {
     flex-wrap: wrap;

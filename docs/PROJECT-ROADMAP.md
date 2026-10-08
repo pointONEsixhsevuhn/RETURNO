@@ -93,6 +93,8 @@ Completed header adjustment (2026-10-08): search and profile icons share a non-w
 
 Registered-user layout correction (2026-10-08): Admin users and Student users use a single column on every screen size, with Student users below Admin users. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
 
+Completed header alignment (2026-10-08): Log out, Register admin, Search and Profile form one row centered beside the RETURNO logo. Removed the action-width cap that forced wrapping; compact phone spacing preserves the row within narrow screens. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
