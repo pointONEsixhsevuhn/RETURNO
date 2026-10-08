@@ -29,7 +29,7 @@ On Windows, use `npm.cmd test` and `npm.cmd start` if PowerShell blocks `npm.ps1
 | Priority | Finding and evidence | Next action |
 | --- | --- | --- |
 | Completed | Visible logout is available in student/admin page headers. It revokes the current session and clears client state; expired sessions also exit cleanly. | Verified by UI simulation and backend session tests. Broader expired-session flows remain a subsequent task. |
-| Medium | `server.js` checks dates using a regex plus `Date.parse`. A direct runtime probe accepts `2026-02-30T12:00` and normalizes it into March. | Reject impossible calendar dates explicitly; define the campus timezone convention. |
+| Completed | Creation and editing use explicit Gregorian date/time validation, including century leap-year rules. Report times are labeled PHT (UTC+08:00) and kept independent of server timezone. | Existing records retain their original values; historical date cleanup is a separate task if needed. |
 | High before public hosting | HTTPS cookies require `COOKIE_SECURE=true`; authentication throttling uses an in-memory map keyed by socket IP; scrypt and SQLite operations run synchronously. | Verify production configuration, proxy behavior, abuse controls and concurrent-load response times. |
 | Medium | Post lists return every matching row including base64 images; the admin user list also has no pagination. | Add bounded pagination, lightweight list responses and separate image retrieval. |
 | Medium | Images are checked by size and magic bytes, not by decoding the entire image. | Add decoding/dimension limits if public uploads are enabled. |
@@ -59,7 +59,9 @@ Completed feature (2026-10-08): **visible logout for students and admins**. The 
 
 Completed feature (2026-10-08): **consistent expired-session handling** across protected requests. Posting, search, feed and administrator actions clear private state and return to the current role's login with an expiry message. Late responses from the old session are ignored; login credential errors, permission denials and network failures retain their normal handling. Database expiry is tested for both roles. Full suite: **33 passed, 0 failed**; real-browser verification remains pending.
 
-Suggested next task: **strict calendar validation and a documented campus timezone convention**, rejecting impossible dates such as February 30. Complete it as a separate tested fix and push.
+Completed fix (2026-10-08): **strict calendar validation and campus timezone convention**. Reject impossible dates and out-of-range times on creation and editing; invalid edits leave the stored event time unchanged. Accept valid leap days and years 0001 through 9999. Event times are stored and displayed as Philippine campus wall time (PHT, UTC+08:00 / Asia/Manila), without server timezone conversion. Existing records are preserved. Tests cover calendar boundaries, invalid formats, century leap years, and three server timezones. Full suite: **36 passed, 0 failed**; browser/device verification remains pending.
+
+Suggested next task: **loading and empty states for feed, search, and admin lists**, with clear error/retry behavior. Address remaining asynchronous navigation/image races as a subsequent independent fix.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

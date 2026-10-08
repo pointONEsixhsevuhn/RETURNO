@@ -68,6 +68,8 @@ Demo credentials are for local testing only. The command refuses to modify a dat
 
 ## Use
 
+Report dates and times use **Philippine campus time (PHT, UTC+08:00 / Asia/Manila)**. Enter the time at the campus, even if your device is in another timezone. Forms, post previews, and details use the same convention. The API stores `event_at` as `YYYY-MM-DDTHH:mm` without converting it using the server timezone. Impossible dates are rejected, including invalid leap days. Existing reports retain their original values; audit previously entered dates if needed.
+
 - Logo: feed. Magnifier: search. Profile: Your post for students; management for admins.
 - Student + card: submit a new lost/found post, then return directly to the homepage. Cancel exits the form without submitting and returns to the feed. Students have no ellipsis, edit, review, update, or delete controls.
 - Every post card has the same height. Long preview details end in an ellipsis; clicking a card opens its complete details.

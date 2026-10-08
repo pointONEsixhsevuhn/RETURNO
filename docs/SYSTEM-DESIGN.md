@@ -26,6 +26,8 @@ Version 1.3.0. Scope: the provided Lost & Found designs plus the requested remov
 
 ## 2. User workflow
 
+Report `event_at` values are Philippine campus wall time (PHT, UTC+08:00, Asia/Manila), stored as `YYYY-MM-DDTHH:mm`. Explicit Gregorian calendar checks reject impossible dates, invalid leap days, and out-of-range hours/minutes. Years 0001 through 9999 are supported. API inputs containing seconds or timezone suffixes are rejected. Server/device timezone settings do not convert report values. Existing records are not rewritten; SQLite `created_at`/`updated_at` remain UTC database timestamps and are separate from report event time.
+
 ```mermaid
 flowchart TD
   A["Splash"] --> B["Student / Admin"]

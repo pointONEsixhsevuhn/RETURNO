@@ -246,6 +246,50 @@ test("public registration remains student-only, whatever role the browser sends"
   assert.equal(result.status, 201);
   assert.equal(result.data.user.role, "student");
 });
+test("post creation and editing reject impossible dates without changing saved data", async () => {
+  const input = { kind: "Lost", item_name: "Date validation item", event_at: "2024-02-29T23:59", location: "Library", description: "Calendar test" };
+  const made = await send("/api/posts", "POST", input, studentCookie);
+  assert.equal(made.status, 201);
+  const id = made.data.post.id;
+  for (const event_at of [
+    "2026-02-30T12:00", "2026-02-29T12:00", "1900-02-29T12:00",
+    "2100-02-29T12:00", "2026-04-31T12:00", "2026-06-31T12:00",
+    "2026-09-31T12:00", "2026-11-31T12:00", "2026-01-00T12:00",
+    "2026-00-01T12:00", "2026-13-01T12:00", "0000-01-01T12:00",
+    "2026-01-01T24:00", "2026-01-01T12:60", "2026-01-01T-1:00",
+    "2026-01-01T12:00:00", "2026-01-01T12:00Z", "2026-01-01T12:00+08:00",
+    "2026-1-1T12:00", "10000-01-01T12:00",
+  ]) {
+    for (const [route, method, cookie] of [["/api/posts", "POST", studentCookie], [`/api/posts/${id}`, "PUT", adminCookie]]) {
+      const result = await send(route, method, { ...input, event_at }, cookie);
+      assert.equal(result.status, 400, `${method} rejects ${event_at}`);
+      assert.equal(result.data.error, "Enter a valid date and time.");
+    }
+    assert.equal(db.prepare("SELECT event_at FROM posts WHERE id=?").get(id).event_at, input.event_at);
+  }
+});
+
+test("valid calendar boundaries retain campus wall time regardless of server timezone", async () => {
+  const previousTZ = process.env.TZ;
+  try {
+    for (const tz of ["UTC", "America/New_York", "Asia/Manila"]) {
+      process.env.TZ = tz;
+      for (const event_at of ["0001-01-01T00:00", "0099-12-31T23:59", "2000-02-29T00:00", "2024-02-29T12:30", "2026-04-30T12:00", "2026-03-08T02:30", "9999-12-31T23:59"]) {
+        const input = { kind: "Found", item_name: "Valid date", event_at, location: "Gate", description: "Campus wall time" };
+        const made = await send("/api/posts", "POST", input, studentCookie);
+        assert.equal(made.status, 201, `${tz}: ${event_at}`);
+        assert.equal(made.data.post.event_at, event_at);
+        const edited = await send(`/api/posts/${made.data.post.id}`, "PUT", input, adminCookie);
+        assert.equal(edited.status, 200);
+        assert.equal(edited.data.post.event_at, event_at);
+      }
+    }
+  } finally {
+    if (previousTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTZ;
+  }
+});
+
 test("search matches any post content and still respects post filters", async () => {
   const made = await send(
     "/api/posts",

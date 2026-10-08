@@ -120,6 +120,17 @@ function imageData(value) {
   if (!valid) fail(400, "Invalid image content.");
   return value;
 }
+function validEventTime(value) {
+  // Campus wall time, independent of the server's timezone or Date.parse normalization.
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day, hour, minute] = match.slice(1).map(Number);
+  if (year < 1 || month < 1 || month > 12 || hour > 23 || minute > 59)
+    return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day >= 1 && day <= days[month - 1];
+}
 function postData(data, previous) {
   const kind = data.kind;
   if (!["Lost", "Found"].includes(kind)) fail(400, "Select Lost or Found.");
@@ -128,10 +139,7 @@ function postData(data, previous) {
   if (["Lost", "Found"].includes(status) && status !== kind)
     fail(400, "Active status must match Lost / Found type.");
   const eventAt = textField(data, "event_at", 32);
-  if (
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(eventAt) ||
-    Number.isNaN(Date.parse(eventAt))
-  )
+  if (!validEventTime(eventAt))
     fail(400, "Enter a valid date and time.");
   return [
     kind,

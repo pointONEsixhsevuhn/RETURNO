@@ -279,6 +279,14 @@ test("failed submission retains the form and enables correction/retry", async ()
   assert.equal(button.disabled, false);
   assert.equal(h.element("#post-error").textContent, "Unable to save.");
 });
+test("event forms and displays explicitly identify Philippine campus time", () => {
+  const h = harness();
+  vm.runInContext("editor()", h.ctx);
+  assert.match(h.element("#app").innerHTML, /PHT, UTC\+08:00/);
+  assert.equal(vm.runInContext("dateText('2026-10-06T12:30')", h.ctx), "2026-10-06 12:30 PHT");
+  assert.equal(vm.runInContext("dateText('')", h.ctx), "");
+});
+
 test("normal navigation stacks screens and browser Back returns to the prior screen", () => {
   const h = harness();
   vm.runInContext("go('mine');go('search')", h.ctx);
