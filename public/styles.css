@@ -1062,7 +1062,7 @@ dialog input {
 #verification-error { color: #a40000; }
 #verification-back { white-space: normal; }
 
-.delete-account { color: #a40000; justify-self: start; }
+.delete-account { justify-self: start; }
 #delete-account-form > input { width: 100%; margin-top: 8px; }
 
 #recovery-form { display: grid; gap: 12px; margin: 24px 0; }
@@ -1100,6 +1100,9 @@ dialog input {
   justify-content: center;
   font-size: 13px;
   line-height: 1.4;
+  min-height: 0;
+  color: inherit;
+  background: var(--pill);
   padding: 4px 10px;
   border-radius: 14px;
 }

@@ -149,3 +149,5 @@ Recovery action styling adjustment (2026-10-08): Send reset code is bold and und
 Recovery back-button removal (2026-10-08): removed the Back to log in control from password recovery and its unused CSS. Browser Back returns to login, confirmed in Chromium. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
 
 Registered-user action alignment (2026-10-08): Delete account sits beside the Student/Admin role badge in a non-wrapping action group, sharing 13px text, line height, padding and rounded size. Full local suite: **90 passed**; **28 browser cases passed** across four viewports, including admin profile account deletion and overflow checks.
+
+Account badge styling correction (2026-10-08): override the generic button minimum height for Delete account and use the same inherited text color and pill gradient as Student/Admin. Chromium confirmed identical 26.1875px heights, 14px radii, text colors and background gradients. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
