@@ -1,8 +1,8 @@
 import http from "node:http";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
-import { randomUUID, randomBytes, createHash } from "node:crypto";
-import { db, root, createUser, verifyPassword } from "./db.js";
+import { randomUUID, randomBytes, randomInt, createHash } from "node:crypto";
+import { db, root, createUser, verifyPassword, hashPassword } from "./db.js";
 import {
   authorize,
   requestPermission,
@@ -10,6 +10,8 @@ import {
   adminRowScope,
   studentRowScope,
 } from "./access-control.js";
+
+import { sendVerification } from "./mail.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -25,6 +27,7 @@ const fail = (status, message) => {
 };
 const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
 const attempts = new Map();
+const deliveries = new Set();
 
 function json(res, status, body) {
   res.writeHead(status, {
@@ -212,13 +215,74 @@ export const server = http.createServer(async (req, res) => {
           fail(400, "Passwords do not match.");
         if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
           fail(409, "Email is already registered.");
-        // Account and session succeed together; a failed session cannot leave a half-completed signup.
+        const now = Date.now();
+        const pending = db
+          .prepare("SELECT sent_at FROM pending_registrations WHERE email=?")
+          .get(email);
+        if (pending && now - pending.sent_at < 60000)
+          fail(429, "Wait one minute before requesting another code.");
+        if (deliveries.has(email))
+          fail(429, "A verification email is already being sent.");
+        const code = String(randomInt(100000, 1000000));
+        const passwordHash = hashPassword(password);
+        deliveries.add(email);
+        try {
+          await sendVerification(email, code);
+        } catch {
+          fail(
+            503,
+            "Could not send the verification email. Please try again later or contact the administrator.",
+          );
+        } finally {
+          deliveries.delete(email);
+        }
+        if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
+          fail(409, "Email is already registered.");
+        db.prepare(
+          "DELETE FROM pending_registrations WHERE expires_at <= ?",
+        ).run(now);
+        db.prepare(
+          `INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at)
+          VALUES(?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
+          password_hash=excluded.password_hash,code_hash=excluded.code_hash,
+          expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`,
+        ).run(email, fullName, passwordHash, hash(code), now + 10 * 60000, now);
+        return json(res, 202, { verificationRequired: true, email });
+      }
+      if (route === "/api/verify-email" && req.method === "POST") {
+        rateLimit(req);
+        const data = await body(req);
+        const email = textField(data, "email", 254).toLowerCase();
+        const code = textField(data, "code", 6);
+        const pending = db
+          .prepare("SELECT * FROM pending_registrations WHERE email=?")
+          .get(email);
+        if (
+          !pending ||
+          pending.expires_at <= Date.now() ||
+          pending.attempts >= 5
+        )
+          fail(
+            400,
+            "Code expired or unavailable. Register again to request a new code.",
+          );
+        db.prepare(
+          "UPDATE pending_registrations SET attempts=attempts+1 WHERE email=?",
+        ).run(email);
+        if (!/^\d{6}$/.test(code) || hash(code) !== pending.code_hash)
+          fail(400, "Incorrect verification code.");
         let user, token;
         db.exec("BEGIN IMMEDIATE");
         try {
-          const id = createUser(email, fullName, password); // Public registration never grants administrator rights.
+          const id = randomUUID();
+          db.prepare(
+            "INSERT INTO users(id,email,full_name,password_hash,role) VALUES(?,?,?,?,'student')",
+          ).run(id, email, pending.full_name, pending.password_hash);
           user = db.prepare("SELECT * FROM users WHERE id=?").get(id);
           token = createSession(user);
+          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(
+            email,
+          );
           db.exec("COMMIT");
         } catch (error) {
           db.exec("ROLLBACK");

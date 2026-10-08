@@ -65,7 +65,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 1);
+    assert.equal(migrate(db), 2);
     assert.equal(
       db
         .prepare(
@@ -77,7 +77,10 @@ test("claim retirement preserves stored evidence and restores administrator dele
     assert.equal(migrate(db), 0);
     assert.deepEqual(snapshot(db), before);
     db.prepare("DELETE FROM posts WHERE id='claimed'").run();
-    assert.equal(db.prepare("SELECT count(*) n FROM retired_student_claims").get().n, 1);
+    assert.equal(
+      db.prepare("SELECT count(*) n FROM retired_student_claims").get().n,
+      1,
+    );
   }));
 
 test("fresh migrations create the schema and run once across database reopen", () =>

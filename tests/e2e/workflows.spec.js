@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect } from "./fixtures.js";
+import { test, expect, verificationCodes } from "./fixtures.js";
 
 const password = "BrowserStudent123!";
 async function register(page) {
@@ -8,11 +8,30 @@ async function register(page) {
   await page.getByRole("button", { name: "Student", exact: true }).click();
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByLabel("Enter gmail").fill(email);
-  await page.getByLabel("Full name", { exact: true }).fill("Browser Test Student");
+  await page
+    .getByLabel("Full name", { exact: true })
+    .fill("Browser Test Student");
   await page.getByLabel("Set password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Register", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "WELCOME, STUDENT!" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Confirm your email" }),
+  ).toBeVisible();
+  expect((await page.request.get("/api/me")).status()).toBe(401);
+  await page.getByLabel("Verification code").fill("000000");
+  await page
+    .getByRole("button", { name: "Confirm email", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Incorrect verification code.",
+  );
+  await page.getByLabel("Verification code").fill(verificationCodes.get(email));
+  await page
+    .getByRole("button", { name: "Confirm email", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+  ).toBeVisible();
   return email;
 }
 async function login(page, role, email, pass) {
@@ -20,18 +39,28 @@ async function login(page, role, email, pass) {
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(pass);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
-  await expect(page.getByRole("heading", { name: `WELCOME, ${role.toUpperCase()}!` })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: `WELCOME, ${role.toUpperCase()}!` }),
+  ).toBeVisible();
 }
 async function logout(page) {
   await page.getByRole("button", { name: "Log out", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Student", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Student", exact: true }),
+  ).toBeVisible();
   expect((await page.request.get("/api/me")).status()).toBe(401);
 }
 async function noOverflow(page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 }
 
-test("student report lifecycle and administrator review, edit, return and delete", async ({ page }) => {
+test("student report lifecycle and administrator review, edit, return and delete", async ({
+  page,
+}) => {
   const email = await register(page);
   await noOverflow(page);
   await page.getByRole("button", { name: "Your posts", exact: true }).click();
@@ -40,21 +69,40 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.getByRole("button", { name: "Lost", exact: true }).click();
   const item = `Browser wallet ${randomUUID().slice(0, 8)}`;
   await page.getByLabel("Item name:", { exact: true }).fill(item);
-  await page.getByLabel("Date & time found/lost (PHT, UTC+08:00):", { exact: true }).fill("2026-10-06T12:30");
-  await page.getByLabel("Location/Address :", { exact: true }).fill("Campus library");
-  await page.getByLabel("Description:", { exact: true }).fill("Blue wallet used for isolated browser tests");
-  await page.getByLabel("Upload your image here", { exact: true }).setInputFiles("public/assets/wallet.png");
+  await page
+    .getByLabel("Date & time found/lost (PHT, UTC+08:00):", { exact: true })
+    .fill("2026-10-06T12:30");
+  await page
+    .getByLabel("Location/Address :", { exact: true })
+    .fill("Campus library");
+  await page
+    .getByLabel("Description:", { exact: true })
+    .fill("Blue wallet used for isolated browser tests");
+  await page
+    .getByLabel("Upload your image here", { exact: true })
+    .setInputFiles("public/assets/wallet.png");
   await expect(page.locator("#upload-preview img")).toBeVisible();
   await noOverflow(page);
   await page.getByRole("button", { name: "Post", exact: true }).click();
-  const card = page.getByRole("button", { name: `View details for ${item}`, exact: true });
+  const card = page.getByRole("button", {
+    name: `View details for ${item}`,
+    exact: true,
+  });
   await expect(card).toBeVisible();
   await expect(card.locator("img")).toBeVisible();
   await noOverflow(page);
-  await expect(page.getByRole("button", { name: "Post options" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Post options" })).toHaveCount(
+    0,
+  );
   const posts = await (await page.request.get("/api/posts?mine=1")).json();
   const id = posts.posts.find((post) => post.item_name === item).id;
-  expect((await page.request.patch(`/api/posts/${id}`, { data: { status: "Returned" } })).status()).toBe(403);
+  expect(
+    (
+      await page.request.patch(`/api/posts/${id}`, {
+        data: { status: "Returned" },
+      })
+    ).status(),
+  ).toBe(403);
   await card.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Campus library");
@@ -62,28 +110,44 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search posts" }).fill(item);
-  await expect(page.getByRole("button", { name: `View details for ${item}`, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `View details for ${item}`, exact: true }),
+  ).toBeVisible();
   await logout(page);
   await login(page, "Student", email, password);
-  await expect(page.getByRole("button", { name: `View details for ${item}`, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `View details for ${item}`, exact: true }),
+  ).toBeVisible();
   await logout(page);
   await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
-  const row = page.locator(".admin-row").filter({ has: page.locator(`[data-detail="${id}"]`) });
+  const row = page
+    .locator(".admin-row")
+    .filter({ has: page.locator(`[data-detail="${id}"]`) });
   await expect(row).toBeVisible();
   await noOverflow(page);
   await row.locator("[data-detail]").click();
   await expect(page.getByRole("dialog")).toContainText(item);
-  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("textbox", { name: "Description:", exact: true }).fill("Reviewed by administrator");
+  await page
+    .getByRole("textbox", { name: "Description:", exact: true })
+    .fill("Reviewed by administrator");
   await page.getByRole("button", { name: "Update", exact: true }).click();
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Update", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveAccessibleName("Update post status");
+  await expect(page.getByRole("dialog")).toHaveAccessibleName(
+    "Update post status",
+  );
   await page.getByLabel("Status:", { exact: true }).selectOption("Returned");
-  await page.getByRole("dialog").getByRole("button", { name: "Update", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Update", exact: true })
+    .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   const stored = await (await page.request.get(`/api/posts/${id}`)).json();
   expect(stored.post.status).toBe("Returned");
@@ -91,44 +155,69 @@ test("student report lifecycle and administrator review, edit, return and delete
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("Delete post");
-  await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(row).toHaveCount(0);
   await logout(page);
 });
 
-test("expired session returns to login and allows the student to sign in again", async ({ page }) => {
+test("expired session returns to login and allows the student to sign in again", async ({
+  page,
+}) => {
   const email = await register(page);
   expect((await page.request.post("/api/logout")).status()).toBe(200);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search posts" }).fill("wallet");
-  await expect(page.getByRole("alert")).toHaveText("Your session has expired. Please log in again.");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Your session has expired. Please log in again.",
+  );
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "WELCOME, STUDENT!" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+  ).toBeVisible();
   await logout(page);
 });
 
-test("search failure offers manual retry and clearing restores suggestions", async ({ page }) => {
+test("search failure offers manual retry and clearing restores suggestions", async ({
+  page,
+}) => {
   await register(page);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.route("**/api/posts?q=*", (route) => route.abort(), { times: 1 });
   const input = page.getByRole("searchbox", { name: "Search posts" });
   await input.fill("no-match-browser-test");
-  await expect(page.getByRole("button", { name: "Retry search", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Retry search", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Retry search", exact: true }).click();
-  await expect(page.getByText("No posts found.", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("No posts found.", { exact: true }),
+  ).toBeVisible();
   await expect(input).toHaveValue("no-match-browser-test");
   await input.fill("");
-  await expect(page.getByRole("heading", { name: "What are you looking for?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "What are you looking for?" }),
+  ).toBeVisible();
   for (const category of await page.locator(".category").all()) {
     const image = category.locator("img");
     await expect(image).toBeVisible();
-    await expect.poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
+    await expect
+      .poll(() =>
+        image.evaluate(
+          (element) => element.complete && element.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
     const imageBounds = await image.boundingBox();
     const categoryBounds = await category.boundingBox();
     expect(imageBounds.height).toBeGreaterThan(0);
-    expect(imageBounds.y + imageBounds.height).toBeLessThanOrEqual(categoryBounds.y + categoryBounds.height);
+    expect(imageBounds.y + imageBounds.height).toBeLessThanOrEqual(
+      categoryBounds.y + categoryBounds.height,
+    );
     await expect(image).toHaveCSS("object-fit", "contain");
   }
   await noOverflow(page);

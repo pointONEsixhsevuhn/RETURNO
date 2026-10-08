@@ -121,3 +121,5 @@ Never publish credentials or databases, force-push, or commit unrelated edits as
 
 - GitHub's Node CI guide: https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs
 - SQLite online backup guidance: https://www.sqlite.org/backup.html
+
+Registration email verification (2026-10-08): new public signups receive a six-digit ownership code before account/session creation. Codes expire in 10 minutes, are single-use, hashed, restricted to five attempts, and have a one-minute resend cooldown plus a per-email concurrent-send guard. SMTP failures do not create accounts. Gmail SMTP sender setup is documented in [email verification](EMAIL-VERIFICATION.md); existing accounts and administrator provisioning retain their previous behavior. This is signup email confirmation, not a second login factor. Local full suite: **78 passed**; **20 Chromium browser cases passed** across four viewports, including wrong-code recovery and keyboard confirmation. Automated transport tests do not establish live Gmail delivery; local sender credentials and a real inbox check are the next setup task.

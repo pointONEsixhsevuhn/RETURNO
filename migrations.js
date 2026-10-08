@@ -27,6 +27,14 @@ export const migrations = [
       "utf8",
     ),
   },
+  {
+    version: 4,
+    name: "email-verification",
+    sql: readFileSync(
+      new URL("./migrations/004-email-verification.sql", import.meta.url),
+      "utf8",
+    ),
+  },
 ];
 
 export function migrate(db, steps = migrations) {

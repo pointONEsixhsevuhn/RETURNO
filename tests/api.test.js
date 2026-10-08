@@ -1,3 +1,11 @@
+import { setMailTransport } from "../mail.js";
+const codes = new Map();
+setMailTransport({
+  async sendMail(message) {
+    codes.set(message.to, message.text.match(/code is (\d{6})/)[1]);
+    return {};
+  },
+});
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -29,6 +37,13 @@ async function request(route, method = "GET", body, cookie, extra = {}) {
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (route === "/api/register" && res.status === 202) {
+    await res.json();
+    return request("/api/verify-email", "POST", {
+      email: body.email,
+      code: codes.get(body.email),
+    });
+  }
   return {
     status: res.status,
     data: await res.json(),

@@ -391,13 +391,27 @@ test("startup serves health and preserves accounts/posts after a process restart
     let postId;
     await running(directory, async (url) => {
       assert.equal((await request(url, "/api/health")).data.service, "retorno");
-      const student = await request(url, "/api/register", "POST", {
-        email: "restart@cli.example",
-        fullName: "Restart Student",
-        password: originalPassword,
-        confirmPassword: originalPassword,
-      });
-      assert.equal(student.status, 201);
+      inspect(directory, (db) =>
+        db
+          .prepare(
+            "INSERT INTO users(id,email,full_name,password_hash,role) VALUES(?,?,?,?,?)",
+          )
+          .run(
+            "restart-student",
+            "restart@cli.example",
+            "Restart Student",
+            "test-salt:" +
+              scryptSync(originalPassword, "test-salt", 64).toString("hex"),
+            "student",
+          ),
+      );
+      const student = await login(
+        url,
+        "restart@cli.example",
+        originalPassword,
+        "student",
+      );
+      assert.equal(student.status, 200);
       const post = await request(
         url,
         "/api/posts",

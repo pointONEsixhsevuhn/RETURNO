@@ -35,7 +35,9 @@ async function api(url, options) {
   } catch (error) {
     if (version !== sessionVersion) error.handled = true;
     if (
-      !error.handled && error.status === 401 && state.user &&
+      !error.handled &&
+      error.status === 401 &&
+      state.user &&
       !["/login", "/register", "/logout"].includes(url)
     ) {
       clearSession();
@@ -79,9 +81,9 @@ function bindNavigation() {
   app
     .querySelectorAll("[data-go]")
     .forEach((el) => (el.onclick = () => go(el.dataset.go)));
-  app.querySelectorAll("[data-logout]").forEach(
-    (button) => (button.onclick = () => logout(button)),
-  );
+  app
+    .querySelectorAll("[data-logout]")
+    .forEach((button) => (button.onclick = () => logout(button)));
 }
 async function logout(button) {
   button.disabled = true;
@@ -155,6 +157,7 @@ function authScreen(register = false) {
         method: "POST",
         body: JSON.stringify(data),
       });
+      if (result.verificationRequired) return verificationScreen(result.email);
       state.user = result.user;
       state.role = result.user.role;
       try {
@@ -167,6 +170,39 @@ function authScreen(register = false) {
       button.disabled = false;
     }
   };
+}
+function verificationScreen(email) {
+  const version = renderVersion;
+  app.innerHTML = `<main class="auth-page">${logo}<h1>Confirm your email</h1><p>We sent a six-digit code to ${esc(email)}. Check your inbox and spam folder. It expires in 10 minutes.</p><form id="verification-form"><label for="verification-code">Verification code</label><input class="pill" id="verification-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required><p id="verification-error" role="alert"></p><button class="pill" type="submit">Confirm email</button></form><button class="pill" id="verification-back">Register again / request a new code</button></main>`;
+  document.querySelector("#verification-back").onclick = () => go("register");
+  document.querySelector("#verification-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    const output = document.querySelector("#verification-error");
+    output.textContent = "";
+    button.disabled = true;
+    try {
+      const result = await api("/verify-email", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          code: document.querySelector("#verification-code").value,
+        }),
+      });
+      if (version !== renderVersion) return;
+      state.user = result.user;
+      state.role = result.user.role;
+      try {
+        sessionStorage.setItem("retorno-role", state.role);
+      } catch {}
+      go("feed");
+    } catch (error) {
+      if (version !== renderVersion) return;
+      errorAt(output, error);
+      button.disabled = false;
+    }
+  };
+  document.querySelector("#verification-code").focus();
 }
 function itemImage(post, css = "item-image") {
   return `<div class="${css}">${post.image ? `<img src="${esc(post.image)}" alt="${esc(post.item_name)}">` : "Image"}</div>`;
@@ -473,7 +509,10 @@ async function admin(version, status = "") {
   listLoading("Loading dashboard...");
   let result, totals;
   try {
-    [result, totals] = await Promise.all([api("/posts" + (status ? "?status=" + status : "")), api("/stats")]);
+    [result, totals] = await Promise.all([
+      api("/posts" + (status ? "?status=" + status : "")),
+      api("/stats"),
+    ]);
   } catch (error) {
     listFailure(error, version, () => admin(++renderVersion, status));
     return;
@@ -498,8 +537,12 @@ async function admin(version, status = "") {
 async function adminProfile(version) {
   listLoading("Loading admin profile...");
   let result;
-  try { result = await api("/users"); }
-  catch (error) { listFailure(error, version, () => adminProfile(++renderVersion)); return; }
+  try {
+    result = await api("/users");
+  } catch (error) {
+    listFailure(error, version, () => adminProfile(++renderVersion));
+    return;
+  }
   if (version !== renderVersion) return;
   const group = (role, title) => {
     const users = result.users.filter((user) => user.role === role);
@@ -548,11 +591,15 @@ function searchPage() {
       if (version !== searchVersion || pageVersion !== renderVersion) return;
       state.posts = posts;
       content.setAttribute("aria-busy", "false");
-      content.innerHTML =
-        `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
+      content.innerHTML = `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
       bindPostActions();
     } catch (e) {
-      if (e.handled || version !== searchVersion || pageVersion !== renderVersion) return;
+      if (
+        e.handled ||
+        version !== searchVersion ||
+        pageVersion !== renderVersion
+      )
+        return;
       content.setAttribute("aria-busy", "false");
       content.innerHTML = `<div class="list-feedback"><p role="alert">${esc(e.message || e)}</p><button type="button" class="pill" data-retry-search>Retry search</button></div>`;
       content.querySelector("[data-retry-search]").onclick = () => run(value);
@@ -567,7 +614,8 @@ function searchPage() {
     if (!input.value.trim()) showSuggestions();
     else {
       content.setAttribute("aria-busy", "true");
-      content.innerHTML = '<p class="empty" role="status">Searching posts...</p>';
+      content.innerHTML =
+        '<p class="empty" role="status">Searching posts...</p>';
       const value = input.value;
       timer = setTimeout(() => run(value), 220);
     }
@@ -591,7 +639,9 @@ async function render() {
   if (dialog.open) dialog.close();
   try {
     if (
-      ["feed", "mine", "post", "admin", "admin-profile", "search"].includes(route) &&
+      ["feed", "mine", "post", "admin", "admin-profile", "search"].includes(
+        route,
+      ) &&
       !state.user
     ) {
       go("login");

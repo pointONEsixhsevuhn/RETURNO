@@ -1046,3 +1046,17 @@ dialog input {
     padding: 5px 8px;
   }
 }
+
+/* Email confirmation follows the same centered layout as authentication. */
+.auth-page {
+  width: min(100%, 480px);
+  margin: 40px auto;
+  padding: 24px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.auth-page .logo { width: 200px; max-width: 100%; }
+#verification-form { display: grid; gap: 12px; margin: 24px 0; }
+#verification-code { width: 100%; text-align: center; letter-spacing: 6px; }
+#verification-error { color: #a40000; }
+#verification-back { white-space: normal; }
