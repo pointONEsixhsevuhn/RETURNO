@@ -89,6 +89,8 @@ Completed admin layout update (2026-10-08): admin home shows reports; Lost/Retur
 
 Admin layout adjustment (2026-10-08): Lost/Returned/Found/Claimed totals are back on administrator home with their report filters. Registered users remain on the admin profile, ordered Admin users first and Student users second. Local suite: **67 passed**; **20 browser cases passed** across four viewports.
 
+Completed header adjustment (2026-10-08): search and profile icons share a non-wrapping group so they stay beside each other when header actions wrap on smaller screens. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.

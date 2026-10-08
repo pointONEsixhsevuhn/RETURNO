@@ -256,6 +256,13 @@ img {
   font-size: 14px;
   white-space: nowrap;
 }
+.header-icons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
 .icon {
   width: 44px;
   height: 44px;
