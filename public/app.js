@@ -186,18 +186,22 @@ function card(post, own = false) {
 function filters() {
   return `<nav class="filters" aria-label="Post type">${["All", "Lost", "Found"].map((x) => `<button data-filter="${x}" class="${state.filter === x ? "active" : ""}">${x.toUpperCase()}</button>`).join("")}</nav>`;
 }
+function openDialog(label) {
+  dialog.setAttribute("aria-label", label);
+  if (!dialog.open) dialog.showModal();
+}
 function errorDialog(error) {
   if (error.handled) return;
   dialog.innerHTML = `<p>${esc(error.message || error)}</p><div class="dialog-actions"><button data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = () => dialog.close();
-  if (!dialog.open) dialog.showModal();
+  openDialog("Error");
 }
 function showDetails(id) {
   const post = state.posts.find((p) => p.id === id);
   if (!post) return;
   dialog.innerHTML = `<h2>${esc(post.item_name || "Item name")}</h2>${post.image ? `<img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}">` : ""}<div class="detail-data"><p>Posted by: <strong>${esc(post.author)}</strong></p><p>Status: ${esc(post.status)}</p><p>Date &amp; time found/lost: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div><div class="dialog-actions"><button data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = () => dialog.close();
-  dialog.showModal();
+  openDialog(post.item_name || "Item details");
 }
 function bindPostActions() {
   app.querySelectorAll("[data-detail]").forEach((card) => {
@@ -270,7 +274,7 @@ function bindPostActions() {
             submit.disabled = false;
           }
         };
-        dialog.showModal();
+        openDialog("Update post status");
       }),
   );
   app.querySelectorAll("[data-delete]").forEach(
@@ -291,7 +295,7 @@ function bindPostActions() {
             dialog.querySelector("[data-confirm]").disabled = false;
           }
         };
-        dialog.showModal();
+        openDialog("Delete post");
       }),
   );
 }
@@ -460,7 +464,7 @@ function showAdminRegistration() {
       submit.disabled = false;
     }
   };
-  dialog.showModal();
+  openDialog("Register another admin");
 }
 async function admin(version, status = "") {
   listLoading("Loading dashboard...");

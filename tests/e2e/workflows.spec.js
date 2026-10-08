@@ -81,6 +81,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Update", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleName("Update post status");
   await page.getByLabel("Status:", { exact: true }).selectOption("Returned");
   await page.getByRole("dialog").getByRole("button", { name: "Update", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -89,6 +90,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   expect(stored.post.description).toBe("Reviewed by administrator");
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleName("Delete post");
   await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(row).toHaveCount(0);
   await logout(page);

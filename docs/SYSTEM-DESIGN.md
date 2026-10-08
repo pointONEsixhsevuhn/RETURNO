@@ -28,6 +28,8 @@ Browser verification update (2026-10-08): Playwright now exercises actual Chromi
 
 ## 2. User workflow
 
+Responsive/keyboard verification update (2026-10-08): the Chromium suite runs five scenarios on four desktop/phone/tablet viewports, including a 320px narrow phone. Keyboard-only tests cover registration, navigation, report controls, search/logout, login errors/password visibility and manual retry after loading failure. Native dialog close and Escape restore focus to the originating card. Item, status, deletion, admin-registration and error dialogs are explicitly named for assistive technology. Checks include horizontal overflow and visible card focus; this does not establish full screen-reader, contrast or cross-browser accessibility.
+
 Search responses are invalidated as soon as new input arrives. Search submissions and category choices cancel queued typing, and queued callbacks check the original page before running. Image reads check both selection and page versions before changing previews/errors or submission readiness. Post saves finishing after navigation may still persist on the backend, but do not redirect or change the newly opened page. These races have controlled automated coverage; real-browser verification remains pending.
 
 List requests show a loading status before results arrive. Empty feeds, own-post lists, search results and administrator report lists display explicit messages. List failures show an inline manual retry preserving the filter/query, while navigation and logout remain available. Expired-session responses still return to login. Version checks prevent old list failures from replacing a new screen; no mutation is automatically retried.
