@@ -20,7 +20,7 @@ Strengths: parameterized SQL, salted scrypt passwords, hashed random session tok
 - Tests use isolated temporary databases. No existing user database was changed.
 - The suite exercises HTTP registration/login/logout, role restrictions, student creation and admin post lifecycle, search, images, origin checks, persistence reads, rollback and schema integrity. Client tests cover request failures; UI tests use a VM and simulated DOM.
 - The logged `test session failure` is deliberately injected by the passing registration rollback test.
-- Real-browser rendering, mobile devices, full browser end-to-end flows, startup/admin/recovery/demo CLI interactions, load testing, backup restoration and hosted deployment have not been verified. Persistence tests read through another database connection; they do not establish restart recovery under failure.
+- At initial review, browser and CLI interactions were unverified. Subsequent completed tasks below establish Chromium viewport/keyboard checks and isolated CLI lifecycle/process-restart checks. Physical devices, load testing, backup restoration, power-loss recovery and hosted deployment remain unverified.
 
 On Windows, use `npm.cmd test` and `npm.cmd start` if PowerShell blocks `npm.ps1`. No execution-policy change is required.
 
@@ -71,7 +71,9 @@ Completed browser E2E feature (2026-10-08): Playwright covers student registrati
 
 Completed responsive/keyboard feature (2026-10-08): five scenarios now run across desktop, Pixel 5, 320px narrow-phone and 768px tablet Chromium viewports (**20 browser cases**). Added keyboard-only registration, navigation, report type/text controls, card activation, search/logout, password visibility, failed login and loading/error/retry checks. Tests verify visible card focus, dialog close/Escape focus restoration and horizontal overflow. Dialogs now have explicit accessible names, with item/status/delete names checked in the browser. Local suite: **49 existing tests and 20 browser cases passed**. Hosted run on commit `215956a`: **Windows success, Linux success, workflow success**, verified through GitHub's Actions API. Evidence: https://github.com/pointONEsixhsevuhn/RETURNO/actions/runs/37730546235. This is not a complete accessibility audit: screen readers, contrast, physical devices and other browser engines remain unverified.
 
-Suggested next task: **isolated command-line lifecycle tests** for administrator setup, password recovery, demo-data creation/refusal, and startup failures. Use temporary databases and confirm password recovery revokes existing sessions before advancing to claim/return features.
+Completed CLI verification (2026-10-08): eight isolated subprocess tests cover interactive/environment administrator creation, validation and duplicate refusal; recovery rejection, transaction rollback and selective session revocation; demo seeding and refusal without changing existing records; real process-restart persistence; occupied-port/unusable-data-path errors; and the unsupported-Node startup guard (simulated, not an older-runtime compatibility run). Recovery invalidates all selected-admin sessions, preserves another admin's session, rejects the old password and permits the new password. Local suite: **57 tests passed**; **20 browser cases passed**. Hosted CI verification follows the feature push.
+
+Suggested next task: **agree claim/return requirements and acceptance criteria** for Phase 3. Decide claimant proof, administrator review, rejection/retry rules, allowable status transitions and history visibility before changing permissions or adding a claim schema. Phase 2's planned automated coverage is implemented; wider browser/device/accessibility audits remain pending.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

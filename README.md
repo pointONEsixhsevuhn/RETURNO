@@ -115,6 +115,8 @@ npm test
 
 Automated API/client tests cover account creation, login after registration, failed-session rollback, permissions, saved data, CRUD, search, statuses, images, schema constraints, wrong-server responses and network failures. Tests use a disposable database.
 
+The same command includes eight isolated CLI tests for interactive/environment administrator setup, recovery validation and transactional rollback, revocation of the selected administrator's sessions, demo creation/refusal, process-restart persistence, and startup errors. Each test owns temporary data and launches real script subprocesses; existing accounts and databases are untouched. The unsupported-Node check simulates the version guard, rather than running an older Node installation. The full suite currently has 57 tests.
+
 Run real-browser tests after installing the development dependencies and Chromium:
 
 ```sh
