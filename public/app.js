@@ -103,6 +103,9 @@ async function logout(button) {
   } catch {}
   go("role", { replace: true });
 }
+function passwordMagnifier(visible) {
+  return `<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="13" cy="13" r="9" fill="${visible ? "#fff" : "currentColor"}" stroke="currentColor" stroke-width="3"/><path d="m20 20 8 8" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>`;
+}
 function authField(
   name,
   label,
@@ -113,7 +116,7 @@ function authField(
 ) {
   const input = `<input class="pill" id="${name}" name="${name}" type="${type}" ${type === "password" ? 'minlength="8" maxlength="128"' : ""} ${type === "email" ? 'maxlength="254"' : ""} ${name === "fullName" ? 'maxlength="100"' : ""} required autocomplete="${autocomplete}">`;
   const control = togglePassword
-    ? `<div class="password-entry">${input}<button class="password-toggle" type="button" data-toggle-password="${name}" aria-label="Show password" aria-pressed="false">Show</button></div>`
+    ? `<div class="password-entry">${input}<button class="password-toggle" type="button" data-toggle-password="${name}" aria-label="Show password" aria-pressed="false">${passwordMagnifier(false)}</button></div>`
     : input;
   return `<div class="auth-field ${css}">${control}<label for="${name}">${label}</label></div>`;
 }
@@ -127,7 +130,7 @@ function authScreen(register = false) {
         const input = document.getElementById(toggle.dataset.togglePassword),
           visible = input.type === "password";
         input.type = visible ? "text" : "password";
-        toggle.textContent = visible ? "Hide" : "Show";
+        toggle.innerHTML = passwordMagnifier(visible);
         toggle.setAttribute(
           "aria-label",
           visible ? "Hide password" : "Show password",

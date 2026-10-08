@@ -205,6 +205,13 @@ img {
 .password-toggle:hover {
   text-decoration: underline;
 }
+.password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #191919;
+}
+.password-toggle svg { width: 26px; height: 26px; }
 /* Header uses actual content width and lets the greeting wrap when necessary. */
 .page {
   padding: clamp(12px, 2.2vw, 22px);
