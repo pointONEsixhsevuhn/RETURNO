@@ -1060,3 +1060,6 @@ dialog input {
 #verification-code { width: 100%; text-align: center; letter-spacing: 6px; }
 #verification-error { color: #a40000; }
 #verification-back { white-space: normal; }
+
+.delete-account { color: #a40000; justify-self: start; }
+#delete-account-form > input { width: 100%; margin-top: 8px; }

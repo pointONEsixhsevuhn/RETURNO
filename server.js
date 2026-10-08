@@ -347,6 +347,20 @@ export const server = http.createServer(async (req, res) => {
           stats[row.status] = row.count;
         return json(res, 200, { stats });
       }
+      const accountMatch = /^\/api\/users\/([a-zA-Z0-9-]+)$/.exec(route);
+      if (accountMatch && req.method === "DELETE") {
+        const data = await authorizedBody(req, "users.delete", user.id);
+        const id = accountMatch[1];
+        if (id === user.id) fail(409, "You cannot delete your own administrator account.");
+        const target = db.prepare(`SELECT id,email FROM users WHERE id=? AND ${adminRowScope}`).get(id, user.id);
+        if (!target) fail(404, "Account not found.");
+        if (textField(data, "confirmEmail", 254).toLowerCase() !== target.email)
+          fail(400, "Enter the account's email address to confirm deletion.");
+        // Foreign-key cascades remove the target's reports and all sessions atomically.
+        const deleted = db.prepare(`DELETE FROM users WHERE id=? AND id<>? AND ${adminRowScope}`).run(id, user.id, user.id);
+        if (!deleted.changes) fail(403, "Account deletion was not permitted.");
+        return json(res, 200, { ok: true });
+      }
       if (route === "/api/users" && req.method === "GET") {
         if (user.role !== "admin") fail(403, "Administrator access required.");
         const users = db

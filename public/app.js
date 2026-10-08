@@ -546,11 +546,37 @@ async function adminProfile(version) {
   if (version !== renderVersion) return;
   const group = (role, title) => {
     const users = result.users.filter((user) => user.role === role);
-    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
+    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
   };
   app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
   bindNavigation();
   bindPostActions();
+  app.querySelectorAll("[data-delete-account]").forEach(button => {
+    button.onclick = () => {
+      const target = result.users.find(user => user.id === button.dataset.deleteAccount);
+      dialog.innerHTML = `<h2>Delete account?</h2><p>Delete ${esc(target.full_name)} (${esc(target.email)})? All their reports will be permanently deleted, and they will be signed out everywhere.</p><form id="delete-account-form"><label for="delete-account-email">Type the account email to confirm</label><input id="delete-account-email" type="email" maxlength="254" required autocomplete="off" class="pill"><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Delete account</button></div></form>`;
+      dialog.querySelector("[data-close]").onclick = () => dialog.close();
+      dialog.querySelector("#delete-account-form").onsubmit = async event => {
+        event.preventDefault();
+        const submit = event.currentTarget.querySelector("[type=submit]");
+        const output = dialog.querySelector(".error");
+        submit.disabled = true;
+        output.textContent = "";
+        try {
+          await api("/users/" + target.id, { method: "DELETE", body: JSON.stringify({ confirmEmail: dialog.querySelector("#delete-account-email").value }) });
+          if (version !== renderVersion) return;
+          dialog.close();
+          await render();
+        } catch (error) {
+          if (version !== renderVersion || !dialog.open) return;
+          errorAt(output, error);
+          submit.disabled = false;
+        }
+      };
+      openDialog("Delete account");
+      dialog.querySelector("#delete-account-email").focus();
+    };
+  });
 }
 function searchPage() {
   const pageVersion = renderVersion;

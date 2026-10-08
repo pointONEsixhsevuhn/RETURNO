@@ -138,3 +138,5 @@ Playwright runs five scenarios on desktop, Pixel 5, 320px narrow-phone and 768px
 These are automated Chromium checks and viewport emulation, not physical-device testing or a complete accessibility/visual audit. Firefox, Safari/WebKit, screen readers, contrast audits and wider assistive-technology checks remain pending. Original artwork is retained; fonts use available Century Gothic / Avenir Next / Arial, so exact lettering depends on the device.
 
 New student registrations require an email confirmation code before an account is created. Configure the dedicated Gmail SMTP sender using [email verification setup](docs/EMAIL-VERIFICATION.md) and the credential-free `.env.example`. `npm start` loads a local `.env` if present. Real mail delivery must be checked with the configured sender; automated tests use isolated in-memory mail delivery.
+
+Administrators can delete other accounts from Admin profile ? Registered users. Confirmation requires typing the account's email. This permanently deletes all reports belonging to that account and invalidates all its sessions. Administrators cannot delete their own account. Students cannot delete accounts.

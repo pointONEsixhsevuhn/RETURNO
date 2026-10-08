@@ -223,3 +223,36 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   await noOverflow(page);
   await logout(page);
 });
+
+test("admin confirms account deletion, removes its reports and invalidates the student's session", async ({ page }) => {
+ const email = await register(page);
+ const response = await page.request.post("/api/posts", { data: { kind: "Lost", item_name: "Account deletion report", event_at: "2026-10-08T12:00", location: "Library", description: "Delete with account" } });
+ expect(response.status()).toBe(201);
+ const id = (await response.json()).post.id;
+ const target = (await (await page.request.get("/api/me")).json()).user;
+ const studentCookies = await page.context().cookies();
+ expect((await page.request.delete(`/api/users/${target.id}`, { data: { confirmEmail: email } })).status()).toBe(403);
+ await logout(page);
+ await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
+ await page.getByRole("button", { name: "Admin profile", exact: true }).click();
+ await expect(page.getByRole("button", { name: "Delete account for admin@e2e.example", exact: true })).toHaveCount(0);
+ const remove = page.getByRole("button", { name: `Delete account for ${email}`, exact: true });
+ await remove.click();
+ const dialog = page.getByRole("dialog", { name: "Delete account", exact: true });
+ await expect(dialog).toContainText("All their reports will be permanently deleted");
+ await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+ await expect(remove).toBeVisible();
+ await remove.click();
+ await page.getByLabel("Type the account email to confirm").fill("wrong@example.test");
+ await dialog.getByRole("button", { name: "Delete account", exact: true }).click();
+ await expect(dialog.getByRole("alert")).toContainText("Enter the account's email address");
+ await page.getByLabel("Type the account email to confirm").fill(email);
+ await dialog.getByRole("button", { name: "Delete account", exact: true }).click();
+ await expect(dialog).not.toBeVisible();
+ await expect(remove).toHaveCount(0);
+ expect((await page.request.get(`/api/posts/${id}`)).status()).toBe(404);
+ await noOverflow(page);
+ await page.context().clearCookies();
+ await page.context().addCookies(studentCookies);
+ expect((await page.request.get("/api/me")).status()).toBe(401);
+});

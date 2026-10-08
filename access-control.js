@@ -6,6 +6,7 @@ const permissions = new Map([
   ["posts.create", ["student"]],
   ["posts.manage", ["admin"]],
   ["users.list", ["admin"]],
+  ["users.delete", ["admin"]],
   ["stats.read", ["admin"]],
   ["admins.create", ["admin"]],
 ]);
@@ -33,6 +34,8 @@ export function requestPermission(route, method) {
     ["GET", "PUT", "PATCH", "DELETE"].includes(method)
   )
     return "posts.manage";
+  if (/^\/api\/users\/[a-zA-Z0-9-]+$/.test(route) && method === "DELETE")
+    return "users.delete";
   const permission = routes.get(`${method} ${route}`);
   if (!permission)
     throw Object.assign(new Error("Not found."), { status: 404 });
