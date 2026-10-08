@@ -209,6 +209,64 @@ test("successful student post goes straight home and removes editor from history
   assert.deepEqual(h.entries, ["#feed"]);
   assert.equal(vm.runInContext("state.filter", h.ctx), "All");
 });
+
+test("expired posting clears private state and shows login instead of a form error", async () => {
+  const h = harness({ failure: Object.assign(new Error("Please log in."), { status: 401 }) });
+  vm.runInContext("state.posts=[{id:'private'}];state.query='wallet';editor()", h.ctx);
+  h.kinds[0].onclick();
+  await h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: { disabled: false } });
+  assert.equal(h.location.hash, "#login");
+  assert.equal(vm.runInContext("state.user", h.ctx), null);
+  assert.equal(vm.runInContext("state.posts.length", h.ctx), 0);
+  assert.equal(vm.runInContext("state.query", h.ctx), "");
+  assert.match(h.element("#auth-error").textContent, /session has expired/);
+  assert.equal(h.element("#post-error").textContent, "");
+});
+
+test("expired search returns to login without opening an error dialog", async () => {
+  const h = harness({ failure: Object.assign(new Error("Please log in."), { status: 401 }) });
+  vm.runInContext("searchPage()", h.ctx);
+  h.element("[name=q]").value = "wallet";
+  h.element("#search-form").onsubmit({ preventDefault() {} });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(h.location.hash, "#login");
+  assert.equal(h.element("#dialog").open, false);
+});
+
+test("admin expiry handles every protected operation and preserves the admin login role", async () => {
+  for (const [url, method] of [["/admins", "POST"], ["/posts/p", "PUT"], ["/posts/p", "PATCH"], ["/posts/p", "DELETE"], ["/stats", "GET"], ["/users", "GET"]]) {
+    const h = harness({ role: "admin", failure: Object.assign(new Error("Please log in."), { status: 401 }) });
+    h.ctx.route = url;
+    h.ctx.method = method;
+    await assert.rejects(vm.runInContext("api(route,{method})", h.ctx), (error) => error.handled === true);
+    assert.equal(h.location.hash, "#login");
+    assert.equal(vm.runInContext("state.role", h.ctx), "admin");
+    assert.equal(vm.runInContext("state.user", h.ctx), null);
+  }
+});
+
+test("late successful requests cannot restore private state after session expiry", async () => {
+  const h = harness();
+  let resolveOld;
+  h.ctx.RetornoAPI.request = (url) => url === "/posts"
+    ? new Promise((resolve) => { resolveOld = resolve; })
+    : Promise.reject(Object.assign(new Error("Please log in."), { status: 401 }));
+  const old = vm.runInContext("api('/posts')", h.ctx);
+  const rejected = assert.rejects(old, (error) => error.handled === true);
+  await assert.rejects(vm.runInContext("api('/stats')", h.ctx));
+  resolveOld({ posts: [{ id: "private" }] });
+  await rejected;
+  assert.equal(h.location.hash, "#login");
+});
+
+test("wrong login credentials and forbidden operations do not expire the active session", async () => {
+  const h = harness({ failure: Object.assign(new Error("Incorrect password."), { status: 401 }) });
+  await assert.rejects(vm.runInContext("api('/login')", h.ctx));
+  assert.notEqual(vm.runInContext("state.user", h.ctx), null);
+  h.ctx.RetornoAPI.request = async () => { throw Object.assign(new Error("Forbidden."), { status: 403 }); };
+  await assert.rejects(vm.runInContext("api('/admins')", h.ctx));
+  assert.notEqual(vm.runInContext("state.user", h.ctx), null);
+});
 test("failed submission retains the form and enables correction/retry", async () => {
   const h = harness({ failure: true });
   vm.runInContext("editor()", h.ctx);

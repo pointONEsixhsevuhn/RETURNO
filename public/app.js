@@ -24,7 +24,38 @@ const searchIcon =
   '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="#191919"/><circle cx="43" cy="42" r="20" fill="none" stroke="white" stroke-width="6"/><path d="M58 57 74 73" stroke="white" stroke-width="6" stroke-linecap="round"/></svg>';
 const profileIcon =
   '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="28" r="27" fill="#191919"/><path d="M3 98V85Q10 55 35 54Q50 65 65 54Q90 56 97 85V98Z" fill="#191919"/></svg>';
-const api = globalThis.RetornoAPI.request;
+let sessionVersion = 0;
+async function api(url, options) {
+  const version = sessionVersion;
+  try {
+    const result = await globalThis.RetornoAPI.request(url, options);
+    if (version !== sessionVersion)
+      throw Object.assign(new Error("Session changed."), { handled: true });
+    return result;
+  } catch (error) {
+    if (version !== sessionVersion) error.handled = true;
+    if (
+      !error.handled && error.status === 401 && state.user &&
+      !["/login", "/register", "/logout"].includes(url)
+    ) {
+      clearSession();
+      go("login", { replace: true });
+      document.querySelector("#auth-error").textContent =
+        "Your session has expired. Please log in again.";
+      error.handled = true;
+    }
+    throw error;
+  }
+}
+function clearSession() {
+  ++sessionVersion;
+  state.user = null;
+  state.filter = "All";
+  state.query = "";
+  state.posts = [];
+  state.edit = null;
+  state.back = "mine";
+}
 function go(route, { replace = false } = {}) {
   const target = "#" + route;
   if (location.hash === target) {
@@ -38,6 +69,7 @@ function go(route, { replace = false } = {}) {
   render();
 }
 function errorAt(target, error) {
+  if (error.handled) return;
   target.textContent = error.message || error;
 }
 function header(search = true, welcome = true) {
@@ -57,19 +89,15 @@ async function logout(button) {
     await api("/logout", { method: "POST" });
   } catch (error) {
     // An expired session is already signed out. Network failures must remain retryable.
+    if (error.handled) return;
     if (error.status !== 401) {
       button.disabled = false;
       errorDialog(error);
       return;
     }
   }
-  state.user = null;
+  clearSession();
   state.role = "student";
-  state.filter = "All";
-  state.query = "";
-  state.posts = [];
-  state.edit = null;
-  state.back = "mine";
   try {
     sessionStorage.removeItem("retorno-role");
   } catch {}
@@ -159,6 +187,7 @@ function filters() {
   return `<nav class="filters" aria-label="Post type">${["All", "Lost", "Found"].map((x) => `<button data-filter="${x}" class="${state.filter === x ? "active" : ""}">${x.toUpperCase()}</button>`).join("")}</nav>`;
 }
 function errorDialog(error) {
+  if (error.handled) return;
   dialog.innerHTML = `<p>${esc(error.message || error)}</p><div class="dialog-actions"><button data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = () => dialog.close();
   if (!dialog.open) dialog.showModal();
@@ -532,10 +561,7 @@ async function render() {
     }
     go(state.user ? "feed" : "role");
   } catch (e) {
-    if (e.status === 401) {
-      state.user = null;
-      go("login");
-    } else errorDialog(e);
+    errorDialog(e);
   }
   window.scrollTo(0, 0);
 }

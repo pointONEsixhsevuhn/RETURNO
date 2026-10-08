@@ -38,6 +38,8 @@ The original fetch failure on your computer was not directly reproduced. Registr
 
 Use **Log out** in the student or administrator page header to end the current session and return to role selection. If the server cannot be reached, reconnect and retry logout.
 
+If your session expires while searching, posting, or managing records, the app clears private page data and returns to your role's login screen. Log in again before retrying your action; unsaved form content is cleared.
+
 Choose Student → Register to create an account. New students are signed in automatically. Returning users choose the correct role and log in.
 
 Create the first administrator in the project terminal:

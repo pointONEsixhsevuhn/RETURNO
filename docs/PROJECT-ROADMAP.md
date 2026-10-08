@@ -57,7 +57,9 @@ Each semicolon-separated item below should be a separate feature/fix commit and 
 
 Completed feature (2026-10-08): **visible logout for students and admins**. The current session is revoked, the cookie is cleared, private client state and the remembered role are cleared, and navigation returns to role selection. Browser Back cannot restore an authenticated screen. Failed network requests retain the session and allow retry; a 401 during logout clears the already-expired client session. Header controls wrap to accommodate the new button. Full suite: **27 passed, 0 failed**. Browser/device visual verification remains pending.
 
-Suggested next task: **consistent expired-session handling** across post submission, search, and administrator actions, so all protected requests clear stale account state and return to login. Strict calendar validation follows as its own fix.
+Completed feature (2026-10-08): **consistent expired-session handling** across protected requests. Posting, search, feed and administrator actions clear private state and return to the current role's login with an expiry message. Late responses from the old session are ignored; login credential errors, permission denials and network failures retain their normal handling. Database expiry is tested for both roles. Full suite: **33 passed, 0 failed**; real-browser verification remains pending.
+
+Suggested next task: **strict calendar validation and a documented campus timezone convention**, rejecting impossible dates such as February 30. Complete it as a separate tested fix and push.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
 

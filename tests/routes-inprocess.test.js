@@ -82,6 +82,18 @@ async function send(url, method = "GET", data, cookie) {
     cookie: headers["set-cookie"]?.split(";")[0],
   };
 }
+test("expired database sessions reject protected requests for both roles", async () => {
+  for (const role of ["student", "admin"]) {
+    const email = `expired-${role}@example.test`;
+    const id = createUser(email, "Expired user", "ExpiredUser123!", role);
+    const login = await send("/api/login", "POST", { email, password: "ExpiredUser123!", role });
+    db.prepare("UPDATE sessions SET expires_at=? WHERE user_id=?").run(Date.now() - 1, id);
+    for (const [url, method] of [["/api/me", "GET"], ["/api/posts", "GET"], ["/api/posts", "POST"], ["/api/stats", "GET"], ["/api/admins", "POST"]]) {
+      assert.equal((await send(url, method, undefined, login.cookie)).status, 401);
+    }
+  }
+});
+
 test("logout revokes each role's session and clears its cookie", async () => {
   for (const role of ["student", "admin"]) {
     const login = await send("/api/login", "POST", {
