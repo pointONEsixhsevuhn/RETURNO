@@ -143,3 +143,5 @@ Login logo restoration (2026-10-08): restored the RETURNO logo above the login h
 Login heading replacement (2026-10-08): removed Log into Returno and its unused CSS so the RETURNO logo alone appears above the login fields. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
 
 Forgot-password page redesign (2026-10-08): centered logo, transparent black-outlined email input with Enter your registered email beneath it, bold unboxed Send reset code and underlined unboxed Back to log in. Removed the first-step heading/explanation; code entry and reset behavior remain. Full local suite: **90 passed**; **28 browser cases passed** across four viewports. Mobile Chromium computed styles confirmed the outline, bold action and borderless underlined navigation.
+
+Recovery action styling adjustment (2026-10-08): Send reset code is bold and underlined without a box; Back to log in uses the original colored pill design without an underline. Full local suite: **90 passed**; **28 browser cases passed** across four viewports.
