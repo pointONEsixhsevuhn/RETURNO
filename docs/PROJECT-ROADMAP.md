@@ -95,6 +95,8 @@ Registered-user layout correction (2026-10-08): Admin users and Student users us
 
 Completed header alignment (2026-10-08): Log out, Register admin, Search and Profile form one row centered beside the RETURNO logo. Removed the action-width cap that forced wrapping; compact phone spacing preserves the row within narrow screens. Full suite: **67 passed**; **20 browser cases passed** across four viewports.
 
+Completed access-control hardening (2026-10-08): centralized deny-by-default RBAC covers every protected route/method. Own-report queries derive identity from sessions; management queries/mutations and admin lists/totals use stored-role SQL scopes. Protected body reads recheck session identity/role before writes. Parameterized queries and fixed SQL fragments preserve literal SQL-like text without executing it; explicit report projections and static denial of source backups limit unintended disclosure. This is application-enforced row security on SQLite, not native database RLS. Six additional adversarial checks bring the local suite to **73 passed**; **20 browser cases passed** across four viewports. See [policy and SQL safety](ACCESS-CONTROL.md).
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.

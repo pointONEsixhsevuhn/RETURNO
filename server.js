@@ -3,6 +3,13 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { db, root, createUser, verifyPassword } from "./db.js";
+import {
+  authorize,
+  requestPermission,
+  postReadScope,
+  adminRowScope,
+  studentRowScope,
+} from "./access-control.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -16,7 +23,7 @@ const publicUser = (u) => ({
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
-const queryPosts = `SELECT p.*,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
+const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
 const attempts = new Map();
 
 function json(res, status, body) {
@@ -86,6 +93,14 @@ function cookie(res, token, maxAge = sessionAge / 1000) {
     "Set-Cookie",
     `retorno_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${process.env.COOKIE_SECURE === "true" ? "; Secure" : ""}`,
   );
+}
+async function authorizedBody(req, permission, expectedId) {
+  const data = await body(req);
+  // Body streaming yields: a session may be revoked or a role changed meanwhile.
+  const currentUser = auth(req);
+  if (currentUser.id !== expectedId) fail(401, "Please log in again.");
+  authorize(currentUser, permission);
+  return data;
 }
 function createSession(user) {
   db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
@@ -226,10 +241,11 @@ export const server = http.createServer(async (req, res) => {
         return login(res, user);
       }
       const user = auth(req);
+      authorize(user, requestPermission(route, req.method));
       if (route === "/api/admins" && req.method === "POST") {
         if (user.role !== "admin")
           fail(403, "Only administrators can register another admin.");
-        const data = await body(req),
+        const data = await authorizedBody(req, "admins.create", user.id),
           { email, password } = credentials(data),
           fullName = textField(data, "fullName", 100);
         if (data.confirmPassword !== password)
@@ -250,9 +266,9 @@ export const server = http.createServer(async (req, res) => {
           /(?:^|;\s*)retorno_session=([^;]+)/,
         )?.[1];
         if (token)
-          db.prepare("DELETE FROM sessions WHERE token_hash=?").run(
-            hash(token),
-          );
+          db.prepare(
+            "DELETE FROM sessions WHERE token_hash=? AND user_id=?",
+          ).run(hash(token), user.id);
         cookie(res, "", 0);
         return json(res, 200, { ok: true });
       }
@@ -260,8 +276,10 @@ export const server = http.createServer(async (req, res) => {
         if (user.role !== "admin") fail(403, "Administrator access required.");
         const stats = Object.fromEntries(statuses.map((s) => [s, 0]));
         for (const row of db
-          .prepare("SELECT status,COUNT(*) AS count FROM posts GROUP BY status")
-          .all())
+          .prepare(
+            `SELECT status,COUNT(*) AS count FROM posts WHERE ${adminRowScope} GROUP BY status`,
+          )
+          .all(user.id))
           stats[row.status] = row.count;
         return json(res, 200, { stats });
       }
@@ -269,18 +287,15 @@ export const server = http.createServer(async (req, res) => {
         if (user.role !== "admin") fail(403, "Administrator access required.");
         const users = db
           .prepare(
-            "SELECT id,email,full_name,role,created_at FROM users ORDER BY created_at DESC,email COLLATE NOCASE",
+            `SELECT id,email,full_name,role,created_at FROM users WHERE ${adminRowScope} ORDER BY created_at DESC,email COLLATE NOCASE`,
           )
-          .all();
+          .all(user.id);
         return json(res, 200, { users });
       }
       if (route === "/api/posts" && req.method === "GET") {
-        const where = [],
-          params = [];
-        if (url.searchParams.get("mine") === "1") {
-          where.push("p.user_id=?");
-          params.push(user.id);
-        }
+        const scope = postReadScope(user, url.searchParams.get("mine") === "1");
+        const where = [scope.sql],
+          params = [...scope.params];
         const kind = url.searchParams.get("kind");
         if (kind && ["Lost", "Found"].includes(kind)) {
           where.push("p.kind=?");
@@ -310,44 +325,67 @@ export const server = http.createServer(async (req, res) => {
       if (route === "/api/posts" && req.method === "POST") {
         if (user.role !== "student")
           fail(403, "Only students can create posts.");
-        const values = postData(await body(req));
+        const values = postData(
+          await authorizedBody(req, "posts.create", user.id),
+        );
         const id = randomUUID();
-        db.prepare(
-          "INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image) VALUES(?,?,?,?,?,?,?,?,?)",
-        ).run(id, user.id, ...values);
+        const inserted = db
+          .prepare(
+            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image) SELECT ?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
+          )
+          .run(id, user.id, ...values, user.id);
+        if (!inserted.changes)
+          fail(403, "Post creation is no longer permitted.");
         return json(res, 201, {
           post: db.prepare(queryPosts + " WHERE p.id=?").get(id),
         });
       }
       const match = /^\/api\/posts\/([a-zA-Z0-9-]+)$/.exec(route);
       if (match) {
-        const post = db.prepare(queryPosts + " WHERE p.id=?").get(match[1]);
+        const post = db
+          .prepare(queryPosts + ` WHERE p.id=? AND ${adminRowScope}`)
+          .get(match[1], user.id);
         if (!post) fail(404, "Post not found.");
         if (user.role !== "admin")
           fail(403, "Only administrators can review or manage posts.");
         if (req.method === "GET") return json(res, 200, { post });
         if (req.method === "DELETE") {
-          db.prepare("DELETE FROM posts WHERE id=?").run(post.id);
+          const deleted = db
+            .prepare(`DELETE FROM posts WHERE id=? AND ${adminRowScope}`)
+            .run(post.id, user.id);
+          if (!deleted.changes)
+            fail(403, "Post management is no longer permitted.");
           return json(res, 200, { ok: true });
         }
         if (req.method === "PUT") {
-          const values = postData(await body(req), post);
-          db.prepare(
-            "UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
-          ).run(...values, post.id);
+          const values = postData(
+            await authorizedBody(req, "posts.manage", user.id),
+            post,
+          );
+          const updated = db
+            .prepare(
+              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+            )
+            .run(...values, post.id, user.id);
+          if (!updated.changes)
+            fail(403, "Post management is no longer permitted.");
           return json(res, 200, {
             post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });
         }
         if (req.method === "PATCH") {
-          const data = await body(req);
+          const data = await authorizedBody(req, "posts.manage", user.id);
           if (!statuses.includes(data.status)) fail(400, "Invalid status.");
           const kind = ["Lost", "Found"].includes(data.status)
             ? data.status
             : post.kind;
-          db.prepare(
-            "UPDATE posts SET kind=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
-          ).run(kind, data.status, post.id);
+          const updated = db
+            .prepare(
+              `UPDATE posts SET kind=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+            )
+            .run(kind, data.status, post.id, user.id);
+          if (!updated.changes)
+            fail(403, "Post management is no longer permitted.");
           return json(res, 200, {
             post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });
@@ -363,6 +401,12 @@ export const server = http.createServer(async (req, res) => {
     const base = path.join(root, "public"),
       file = path.resolve(base, relative);
     if (!file.startsWith(base + path.sep)) fail(403, "Forbidden.");
+    const assetParts = path
+      .relative(base, file)
+      .split(path.sep)
+      .map((part) => part.toLowerCase());
+    if (assetParts[0] === "assets" && assetParts[1] === "originals")
+      fail(404, "Not found.");
     const types = {
       ".html": "text/html; charset=utf-8",
       ".css": "text/css; charset=utf-8",

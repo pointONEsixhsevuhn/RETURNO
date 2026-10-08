@@ -109,6 +109,8 @@ Environment variables: `PORT` (default 3000), `HOST` (default 127.0.0.1), `DATA_
 
 ## Verification
 
+Server permissions are centralized and report operations use row-scoped, parameterized SQL. See [access control and SQL safety](docs/ACCESS-CONTROL.md) for the role matrix, SQLite row-security boundary and adversarial checks.
+
 Database startup uses versioned, transactional migrations. Existing unversioned databases are enrolled without rewriting their users, sessions or reports. See [database migration procedure](docs/DATABASE-MIGRATIONS.md) before adding or deploying schema changes.
 
 Students create/view reports; administrators manage claim and return processing. Student claim submission and My claims are excluded. See [current workflow decision](docs/CLAIM-RETURN-REQUIREMENTS.md).
@@ -119,7 +121,7 @@ npm test
 
 Automated API/client tests cover account creation, login after registration, failed-session rollback, permissions, saved data, CRUD, search, statuses, images, schema constraints, wrong-server responses and network failures. Tests use a disposable database.
 
-The same command includes eight isolated CLI tests for interactive/environment administrator setup, recovery validation and transactional rollback, revocation of the selected administrator's sessions, demo creation/refusal, process-restart persistence, and startup errors, plus eight migration checks for preservation, repeat startup, rollback/retry, history validation and integrity. Each test owns temporary data; existing accounts and databases are untouched. CLI tests launch real subprocesses. The unsupported-Node check simulates the version guard, rather than running an older Node installation. The full suite currently has 67 tests.
+The same command includes eight isolated CLI tests for interactive/environment administrator setup, recovery validation and transactional rollback, revocation of the selected administrator's sessions, demo creation/refusal, process-restart persistence, and startup errors, plus eight migration checks for preservation, repeat startup, rollback/retry, history validation and integrity. Each test owns temporary data; existing accounts and databases are untouched. CLI tests launch real subprocesses. The unsupported-Node check simulates the version guard, rather than running an older Node installation. The full suite currently has 73 tests, including adversarial access-control and SQL-injection checks.
 
 Run real-browser tests after installing the development dependencies and Chromium:
 
