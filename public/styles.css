@@ -189,7 +189,9 @@ img {
   width: 100%;
 }
 .password-entry input {
-  padding-right: 72px;
+  padding-left: 44px;
+  padding-right: 44px;
+  text-align: center;
 }
 .password-toggle {
   position: absolute;
@@ -211,7 +213,7 @@ img {
   justify-content: center;
   color: #191919;
 }
-.password-toggle svg { width: 26px; height: 26px; }
+.password-toggle svg { width: 20px; height: 20px; }
 /* Header uses actual content width and lets the greeting wrap when necessary. */
 .page {
   padding: clamp(12px, 2.2vw, 22px);

@@ -104,7 +104,7 @@ async function logout(button) {
   go("role", { replace: true });
 }
 function passwordMagnifier(visible) {
-  return `<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="13" cy="13" r="9" fill="${visible ? "#fff" : "currentColor"}" stroke="currentColor" stroke-width="3"/><path d="m20 20 8 8" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>`;
+  return `<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="13" cy="13" r="9" fill="${visible ? "#fff" : "currentColor"}" stroke="currentColor" stroke-width="3"/><path d="m20 20 4 4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
 }
 function authField(
   name,

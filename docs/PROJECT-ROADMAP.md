@@ -99,6 +99,8 @@ Completed access-control hardening (2026-10-08): centralized deny-by-default RBA
 
 Completed login icon update (2026-10-08): password visibility uses a magnifying glass instead of Show/Hide text. Hidden passwords use a fully dark lens; visible passwords use a white-centered lens. Accessible Show/Hide password labels, pressed state and keyboard control remain. Full suite: **73 passed**; **20 browser cases passed** across four viewports.
 
+Completed password-entry refinement (2026-10-08): login password text is centered using balanced horizontal padding. The visibility magnifier is reduced to 20px with a shorter handle; hidden/visible states and accessible controls remain. Full suite: **73 passed**; **20 browser cases passed** across four viewports.
+
 Suggested next task: **administrator action history** for status changes, with actor/time and prior/new status. Agree administrator verification and handover details before further workflow changes.
 
 Optional later additions: notifications, matching suggestions and analytics, after claim/return behavior is stable. Do not add messaging or broaden student editing permissions without agreeing the scope.
