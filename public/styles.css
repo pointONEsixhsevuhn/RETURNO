@@ -1067,3 +1067,10 @@ dialog input {
 #recovery-form { display: grid; gap: 12px; margin: 24px 0; }
 #reset-code { width: 100%; text-align: center; letter-spacing: 6px; }
 .auth-page > button { margin: 4px; }
+
+.forgot-password-link {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 0;
+  text-decoration: none;
+}
