@@ -17,3 +17,5 @@ Production hosting should configure these values as environment secrets. SMTP us
 Automated tests use an injected in-memory email transport and isolated databases. They verify the application flow, not Google SMTP delivery. Real sending still requires local credentials and a live inbox check.
 
 References: [Nodemailer SMTP](https://nodemailer.com/smtp), [Google app passwords](https://support.google.com/mail/answer/185833).
+
+If registration opens Home immediately instead of asking for a code, stop the old RETURNO process with Ctrl+C and start it again with `npm start`. Backend changes and saved SMTP credentials require a restart. Direct `node scripts/start.js` also loads the project `.env`, regardless of the terminal's working directory.
