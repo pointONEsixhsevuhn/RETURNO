@@ -139,8 +139,7 @@ function postData(data, previous) {
   if (["Lost", "Found"].includes(status) && status !== kind)
     fail(400, "Active status must match Lost / Found type.");
   const eventAt = textField(data, "event_at", 32);
-  if (!validEventTime(eventAt))
-    fail(400, "Enter a valid date and time.");
+  if (!validEventTime(eventAt)) fail(400, "Enter a valid date and time.");
   return [
     kind,
     status,
@@ -227,6 +226,71 @@ export const server = http.createServer(async (req, res) => {
         return login(res, user);
       }
       const user = auth(req);
+      if (route === "/api/claims" && req.method === "GET") {
+        if (user.role !== "student")
+          fail(403, "Only students can view their claims.");
+        const claims = db
+          .prepare(
+            "SELECT id,post_id,evidence,status,created_at FROM claims WHERE claimant_id=? ORDER BY created_at DESC,rowid DESC",
+          )
+          .all(user.id);
+        return json(res, 200, { claims });
+      }
+      if (route === "/api/claims" && req.method === "POST") {
+        if (user.role !== "student")
+          fail(403, "Only students can submit claims.");
+        const data = await body(req);
+        const postId = textField(data, "post_id", 100);
+        if (typeof data.evidence !== "string")
+          fail(
+            400,
+            "Provide private ownership proof of 20 to 2000 characters.",
+          );
+        const evidence = data.evidence.trim();
+        // Count Unicode code points, consistently with SQLite length().
+        const length = [...evidence].length;
+        if (length < 20 || length > 2000 || evidence.includes("\0"))
+          fail(
+            400,
+            "Provide private ownership proof of 20 to 2000 characters.",
+          );
+        const id = randomUUID();
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const post = db
+            .prepare("SELECT user_id,kind,status FROM posts WHERE id=?")
+            .get(postId);
+          if (!post) fail(404, "Post not found.");
+          if (post.kind !== "Found" || post.status !== "Found")
+            fail(409, "Only active Found reports accept claims.");
+          if (post.user_id === user.id)
+            fail(403, "You cannot claim your own report.");
+          if (
+            db
+              .prepare(
+                "SELECT id FROM claims WHERE post_id=? AND claimant_id=? AND status='Pending'",
+              )
+              .get(postId, user.id)
+          )
+            fail(409, "You already have a pending claim for this report.");
+          db.prepare(
+            "INSERT INTO claims(id,post_id,claimant_id,evidence) VALUES(?,?,?,?)",
+          ).run(id, postId, user.id, evidence);
+          db.exec("COMMIT");
+        } catch (error) {
+          try {
+            db.exec("ROLLBACK");
+          } catch {}
+          throw error;
+        }
+        return json(res, 201, {
+          claim: db
+            .prepare(
+              "SELECT id,post_id,evidence,status,created_at FROM claims WHERE id=?",
+            )
+            .get(id),
+        });
+      }
       if (route === "/api/admins" && req.method === "POST") {
         if (user.role !== "admin")
           fail(403, "Only administrators can register another admin.");
@@ -328,6 +392,15 @@ export const server = http.createServer(async (req, res) => {
           fail(403, "Only administrators can review or manage posts.");
         if (req.method === "GET") return json(res, 200, { post });
         if (req.method === "DELETE") {
+          if (
+            db
+              .prepare("SELECT id FROM claims WHERE post_id=? LIMIT 1")
+              .get(post.id)
+          )
+            fail(
+              409,
+              "A report with claim history cannot be permanently deleted.",
+            );
           db.prepare("DELETE FROM posts WHERE id=?").run(post.id);
           return json(res, 200, { ok: true });
         }

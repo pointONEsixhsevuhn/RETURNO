@@ -1,6 +1,6 @@
 # Claim and return requirements
 
-Draft for product review, 2026-10-08. The user approved the core workflow: students submit private ownership proof on Found reports, administrators approve claims and separately confirm physical handover. Student report-editing permissions stay unchanged. The remaining defaults below are proposals for review; no workflow code or schema changes are implemented.
+Draft for product review, 2026-10-08. The user approved the core workflow: students submit private ownership proof on Found reports, administrators approve claims and separately confirm physical handover. Student report-editing permissions stay unchanged. The user also approved the submission eligibility, proof limits, duplicate/competing-pending rules and preservation of legacy outcomes. Private submission/own-claim reads are implemented; review, handover and archival remain later tasks.
 
 ## Existing behavior
 
@@ -74,4 +74,4 @@ Each item receives its own tested commit and GitHub push:
 5. Revocation and verified handover, replacing unrestricted workflow-status changes without silently rewriting legacy records.
 6. Recoverable archival/restoration and administrator history views.
 
-Next: implement the versioned migration runner and preservation/rollback checks as a standalone prerequisite. Confirm the remaining defaults and legacy-record policy before adding claim tables or workflow behavior. Core student claim submission is approved; no broader student report-management permissions are authorized.
+The migration runner and private submission API are complete. Next: student claim form/list. Confirm the remaining review, retry, reversal and archival defaults before implementing those actions. Core student claim submission is approved; no broader student report-management permissions are authorized.

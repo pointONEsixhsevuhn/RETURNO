@@ -11,6 +11,14 @@ export const migrations = [
       "utf8",
     ),
   },
+  {
+    version: 2,
+    name: "private-claims",
+    sql: readFileSync(
+      new URL("./migrations/002-private-claims.sql", import.meta.url),
+      "utf8",
+    ),
+  },
 ];
 
 export function migrate(db, steps = migrations) {
@@ -24,7 +32,9 @@ export function migrate(db, steps = migrations) {
         "Migrations must have consecutive versions starting at 1, names and SQL.",
       );
     // Transaction control and connection pragmas belong to the runner, not migration SQL.
-    if (/\b(BEGIN|END|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|PRAGMA)\b/i.test(step.sql))
+    if (
+      /\b(BEGIN|END|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|PRAGMA)\b/i.test(step.sql)
+    )
       throw new Error(
         `Migration ${step.version} contains transaction control or PRAGMA.`,
       );

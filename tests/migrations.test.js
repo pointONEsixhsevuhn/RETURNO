@@ -4,8 +4,9 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { migrate, migrations } from "../migrations.js";
+import { migrate, migrations as allMigrations } from "../migrations.js";
 
+const migrations = allMigrations.slice(0, 1);
 const legacySql = readFileSync(
   new URL("../schema.sql", import.meta.url),
   "utf8",
@@ -47,14 +48,39 @@ const snapshot = (db) =>
 const ledger = (db) =>
   db.prepare("SELECT * FROM schema_migrations ORDER BY version").all();
 
+test("version two preserves version-one records and claim data across reopen", () =>
+  isolated((db, reopen) => {
+    seed(db);
+    migrate(db, migrations);
+    const before = snapshot(db);
+    assert.equal(migrate(db), 1);
+    assert.deepEqual(snapshot(db), before);
+    assert.equal(db.prepare("SELECT count(*) n FROM claims").get().n, 0);
+    db.prepare(
+      "INSERT INTO claims(id,post_id,claimant_id,evidence) VALUES(?,?,?,?)",
+    ).run(
+      "test-claim",
+      "claimed",
+      "admin",
+      "Test private evidence for persistence",
+    );
+    db = reopen();
+    assert.equal(migrate(db), 0);
+    assert.equal(
+      db.prepare("SELECT evidence FROM claims WHERE id='test-claim'").get()
+        .evidence,
+      "Test private evidence for persistence",
+    );
+  }));
+
 test("fresh migrations create the schema and run once across database reopen", () =>
   isolated((db, reopen) => {
-    assert.equal(migrate(db), 1);
+    assert.equal(migrate(db, migrations), 1);
     assert.equal(ledger(db).length, 1);
     assert.equal(db.prepare("PRAGMA foreign_keys").get().foreign_keys, 1);
     db = reopen();
     const before = ledger(db);
-    assert.equal(migrate(db), 0);
+    assert.equal(migrate(db, migrations), 0);
     assert.deepEqual(ledger(db), before);
     assert.equal(
       db.prepare("PRAGMA integrity_check").get().integrity_check,
@@ -66,10 +92,10 @@ test("legacy enrollment preserves users sessions and active/claimed/returned rep
   isolated((db, reopen) => {
     seed(db);
     const before = snapshot(db);
-    assert.equal(migrate(db), 1);
+    assert.equal(migrate(db, migrations), 1);
     assert.deepEqual(snapshot(db), before);
     db = reopen();
-    assert.equal(migrate(db), 0);
+    assert.equal(migrate(db, migrations), 0);
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
   }));
@@ -77,7 +103,7 @@ test("legacy enrollment preserves users sessions and active/claimed/returned rep
 test("failed pending batch rolls back schema data and version records then permits retry", () =>
   isolated((db) => {
     seed(db);
-    migrate(db);
+    migrate(db, migrations);
     const before = snapshot(db),
       history = ledger(db);
     const addition = {
@@ -131,13 +157,13 @@ test("failed first enrollment leaves legacy records and no migration ledger", ()
         .get(),
       undefined,
     );
-    assert.equal(migrate(db), 1);
+    assert.equal(migrate(db, migrations), 1);
   }));
 
 test("changed missing and newer migration histories refuse writes", () =>
   isolated((db) => {
     seed(db);
-    migrate(db);
+    migrate(db, migrations);
     const before = snapshot(db),
       history = ledger(db);
     assert.throws(
@@ -149,7 +175,7 @@ test("changed missing and newer migration histories refuse writes", () =>
     );
     assert.throws(() => migrate(db, []), /history differs/);
     db.prepare("UPDATE schema_migrations SET version=2").run();
-    assert.throws(() => migrate(db), /history differs/);
+    assert.throws(() => migrate(db, migrations), /history differs/);
     assert.deepEqual(snapshot(db), before);
     db.prepare("UPDATE schema_migrations SET version=1").run();
     assert.deepEqual(ledger(db), history);
@@ -173,7 +199,7 @@ test("foreign-key violations refuse legacy enrollment without changing records",
     seed(db);
     db.exec("PRAGMA foreign_keys=OFF; UPDATE sessions SET user_id='missing';");
     const before = snapshot(db);
-    assert.throws(() => migrate(db), /foreign-key violations/);
+    assert.throws(() => migrate(db, migrations), /foreign-key violations/);
     assert.deepEqual(snapshot(db), before);
     assert.equal(
       db
@@ -187,7 +213,7 @@ test("foreign-key violations refuse legacy enrollment without changing records",
 
 test("migration checksums tolerate Windows and Linux line endings", () =>
   isolated((db) => {
-    migrate(db);
+    migrate(db, migrations);
     assert.equal(
       migrate(
         db,
