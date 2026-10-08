@@ -236,13 +236,13 @@ test("all post cards use one fixed grid height and truncate preview rows", async
   );
   assert.match(
     styles,
-    /\.cards\{[^}]*grid-auto-rows:clamp\(310px,34vw,340px\)/,
+    /\.cards\s*\{[^}]*grid-auto-rows:\s*clamp\(310px,\s*34vw,\s*340px\)/,
   );
   assert.match(
     styles,
-    /\.card-data p\{[^}]*white-space:nowrap[^}]*text-overflow:ellipsis/,
+    /\.card-data p\s*\{[^}]*white-space:\s*nowrap[^}]*text-overflow:\s*ellipsis/,
   );
-  assert.match(styles, /\.admin-row\{[^}]*height:100px/);
+  assert.match(styles, /\.admin-row\s*\{[^}]*height:\s*100px/);
 });
 
 test("admin has no public Register link; admin portal offers verified admin creation", () => {
