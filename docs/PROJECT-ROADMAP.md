@@ -205,3 +205,5 @@ Status-matched control pills (2026-10-10): Log out and every status filter now s
 Selected-only filter backgrounds (2026-10-10): unselected status filters are transparent; only the current filter receives the status-style pill background. Log out styling remains. Mocked click/computed-style checks verified Lost, Found and All selection at 320, 390, 768 and 1280px. Full suite: **96 passed**; **36 browser cases passed**. Next: phone filter selection acceptance.
 
 Compact filter background (2026-10-10): removed forced filter minimum dimensions and use 5px vertical/9px horizontal padding around readable text. Only selected filters are filled. Browser measurements confirmed 27.5px phone and 30px tablet/desktop heights at four widths. Full suite: **96 passed**; **36 browser cases passed**. Next: phone compact-filter acceptance.
+
+Selected filter outline removal (2026-10-10): removed the active filter inset outline; selection uses only the pill fill and bold text. Standard keyboard focus indication remains. Full suite: **96 passed**; **36 browser cases passed**. Next: phone filter visual acceptance.
