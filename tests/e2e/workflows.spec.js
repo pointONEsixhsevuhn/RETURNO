@@ -67,8 +67,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.getByRole("button", { name: "Add post", exact: true }).click();
   await page.locator("#status-trigger").click();
   await page.getByRole("button", { name: "Lost", exact: true }).click();
-  await page.getByLabel("Contact Gmail (optional):", {exact:true}).fill("contact.test@gmail.com");
-  await page.getByLabel("Contact number (optional):", {exact:true}).fill("09123456789");
+  await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Facebook: Returno Test / contact.test@gmail.com / 09123456789");
   const item = `Browser wallet ${randomUUID().slice(0, 8)}`;
   await page.getByLabel("Item name:", { exact: true }).fill(item);
   await page
@@ -108,6 +107,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await card.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Campus library");
+  await expect(page.getByRole("dialog")).toContainText("Facebook: Returno Test");
   await expect(page.getByRole("dialog")).toContainText("contact.test@gmail.com");
   await expect(page.getByRole("dialog")).toContainText("09123456789");
   await page.keyboard.press("Escape");

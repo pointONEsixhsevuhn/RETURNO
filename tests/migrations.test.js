@@ -65,7 +65,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 4);
+    assert.equal(migrate(db), 5);
     assert.equal(
       db
         .prepare(
@@ -76,7 +76,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
     );
     assert.equal(migrate(db), 0);
     const upgraded = snapshot(db);
-    for (const post of upgraded.posts) { assert.equal(post.contact_email, ""); assert.equal(post.contact_phone, ""); delete post.contact_email; delete post.contact_phone; }
+    for (const post of upgraded.posts) { assert.equal(post.contact_email, ""); assert.equal(post.contact_phone, ""); assert.equal(post.contact_details, ""); delete post.contact_details; delete post.contact_email; delete post.contact_phone; }
     assert.deepEqual(upgraded, before);
     db.prepare("DELETE FROM posts WHERE id='claimed'").run();
     assert.equal(
@@ -237,3 +237,10 @@ test("migration checksums tolerate Windows and Linux line endings", () =>
       0,
     );
   }));
+
+test("general contact migration preserves existing email and phone", () => isolated(db => {
+ migrate(db, allMigrations.slice(0,6));
+ db.exec("INSERT INTO users(id,email,full_name,password_hash,role) VALUES('contact-user','fixture@example.com','Fixture','fake','student'); INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,contact_email,contact_phone) VALUES('contact-post','contact-user','Lost','Lost','Test','2026-10-09T12:00','Test','Test','fixture@gmail.com','09123456789');");
+ assert.equal(migrate(db),1);
+ assert.equal(db.prepare("SELECT contact_details FROM posts WHERE id='contact-post'").get().contact_details,'fixture@gmail.com / 09123456789');
+}));

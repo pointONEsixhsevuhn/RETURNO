@@ -505,3 +505,15 @@ test("post contacts validate, persist, and retain admin-only editing", async () 
  const updated=await request("/api/posts/"+id,"PUT",withoutContacts,admin.cookie);assert.equal(updated.status,200);assert.equal(updated.data.post.contact_email,"contact.test@gmail.com");
  const cleared=await request("/api/posts/"+id,"PUT",{...input,contact_email:"",contact_phone:""},admin.cookie);assert.equal(cleared.status,200);assert.equal(cleared.data.post.contact_phone,"");
 });
+
+test("general contact methods accept free text and reject invalid or oversized values", async () => {
+ createUser("contact-method@test.example","Contact method","Contact123!");
+ const student=await request("/api/login","POST",{email:"contact-method@test.example",password:"Contact123!",role:"student"});
+ const input={kind:"Found",item_name:"Contact method",event_at:"2026-10-09T12:00",location:"Test",description:"Test",contact_details:"Facebook: Returno Test / Telegram: @test / fixture@gmail.com"};
+ const created=await request("/api/posts","POST",input,student.cookie);assert.equal(created.status,201);assert.equal(created.data.post.contact_details,input.contact_details);
+ for(const contact_details of [123,{},"x".repeat(501)]) assert.equal((await request("/api/posts","POST",{...input,contact_details},student.cookie)).status,400);
+ const admin=await request("/api/login","POST",{email:"admin@test.example",password:"Administrator123!",role:"admin"});
+ const id=created.data.post.id; const {contact_details,...omitted}=input;
+ const retained=await request("/api/posts/"+id,"PUT",omitted,admin.cookie);assert.equal(retained.data.post.contact_details,input.contact_details);
+ const cleared=await request("/api/posts/"+id,"PUT",{...input,contact_details:""},admin.cookie);assert.equal(cleared.data.post.contact_details,"");
+});

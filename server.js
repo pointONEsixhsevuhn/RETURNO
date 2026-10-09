@@ -25,7 +25,7 @@ const publicUser = (u) => ({
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
-const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.contact_email,p.contact_phone,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
+const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.contact_email,p.contact_phone,p.contact_details,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
 const attempts = new Map();
 const deliveries = new Set();
 
@@ -179,6 +179,7 @@ function postData(data, previous) {
       : imageData(data.image),
     contactEmail,
     contactPhone,
+    contactField(data, "contact_details", previous, 500),
   ];
 }
 function rateLimit(req) {
@@ -468,7 +469,7 @@ export const server = http.createServer(async (req, res) => {
         const id = randomUUID();
         const inserted = db
           .prepare(
-            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
+            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone,contact_details) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
           )
           .run(id, user.id, ...values, user.id);
         if (!inserted.changes)
@@ -501,7 +502,7 @@ export const server = http.createServer(async (req, res) => {
           );
           const updated = db
             .prepare(
-              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,contact_details=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
             )
             .run(...values, post.id, user.id);
           if (!updated.changes)
