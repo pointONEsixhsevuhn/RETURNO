@@ -1139,11 +1139,12 @@ dialog input {
 /* Compact phone layouts without shrinking input text or touch targets. */
 @media (max-width: 480px) {
   .page { padding: 12px; }
-  .page-header { grid-template-columns: minmax(0, 1fr); row-gap: 6px; margin-bottom: 12px; }
-  .home-logo { width: 180px; max-width: 65%; }
-  .header-actions { grid-column: 1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 4px; }
-  .header-actions .pill { font-size: 12px; padding: 6px 10px; }
-  .header-actions .icon, .search-box .icon { width: 44px; height: 44px; padding: 10px; }
+  .page-header { column-gap: 6px; margin-bottom: 12px; }
+  .home-logo { width: 180px; max-width: 100%; }
+  .header-actions { gap: 2px; }
+  .header-actions .pill { font-size: 11px; padding: 6px; }
+  .header-actions .icon { width: 32px; height: 44px; padding: 5px; }
+  .search-box .icon { width: 44px; height: 44px; padding: 10px; }
   .welcome { font-size: 15px; line-height: 1.4; }
   .brand-line { margin-bottom: 2px; }
   .filters { gap: 4px; }
