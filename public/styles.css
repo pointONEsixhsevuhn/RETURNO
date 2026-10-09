@@ -1188,14 +1188,26 @@ dialog input {
   .auth-page .logo { width: 180px; }
 }
 
-/* Two-column student home cards, including narrow phones. */
+/* Square student home previews adapt to the available screen width. */
 .student-home .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; }
 .student-home .card { aspect-ratio: 1; }
-.student-home .item-image { height: clamp(40px, 14vw, 160px); aspect-ratio: auto; }
+.student-home .item-image { height: clamp(40px, 5vw, 64px); aspect-ratio: auto; }
 @media (max-width: 480px) {
   .student-home .cards { gap: 8px; }
   .student-home .card { padding: 8px; border-radius: 16px; }
   .student-home .card-head { flex-direction: column; gap: 6px; padding-bottom: 8px; }
+  .student-home .author { width: 100%; }
+  .student-home .author strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .student-home .status { font-size: 12px; padding: 4px 8px; }
+  .student-home .card-data { font-size: 12px; margin-top: 8px; }
+}
+
+@media (min-width: 700px) { .student-home .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .student-home .cards { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .student-home .cards { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .student-home .cards { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (min-width: 481px) {
+  .student-home .card-head { flex-direction: column; gap: 4px; padding-bottom: 6px; }
   .student-home .author { width: 100%; }
   .student-home .author strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .student-home .status { font-size: 12px; padding: 4px 8px; }
