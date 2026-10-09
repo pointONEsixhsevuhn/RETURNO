@@ -69,6 +69,14 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.getByRole("button", {name:"Cancel",exact:true}).click();
   await expect(page).toHaveURL(/#mine$/);
   await expect(page.locator("#post-form")).toHaveCount(0);
+  for (let attempt=0; attempt<2; attempt++) {
+    await page.getByRole("button", {name:"Add post",exact:true}).click();
+    await page.getByRole("button", {name:"Cancel",exact:true}).click();
+    await expect(page).toHaveURL(/#mine$/);
+  }
+  await page.goBack();
+  await expect(page).toHaveURL(/#feed$/);
+  await page.getByRole("button", {name:"Your posts",exact:true}).click();
   await page.getByRole("button", {name:"Add post",exact:true}).click();
   await expect(page.getByLabel("Item name:", {exact:true})).toHaveValue("");
   await page.locator("#status-trigger").click();

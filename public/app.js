@@ -430,7 +430,7 @@ async function feed(own, version) {
     document.querySelector("#add-post").onclick = () => {
       state.edit = null;
       state.back = "mine";
-      go("post");
+      go("post", { replace: true });
     };
   app.querySelectorAll("[data-filter]").forEach(
     (el) =>
