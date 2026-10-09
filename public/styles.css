@@ -1129,3 +1129,9 @@ dialog input {
 #verification-code { min-height: 44px; padding: 8px 16px; background: transparent; border: 1px solid #000; border-radius: 999px; }
 
 .contact-note { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+
+.post-field input[name="contact_details"]::placeholder {
+  font-size: 13px;
+  color: #484848;
+  opacity: 1;
+}
