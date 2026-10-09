@@ -1119,3 +1119,9 @@ dialog input {
   justify-content: flex-start;
   padding-top: clamp(20px, 4vh, 36px);
 }
+
+/* Keep registration legal text below the form, including on short screens. */
+.registration .legal {
+  align-self: flex-end;
+  text-align: right;
+}
