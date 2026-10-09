@@ -281,10 +281,14 @@ test("failed submission retains the form and enables correction/retry", async ()
   assert.equal(button.disabled, false);
   assert.equal(h.element("#post-error").textContent, "Unable to save.");
 });
-test("event forms and displays explicitly identify Philippine campus time", () => {
+test("posting hides timezone text while preserving campus time formatting", () => {
   const h = harness();
   vm.runInContext("editor()", h.ctx);
-  assert.match(h.element("#app").innerHTML, /PHT, UTC\+08:00/);
+  assert.doesNotMatch(h.element("#app").innerHTML, /PHT|UTC/);
+  h.kinds[0].onclick();
+  assert.equal(h.element("#event-time-label").textContent, "Date time lost:");
+  h.kinds[1].onclick();
+  assert.equal(h.element("#event-time-label").textContent, "Date time found:");
   assert.equal(vm.runInContext("dateText('2026-10-06T12:30')", h.ctx), "2026-10-06 12:30 PHT");
   assert.equal(vm.runInContext("dateText('')", h.ctx), "");
 });

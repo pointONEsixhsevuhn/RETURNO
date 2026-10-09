@@ -68,10 +68,17 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.locator("#status-trigger").click();
   await page.getByRole("button", { name: "Lost", exact: true }).click();
   await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Facebook: Returno Test / contact.test@gmail.com / 09123456789");
+  await page.locator("#status-trigger").click();
+  await page.getByRole("button", {name:"Found",exact:true}).click();
+  await expect(page.getByLabel("Date time found:", {exact:true})).toBeVisible();
+  await page.locator("#status-trigger").click();
+  await page.getByRole("button", {name:"Lost",exact:true}).click();
+  await expect(page.getByLabel("Date time lost:", {exact:true})).toBeVisible();
+  await expect(page.locator("#post-form")).not.toContainText("PHT");
   const item = `Browser wallet ${randomUUID().slice(0, 8)}`;
   await page.getByLabel("Item name:", { exact: true }).fill(item);
   await page
-    .getByLabel("Date & time found/lost (PHT, UTC+08:00):", { exact: true })
+    .getByLabel("Date time lost:", { exact: true })
     .fill("2026-10-06T12:30");
   await page
     .getByLabel("Location/Address :", { exact: true })
