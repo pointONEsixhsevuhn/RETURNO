@@ -641,7 +641,7 @@ function searchPage() {
   const pageVersion = renderVersion;
   const suggestions = () =>
     `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
-  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search item name, description, or location" aria-label="Search posts" value="${esc(state.query)}"></form><div id="search-content">${suggestions()}</div></section>`;
+  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"></form><div id="search-content">${suggestions()}</div></section>`;
   bindNavigation();
   let searchVersion = 0,
     timer;

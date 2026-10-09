@@ -1135,3 +1135,54 @@ dialog input {
   color: #484848;
   opacity: 1;
 }
+
+/* Compact phone layouts without shrinking input text or touch targets. */
+@media (max-width: 480px) {
+  .page { padding: 12px; }
+  .page-header { grid-template-columns: minmax(0, 1fr); row-gap: 6px; margin-bottom: 12px; }
+  .home-logo { width: 180px; max-width: 65%; }
+  .header-actions { grid-column: 1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 4px; }
+  .header-actions .pill { font-size: 12px; padding: 6px 10px; }
+  .header-actions .icon, .search-box .icon { width: 44px; height: 44px; padding: 10px; }
+  .welcome { font-size: 15px; line-height: 1.4; }
+  .brand-line { margin-bottom: 2px; }
+  .filters { gap: 4px; }
+  .filters button { font-size: 14px; padding: 6px 10px; }
+  .search-box { min-height: 44px; padding: 0 8px; gap: 4px; margin-bottom: 16px; }
+  .search-box input::placeholder { font-size: 13px; }
+  .search-page h2 { font-size: 16px; line-height: 1.4; margin-bottom: 12px; }
+  .categories { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 100%; }
+  .category { font-size: 13px; padding: 8px 6px; gap: 4px; border-radius: 14px; }
+  .category img { width: 85%; }
+  .cards { grid-auto-rows: 300px; gap: 10px; }
+  .card { border-radius: 18px; padding: 8px 10px 12px; }
+  .author strong { font-size: 15px; }
+  .card-data { font-size: 13px; margin-top: 10px; }
+  .own-title { font-size: 17px; }
+  .add-card { font-size: 44px; }
+  .editor { padding: 10px; }
+  .editor-panel { padding: 12px; border-radius: 20px; }
+  .editor-actions { gap: 4px; }
+  .post-button, .cancel-post-button { min-width: 60px; padding: 8px 10px; font-size: 14px; }
+  .post-fields { gap: 12px; margin-top: 14px; }
+  .post-field, .status-trigger { font-size: 14px; }
+  .post-field > span { margin-bottom: 5px; }
+  .upload-area { font-size: 14px; }
+  .stat { min-height: 76px; font-size: 14px; padding: 8px; }
+  .stat span { font-size: 20px; margin-top: 8px; }
+  .registered-users { padding: 10px; border-radius: 16px; }
+  .registered-users-head h2, .registered-users-head h3 { font-size: 16px; }
+  .registered-user { padding: 10px 0; font-size: 14px; }
+  .row-info strong { font-size: 15px; }
+  dialog { padding: 16px; border-radius: 18px; }
+  dialog h2 { font-size: 18px; }
+  .detail-data { font-size: 14px; }
+  .login, .registration, .role-screen { gap: 14px; }
+  .auth-logo { width: min(220px, 75%); }
+  .login-button { font-size: 17px; }
+  .role-button { font-size: 17px; }
+  .auth-page { margin: 20px auto; padding: 16px; }
+  .auth-page h1 { font-size: 20px; }
+  .auth-page > p { font-size: 14px; line-height: 1.5; }
+  .auth-page .logo { width: 180px; }
+}
