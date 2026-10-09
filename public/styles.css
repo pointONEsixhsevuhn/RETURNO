@@ -1106,3 +1106,8 @@ dialog input {
   padding: 4px 10px;
   border-radius: 14px;
 }
+
+.auth-switcher { display: flex; align-items: center; width: min(320px, 100%); padding: 4px; gap: 4px; }
+.auth-switcher button { flex: 1; font-size: 16px; border-radius: 999px; }
+.auth-switcher button[aria-selected="true"] { background: rgba(255, 255, 255, 0.4); font-weight: 700; }
+.auth-switcher span { font-size: 18px; }

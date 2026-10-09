@@ -6,7 +6,7 @@ async function register(page) {
   const email = `student-${randomUUID()}@e2e.example`;
   await page.goto("/#role");
   await page.getByRole("button", { name: "Student", exact: true }).click();
-  await page.getByRole("button", { name: "Register", exact: true }).click();
+  await page.getByRole("tab", { name: "Register", exact: true }).click();
   await page.getByLabel("Enter gmail").fill(email);
   await page
     .getByLabel("Full name", { exact: true })
@@ -280,4 +280,37 @@ test("student recovers a forgotten password using the emailed code and signs in 
  await page.getByLabel("Password",{exact:true}).fill(newPassword);
  await page.getByRole("button",{name:"Log In",exact:true}).click();
  await expect(page.getByRole("heading",{name:"WELCOME, STUDENT!"})).toBeVisible();
+});
+
+test("student login/register switcher supports taps, keyboard arrows and directional swipes", async ({ page }) => {
+ await page.goto("/#role");
+ await page.getByRole("button",{name:"Student",exact:true}).click();
+ const loginTab=page.getByRole("tab",{name:"Log in",exact:true});
+ const registerTab=page.getByRole("tab",{name:"Register",exact:true});
+ await expect(loginTab).toHaveAttribute("aria-selected","true");
+ await registerTab.click();
+ await expect(page.getByLabel("Full name",{exact:true})).toBeVisible();
+ await loginTab.click();
+ await loginTab.press("ArrowRight");
+ await expect(registerTab).toHaveAttribute("aria-selected","true");
+ await registerTab.press("ArrowLeft");
+ await expect(loginTab).toHaveAttribute("aria-selected","true");
+ async function swipe(dx,dy=0,selector=".screen") {
+  await page.evaluate(({dx,dy,selector})=>{
+   const target=document.querySelector(selector);
+   const start=new Touch({identifier:1,target,clientX:180,clientY:220});
+   const end=new Touch({identifier:1,target,clientX:180+dx,clientY:220+dy});
+   target.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,touches:[start]}));
+   target.dispatchEvent(new TouchEvent("touchend",{bubbles:true,changedTouches:[end]}));
+  },{dx,dy,selector});
+ }
+ await swipe(-100);
+ await expect(registerTab).toHaveAttribute("aria-selected","true");
+ await swipe(100);
+ await expect(loginTab).toHaveAttribute("aria-selected","true");
+ await swipe(-100,200);
+ await expect(loginTab).toHaveAttribute("aria-selected","true");
+ await swipe(-100,0,"#password");
+ await expect(loginTab).toHaveAttribute("aria-selected","true");
+ await noOverflow(page);
 });

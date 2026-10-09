@@ -124,8 +124,34 @@ function authField(
 }
 function authScreen(register = false) {
   register = register && state.role === "student";
-  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><form id="auth-form">${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password") + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password") + '<button class="register-link" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="forgot-password-link" type="button" data-go="forgot-password">Forgot password?</button>' : "") + (state.role === "student" ? '<button class="register-link" type="button" data-go="register">Register</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form>${register ? "" : '<footer class="legal">Privacy Act<br>Terms &amp; Conditions</footer>'}</section>`;
+  const switcher = state.role === "student" ? `<nav class="auth-switcher pill" role="tablist" aria-label="Student account"><button type="button" role="tab" id="login-tab" aria-selected="${!register}" aria-controls="auth-form" data-go="login">Log in</button><span aria-hidden="true">|</span><button type="button" role="tab" id="register-tab" aria-selected="${register}" aria-controls="auth-form" data-go="register">Register</button></nav>` : "";
+  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}"><img class="auth-logo" src="assets/logo.png" alt="RETURNO">${switcher}<form id="auth-form" ${state.role === "student" ? `role="tabpanel" aria-labelledby="${register ? "register-tab" : "login-tab"}"` : ""}>${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password") + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password") + '<button class="register-link" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="forgot-password-link" type="button" data-go="forgot-password">Forgot password?</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form>${register ? "" : '<footer class="legal">Privacy Act<br>Terms &amp; Conditions</footer>'}</section>`;
   bindNavigation();
+  if (state.role === "student") {
+    const tabs = app.querySelector(".auth-switcher");
+    tabs.onkeydown = event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const route = event.key === "Home" ? "login" : event.key === "End" ? "register" : register ? "login" : "register";
+      go(route);
+      document.getElementById(route + "-tab").focus();
+    };
+    let start;
+    const screen = app.querySelector(".screen");
+    screen.addEventListener?.("touchstart", event => {
+      start = event.touches.length === 1 && !event.target.closest("input, textarea") ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+    }, { passive: true });
+    screen.addEventListener?.("touchend", event => {
+      if (!start || event.changedTouches.length !== 1) return;
+      const dx = event.changedTouches[0].clientX - start.x;
+      const dy = event.changedTouches[0].clientY - start.y;
+      start = null;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx < 0 && !register) go("register");
+      if (dx > 0 && register) go("login");
+    }, { passive: true });
+    screen.addEventListener?.("touchcancel", () => { start = null; }, { passive: true });
+  }
   app.querySelectorAll("[data-toggle-password]").forEach(
     (toggle) =>
       (toggle.onclick = () => {

@@ -36,7 +36,7 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
   );
   await activate(
     page,
-    page.getByRole("button", { name: "Register", exact: true }),
+    page.getByRole("tab", { name: "Register", exact: true }),
   );
   const email = `keyboard-${randomUUID()}@e2e.example`;
   await typeInto(page, page.getByLabel("Enter gmail"), email);
