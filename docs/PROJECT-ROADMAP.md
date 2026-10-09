@@ -157,3 +157,5 @@ Student authentication switcher (2026-10-09): Log in is selected after choosing 
 Registration styling refinement (2026-10-09): registration fields and the Log in | Register switcher use transparent backgrounds with black outlines. The registration submit action is bold and uses the same colored pill as Log In. Full local suite: **90 passed**; **32 browser cases passed** across four viewports. Chromium additionally confirmed all four registration input outlines and the submit button's bold weight/pill gradient.
 
 Authentication switcher color (2026-10-09): restored the brown pill gradient and lighter selected-option highlight to Log in | Register. Registration inputs retain black outlines. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
+
+Registration password visibility (2026-10-09): Set password and Confirm password now use the login magnifying-glass Show/Hide controls independently, preserving labels and pressed states. Full local suite: **90 passed**; **32 browser cases passed** across four viewports. An additional Chromium check verified each registration field toggles independently between text and password.
