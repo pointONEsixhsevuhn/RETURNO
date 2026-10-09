@@ -1224,6 +1224,7 @@ dialog input {
   .card-head > .status { font-size: 12px; padding: 4px 8px; }
 }
 
-/* Consistent rounded rectangles for logout and status filters on all devices. */
-.logout-button { border-radius: 10px; min-width: 68px; }
-.filters button { border-radius: 10px; min-width: 58px; }
+/* Match logout and filters to the post status badge pill. */
+.logout-button { border-radius: 20px; background: var(--pill); min-width: 68px; }
+.filters button { border-radius: 20px; background: var(--pill); min-width: 58px; }
+.filters button.active { font-weight: 700; box-shadow: inset 0 0 0 2px var(--edge); }
