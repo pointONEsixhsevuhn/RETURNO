@@ -1223,3 +1223,7 @@ dialog input {
   .card > .card-head { padding-right: 72px; }
   .card-head > .status { font-size: 12px; padding: 4px 8px; }
 }
+
+/* Consistent rounded rectangles for logout and status filters on all devices. */
+.logout-button { border-radius: 10px; min-width: 68px; }
+.filters button { border-radius: 10px; min-width: 58px; }
