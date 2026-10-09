@@ -1236,8 +1236,11 @@ dialog input {
   font-size: 12px;
   line-height: 1.3;
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  white-space: pre-wrap;
 }
+
+/* Let long contact details expand previews instead of cutting them off. */
+.cards:has(.card-contact) { grid-auto-rows: auto; }
+.card:has(.card-contact) { aspect-ratio: auto; min-height: 180px; }
+.card:has(.card-contact) .card-data { flex: 1 0 auto; }
+.detail-data { overflow-wrap: anywhere; }
