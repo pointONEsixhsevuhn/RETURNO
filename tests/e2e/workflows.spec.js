@@ -326,15 +326,17 @@ test("student login/register switcher supports taps, keyboard arrows and directi
  await noOverflow(page);
 });
 
-test("admin totals are display-only and separate filters select each report status", async ({page,testServer}) => {
+test("admin status filters show counts and select each report status", async ({page,testServer}) => {
  const {db}=await import("../../db.js");
  const admin=db.prepare("SELECT id FROM users WHERE email=?").get("admin@e2e.example");
  const statuses=["Lost","Found","Returned","Claimed"]; const ids=statuses.map(()=>randomUUID());
  try {
   statuses.forEach((status,i)=>db.prepare("INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description) VALUES(?,?,?,?,?,?,?,?)").run(ids[i],admin.id,status==="Lost"?"Lost":"Found",status,"Filter fixture "+status,"2026-10-09T12:00","Test","Isolated filter test"));
   await page.goto("/#role"); await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
-  await expect(page.locator(".stats .stat")).toHaveCount(4);
-  await expect(page.locator(".stats button")).toHaveCount(0);
+  await expect(page.locator(".stats")).toHaveCount(0);
+  const totals=(await (await page.request.get("/api/stats")).json()).stats;
+  for(const status of statuses) await expect(page.locator(`[data-admin-filter="${status}"] .filter-count`)).toHaveText("("+totals[status]+")");
+  await expect(page.locator('[data-admin-filter=""] .filter-count')).toHaveText("("+statuses.reduce((sum,status)=>sum+totals[status],0)+")");
   const filters=page.getByRole("navigation",{name:"Report status"});
   for(const [i,status] of statuses.entries()) {
    const button=filters.getByRole("button",{name:status,exact:true});await button.click();

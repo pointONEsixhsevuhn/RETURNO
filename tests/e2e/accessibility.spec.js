@@ -232,7 +232,8 @@ test("keyboard login errors, password toggle and loading/retry states", async ({
   await expect(
     page.getByRole("heading", { name: "Registered users" }),
   ).toHaveCount(0);
-  await expect(page.locator(".stats .stat")).toHaveCount(4);
+  await expect(page.locator(".stats")).toHaveCount(0);
+  await expect(page.locator("[data-admin-filter] .filter-count")).toHaveCount(5);
   await activate(
     page,
     page.getByRole("button", { name: "Admin profile", exact: true }),
