@@ -1,0 +1,2 @@
+ALTER TABLE posts ADD COLUMN contact_email TEXT NOT NULL DEFAULT '';
+ALTER TABLE posts ADD COLUMN contact_phone TEXT NOT NULL DEFAULT '';

@@ -65,7 +65,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 3);
+    assert.equal(migrate(db), 4);
     assert.equal(
       db
         .prepare(
@@ -75,7 +75,9 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     assert.equal(migrate(db), 0);
-    assert.deepEqual(snapshot(db), before);
+    const upgraded = snapshot(db);
+    for (const post of upgraded.posts) { assert.equal(post.contact_email, ""); assert.equal(post.contact_phone, ""); delete post.contact_email; delete post.contact_phone; }
+    assert.deepEqual(upgraded, before);
     db.prepare("DELETE FROM posts WHERE id='claimed'").run();
     assert.equal(
       db.prepare("SELECT count(*) n FROM retired_student_claims").get().n,

@@ -491,3 +491,17 @@ test("image upload accepts 10 MB and rejects one byte above the limit", async ()
   const rejected=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+Buffer.concat([bytes,Buffer.alloc(1)]).toString("base64")},login.cookie);
   assert.equal(rejected.status,413);
 });
+
+test("post contacts validate, persist, and retain admin-only editing", async () => {
+ createUser("contacts@test.example","Contact test","Contact123!");
+ const login=await request("/api/login","POST",{email:"contacts@test.example",password:"Contact123!",role:"student"});
+ const input={kind:"Lost",item_name:"Contact fixture",event_at:"2026-10-09T12:00",location:"Test",description:"Test",contact_email:"Contact.Test@gmail.com",contact_phone:"+63 912 345 6789"};
+ const created=await request("/api/posts","POST",input,login.cookie);assert.equal(created.status,201);
+ assert.equal(created.data.post.contact_email,"contact.test@gmail.com");assert.equal(created.data.post.contact_phone,input.contact_phone);
+ for(const invalid of [{contact_email:"bad@example.com"},{contact_phone:"<script>"},{contact_phone:"123"},{contact_email:123}]) assert.equal((await request("/api/posts","POST",{...input,...invalid},login.cookie)).status,400);
+ const id=created.data.post.id;assert.equal((await request("/api/posts/"+id,"PUT",input,login.cookie)).status,403);
+ const admin=await request("/api/login","POST",{email:"admin@test.example",password:"Administrator123!",role:"admin"});
+ const {contact_email,contact_phone,...withoutContacts}=input;
+ const updated=await request("/api/posts/"+id,"PUT",withoutContacts,admin.cookie);assert.equal(updated.status,200);assert.equal(updated.data.post.contact_email,"contact.test@gmail.com");
+ const cleared=await request("/api/posts/"+id,"PUT",{...input,contact_email:"",contact_phone:""},admin.cookie);assert.equal(cleared.status,200);assert.equal(cleared.data.post.contact_phone,"");
+});

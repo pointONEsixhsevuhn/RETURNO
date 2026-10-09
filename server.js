@@ -25,7 +25,7 @@ const publicUser = (u) => ({
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
-const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
+const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.contact_email,p.contact_phone,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
 const attempts = new Map();
 const deliveries = new Set();
 
@@ -149,6 +149,11 @@ function validEventTime(value) {
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return day >= 1 && day <= days[month - 1];
 }
+function contactField(data, key, previous, max) {
+  const value = data[key] === undefined ? (previous?.[key] ?? "") : data[key];
+  if (typeof value !== "string" || value.length > max) fail(400, "Invalid contact details.");
+  return value.trim();
+}
 function postData(data, previous) {
   const kind = data.kind;
   if (!["Lost", "Found"].includes(kind)) fail(400, "Select Lost or Found.");
@@ -158,6 +163,10 @@ function postData(data, previous) {
     fail(400, "Active status must match Lost / Found type.");
   const eventAt = textField(data, "event_at", 32);
   if (!validEventTime(eventAt)) fail(400, "Enter a valid date and time.");
+  const contactEmail = contactField(data, "contact_email", previous, 254).toLowerCase();
+  const contactPhone = contactField(data, "contact_phone", previous, 30);
+  if (contactEmail && !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@gmail\.com$/i.test(contactEmail)) fail(400, "Enter a valid Gmail contact address.");
+  if (contactPhone && (!/^\+?[0-9 ()-]+$/.test(contactPhone) || contactPhone.replace(/\D/g, "").length < 7 || contactPhone.replace(/\D/g, "").length > 15)) fail(400, "Enter a valid contact number (7-15 digits).");
   return [
     kind,
     status,
@@ -168,6 +177,8 @@ function postData(data, previous) {
     data.image === undefined
       ? (previous?.image ?? null)
       : imageData(data.image),
+    contactEmail,
+    contactPhone,
   ];
 }
 function rateLimit(req) {
@@ -457,7 +468,7 @@ export const server = http.createServer(async (req, res) => {
         const id = randomUUID();
         const inserted = db
           .prepare(
-            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image) SELECT ?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
+            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
           )
           .run(id, user.id, ...values, user.id);
         if (!inserted.changes)
@@ -490,7 +501,7 @@ export const server = http.createServer(async (req, res) => {
           );
           const updated = db
             .prepare(
-              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
             )
             .run(...values, post.id, user.id);
           if (!updated.changes)

@@ -36,6 +36,7 @@ export const migrations = [
     ),
   },
   { version: 5, name: "password-recovery", sql: readFileSync(new URL("./migrations/005-password-recovery.sql", import.meta.url), "utf8") },
+  { version: 6, name: "post-contacts", sql: readFileSync(new URL("./migrations/006-post-contacts.sql", import.meta.url), "utf8") },
 ];
 
 export function migrate(db, steps = migrations) {
