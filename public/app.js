@@ -199,7 +199,7 @@ function authScreen(register = false) {
 }
 function verificationScreen(email) {
   const version = renderVersion;
-  app.innerHTML = `<main class="auth-page">${logo}<h1>Confirm your email</h1><p>We sent a six-digit code to ${esc(email)}. Check your inbox and spam folder. It expires in 10 minutes.</p><form id="verification-form"><label for="verification-code">Verification code</label><input class="pill" id="verification-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required><p id="verification-error" role="alert"></p><button class="pill" type="submit">Confirm email</button></form><button class="pill" id="verification-back">Register again / request a new code</button></main>`;
+  app.innerHTML = `<main class="auth-page">${logo}<h1>Confirm your email</h1><p>We've sent a code to your email. Check your inbox or spam folder. The code will expire after 10 minutes.</p><form id="verification-form"><label for="verification-code">Verification code</label><input class="pill" id="verification-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required><p id="verification-error" role="alert"></p><button class="pill" type="submit">Confirm email</button></form><button class="pill" id="verification-back">Request a new code</button></main>`;
   document.querySelector("#verification-back").onclick = () => go("register");
   document.querySelector("#verification-form").onsubmit = async (event) => {
     event.preventDefault();

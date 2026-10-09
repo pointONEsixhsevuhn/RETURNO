@@ -163,3 +163,5 @@ Registration password visibility (2026-10-09): Set password and Confirm password
 Stationary student authentication branding (2026-10-09): login and registration share top alignment so the RETURNO logo and switcher stay in place while forms change. Chromium bounding-box checks confirmed identical logo/switcher positions before and after switching at 1280x720, 390x844 and 320x568. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
 
 Shared authentication legal footer (2026-10-09): Privacy Act and Terms & Conditions appear on both Log in and Register. Registration keeps the footer at the bottom right in normal flow so it cannot overlap fields on short screens. Chromium confirmed visibility and separation from the form at desktop, mobile and narrow-phone sizes. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
+
+Email confirmation refinement (2026-10-09): generic revised message, outlined 44px code input matching Confirm email width and height, and Request a new code action without Register again. Full tests: **90 passed**; **32 browser cases passed**.
