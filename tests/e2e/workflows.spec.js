@@ -81,7 +81,15 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByLabel("Item name:", {exact:true})).toHaveValue("");
   await page.locator("#status-trigger").click();
   await page.getByRole("button", { name: "Lost", exact: true }).click();
-  await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Facebook: Returno Test / contact.test@gmail.com / 09123456789");
+  await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Returno Test");
+  await page.getByRole("button", {name:"Add contact method", exact:true}).click();
+  await page.getByLabel("Contact method", {exact:true}).nth(1).selectOption("Gmail");
+  await page.getByLabel("How to contact you (optional):", {exact:true}).nth(1).fill("contact.test@gmail.com");
+  await page.getByRole("button", {name:"Add contact method", exact:true}).click();
+  await page.getByLabel("Contact method", {exact:true}).nth(2).selectOption("Contact number");
+  await page.getByLabel("How to contact you (optional):", {exact:true}).nth(2).fill("09123456789");
+  await page.getByRole("button", {name:"Add contact method", exact:true}).click();
+  await page.getByRole("button", {name:"Remove contact method", exact:true}).last().click();
   await page.locator("#status-trigger").click();
   await page.getByRole("button", {name:"Found",exact:true}).click();
   await expect(page.getByLabel("Date time found:", {exact:true})).toBeVisible();
@@ -119,7 +127,9 @@ test("student report lifecycle and administrator review, edit, return and delete
     0,
   );
   const posts = await (await page.request.get("/api/posts?mine=1")).json();
-  const id = posts.posts.find((post) => post.item_name === item).id;
+  const savedPost = posts.posts.find((post) => post.item_name === item);
+  expect(savedPost.contact_details).toBe("Facebook: Returno Test\nGmail: contact.test@gmail.com\nContact number: 09123456789");
+  const id = savedPost.id;
   expect(
     (
       await page.request.patch(`/api/posts/${id}`, {

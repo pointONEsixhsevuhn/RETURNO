@@ -11,6 +11,9 @@ function harness({ role = "student", failure = false } = {}) {
   const element = (key) => {
     if (!nodes.has(key))
       nodes.set(key, {
+        children: [],
+        append(child) { this.children.push(child); },
+        focus() {},
         innerHTML: "",
         textContent: "",
         hidden: true,
@@ -63,6 +66,15 @@ function harness({ role = "student", failure = false } = {}) {
   };
   const ctx = vm.createContext({
     document: {
+      createElement: () => {
+        const row = element(Symbol("contact-row"));
+        const fields = new Map();
+        row.querySelector = selector => {
+          if (!fields.has(selector)) fields.set(selector, element(Symbol(selector)));
+          return fields.get(selector);
+        };
+        return row;
+      },
       querySelector: element,
       querySelectorAll: (selector) =>
         selector === "[data-kind]"
@@ -660,4 +672,25 @@ test("canceling a post clears editing and returns to the user's profile", () => 
   assert.equal(vm.runInContext("state.edit",h.ctx),null);
   assert.equal(h.requests.length,0);
  }
+});
+
+
+test("combined contact limit blocks posting instead of silently losing details", async () => {
+  const h = harness();
+  vm.runInContext("editor()", h.ctx);
+  h.kinds[0].onclick();
+  h.element("#contact-rows").children[0].querySelector("input").value = "x".repeat(500);
+  await h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: {disabled:false} });
+  assert.equal(h.requests.length, 0);
+  assert.match(h.element("#post-error").textContent, /500 characters/);
+});
+
+test("admin editing preserves legacy free-form contact text", async () => {
+  const h = harness({role:"admin"});
+  vm.runInContext("state.edit={id:'old',kind:'Lost',status:'Lost',contact_details:'Telegram @example'};editor()", h.ctx);
+  const row = h.element("#contact-rows").children[0];
+  assert.equal(row.querySelector("select").value, "Other");
+  assert.equal(row.querySelector("input").value, "Telegram @example");
+  await h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: {disabled:false} });
+  assert.equal(JSON.parse(h.requests[0].options.body).contact_details, "Other: Telegram @example");
 });

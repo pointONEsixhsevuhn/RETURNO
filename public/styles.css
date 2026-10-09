@@ -1244,3 +1244,20 @@ dialog input {
 .card:has(.card-contact) { aspect-ratio: auto; min-height: 180px; }
 .card:has(.card-contact) .card-data { flex: 1 0 auto; }
 .detail-data { overflow-wrap: anywhere; }
+
+.contact-methods { display: grid; gap: 8px; min-width: 0; }
+#contact-rows { display: grid; gap: 8px; }
+.contact-method-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.contact-method-row input { min-width: 0; width: 100%; background: transparent; border: 1px solid #191919; height: 44px; padding: 8px 12px; font-size: 16px; }
+.contact-method-row input::placeholder { font-size: 13px; }
+.contact-method-row select { min-width: 0; height: 44px; font-size: 14px; background: var(--pill); }
+.contact-methods > button { justify-self: start; }
+.detail-data p:last-child { white-space: pre-wrap; }
+@media (max-width: 600px) {
+  .contact-method-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .contact-method-row select { grid-column: 1; }
+  .contact-method-row input { grid-column: 1 / -1; grid-row: 2; }
+  .contact-method-row button { grid-column: 2; grid-row: 1; }
+}
+
+.contact-methods, .contact-note { grid-column: 1 / -1; }
