@@ -159,3 +159,5 @@ Registration styling refinement (2026-10-09): registration fields and the Log in
 Authentication switcher color (2026-10-09): restored the brown pill gradient and lighter selected-option highlight to Log in | Register. Registration inputs retain black outlines. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
 
 Registration password visibility (2026-10-09): Set password and Confirm password now use the login magnifying-glass Show/Hide controls independently, preserving labels and pressed states. Full local suite: **90 passed**; **32 browser cases passed** across four viewports. An additional Chromium check verified each registration field toggles independently between text and password.
+
+Stationary student authentication branding (2026-10-09): login and registration share top alignment so the RETURNO logo and switcher stay in place while forms change. Chromium bounding-box checks confirmed identical logo/switcher positions before and after switching at 1280x720, 390x844 and 320x568. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
