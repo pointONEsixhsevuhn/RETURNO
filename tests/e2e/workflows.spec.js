@@ -112,6 +112,8 @@ test("student report lifecycle and administrator review, edit, return and delete
   });
   await expect(card).toBeVisible();
   await expect(card.locator("img")).toBeVisible();
+  await expect(card.locator(".card-contact")).toBeVisible();
+  await expect(card.locator(".card-contact")).toContainText("contact.test@gmail.com");
   await noOverflow(page);
   await expect(page.getByRole("button", { name: "Post options" })).toHaveCount(
     0,
@@ -128,6 +130,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await card.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Campus library");
+  await expect(page.getByRole("dialog")).toContainText("Date & time lost:");
   await expect(page.getByRole("dialog")).toContainText("Facebook: Returno Test");
   await expect(page.getByRole("dialog")).toContainText("contact.test@gmail.com");
   await expect(page.getByRole("dialog")).toContainText("09123456789");
