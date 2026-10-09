@@ -43,7 +43,7 @@ async function body(req) {
     parts = [];
   for await (const part of req) {
     size += part.length;
-    if (size > 4 * 1024 * 1024) fail(413, "Image must be smaller than 2 MB.");
+    if (size > 15 * 1024 * 1024) fail(413, "Image must be 10 MB or smaller.");
     parts.push(part);
   }
   try {
@@ -126,8 +126,8 @@ function imageData(value) {
     /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
   if (!match) fail(400, "Use a PNG, JPEG, or WebP image.");
   const bytes = Buffer.from(match[2], "base64");
-  if (bytes.length > 2 * 1024 * 1024)
-    fail(413, "Image must be smaller than 2 MB.");
+  if (bytes.length > 10 * 1024 * 1024)
+    fail(413, "Image must be 10 MB or smaller.");
   const valid =
     match[1] === "png"
       ? bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))

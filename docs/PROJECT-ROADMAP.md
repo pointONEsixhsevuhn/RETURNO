@@ -165,3 +165,5 @@ Stationary student authentication branding (2026-10-09): login and registration 
 Shared authentication legal footer (2026-10-09): Privacy Act and Terms & Conditions appear on both Log in and Register. Registration keeps the footer at the bottom right in normal flow so it cannot overlap fields on short screens. Chromium confirmed visibility and separation from the form at desktop, mobile and narrow-phone sizes. Full local suite: **90 passed**; **32 browser cases passed** across four viewports.
 
 Email confirmation refinement (2026-10-09): generic revised message, outlined 44px code input matching Confirm email width and height, and Request a new code action without Register again. Full tests: **90 passed**; **32 browser cases passed**.
+
+10 MB image uploads (2026-10-09): client and API accept PNG/JPEG/WebP up to 10 MiB, with a bounded 15 MiB JSON request for base64 overhead. Exact-limit and one-byte-over API/client tests pass. Standard device file picker retained; browser/OS chooses Gallery or Photos and a website cannot select a specific app. Full tests: **92 passed**; **32 browser cases passed**.

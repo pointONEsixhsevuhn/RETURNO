@@ -636,3 +636,13 @@ test("successful student posting replaces the editor entry so Back skips the sub
     .onsubmit({ preventDefault() {}, currentTarget: {}, submitter: button });
   assert.deepEqual(h.entries, ["#feed"]);
 });
+
+test("image picker accepts 10 MB and rejects larger files before reading", async () => {
+  const h=harness(); const readers=imageReaders(h);
+  const accepted=imageEvent(); accepted.target.files[0].size=10*1024*1024;
+  const reading=h.element("#image-input").onchange(accepted);
+  assert.equal(readers.length,1); readers[0].result="boundary-image"; readers[0].onload(); await reading;
+  const rejected=imageEvent(); rejected.target.files[0].size=10*1024*1024+1;
+  await h.element("#image-input").onchange(rejected);
+  assert.equal(readers.length,1); assert.match(h.element("#post-error").textContent,/10 MB/);
+});

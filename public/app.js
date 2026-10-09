@@ -476,12 +476,12 @@ function editor() {
     reading = false;
     if (
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-      file.size > 2 * 1024 * 1024
+      file.size > 10 * 1024 * 1024
     ) {
       event.target.value = "";
       return errorAt(
         output,
-        "Use a PNG, JPEG, or WebP image smaller than 2 MB.",
+        "Use a PNG, JPEG, or WebP image 10 MB or smaller.",
       );
     }
     reading = true;

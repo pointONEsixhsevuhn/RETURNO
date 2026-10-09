@@ -479,3 +479,15 @@ test("schema integrity, uniqueness, foreign keys and role constraints", async ()
   );
   assert.throws(() => db.prepare("UPDATE posts SET status='Invalid'").run());
 });
+
+test("image upload accepts 10 MB and rejects one byte above the limit", async () => {
+  createUser("upload-limit@test.example","Upload test","Upload123!","student");
+  const login=await request("/api/login","POST",{email:"upload-limit@test.example",password:"Upload123!",role:"student"});
+  const bytes=Buffer.alloc(10*1024*1024);
+  Buffer.from("89504e470d0a1a0a","hex").copy(bytes);
+  const input={kind:"Found",item_name:"Upload boundary",event_at:"2026-10-09T12:00",location:"Test",description:"Isolated boundary fixture"};
+  const accepted=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+bytes.toString("base64")},login.cookie);
+  assert.equal(accepted.status,201);
+  const rejected=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+Buffer.concat([bytes,Buffer.alloc(1)]).toString("base64")},login.cookie);
+  assert.equal(rejected.status,413);
+});
