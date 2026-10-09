@@ -1250,7 +1250,7 @@ dialog input {
 .contact-methods, .contact-note { grid-column: 1 / -1; }
 .contact-box { background: var(--pill); border: 1px solid #191919; border-radius: 22px; padding: 10px 14px; display: grid; gap: 6px; }
 #contact-rows { display: grid; gap: 6px; }
-.contact-method-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.contact-method-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) auto; gap: 8px; align-items: center; }
 .contact-method-row input, .contact-method-row select, .contact-method-row button, #add-contact { min-height: 44px; background: transparent; border: 0; border-radius: 0; padding: 6px; }
 .contact-method-row input { min-width: 0; width: 100%; font-size: 16px; border-left: 1px solid #aaa; border-right: 1px solid #aaa; }
 .contact-method-row input::placeholder { font-size: 13px; color: #484848; opacity: 1; }
@@ -1261,7 +1261,7 @@ dialog input {
 @media (max-width: 480px) {
   .contact-methods { font-size: 14px; }
   .contact-box { padding: 10px 14px; }
-  .contact-method-row { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) auto; gap: 3px; }
+  .contact-method-row { grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.5fr) auto; gap: 3px; }
   .contact-method-row select, .contact-method-row button, #add-contact { font-size: 12px; padding: 4px 2px; }
   .contact-method-row input { padding: 6px; }
   .contact-method-row input::placeholder { font-size: 12px; }

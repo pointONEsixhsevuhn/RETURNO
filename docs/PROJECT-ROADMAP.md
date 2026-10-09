@@ -223,3 +223,5 @@ Boxed contact rows (2026-10-10): contact selector, Type here input and Remove st
 Contact hint wording (2026-10-10): changed posting guidance to What you enter here will appear on your home post. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: refresh and verify the wording on the phone.
 
 Brown contact box (2026-10-10): How to contact you now uses the shared brown pill gradient behind its contact rows and Add contact method control. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: refresh and check the contact box on the phone.
+
+Wider contact typing space (2026-10-10): contact inputs receive more width than the method selector and Remove on all devices. Retained the user's mobile 0.65/1.5 proportions; tablet/desktop use 1/1.7 proportions. Measured input widths 128, 177, 354 and 348px at 320, 390, 768 and 1280px, exceeding both neighboring controls. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: physical-phone typing-space acceptance.
