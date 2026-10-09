@@ -1213,3 +1213,13 @@ dialog input {
   .student-home .status { font-size: 12px; padding: 4px 8px; }
   .student-home .card-data { font-size: 12px; margin-top: 8px; }
 }
+
+/* Keep the posted status in the upper-right corner at every viewport. */
+.card > .card-head { position: relative; padding-right: 84px; }
+.card > .card-head > .status { position: absolute; top: 0; right: 0; }
+.student-home .card > .card-head { flex-direction: row; padding-right: 72px; min-height: 44px; }
+.student-home .card-head .author { min-width: 0; }
+@media (max-width: 480px) {
+  .card > .card-head { padding-right: 72px; }
+  .card-head > .status { font-size: 12px; padding: 4px 8px; }
+}

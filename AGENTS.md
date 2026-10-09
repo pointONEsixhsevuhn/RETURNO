@@ -14,6 +14,7 @@ The user requests continued guidance and a separate Git commit and GitHub push f
 - Report implemented behavior, test results, commit hash, push result, and the recommended next task. Do not claim browser, device, deployment, or GitHub Actions checks passed unless actually verified.
 - If authentication, network, or permissions prevent a push, keep the local commit, report the blocker, and retry when access is restored.
 - Keep passwords, tokens, local databases, and personal records out of Git. Test with isolated temporary databases rather than existing user data.
+- Keep posted status badges at the upper-right corner of post cards on all screen sizes, including home, own posts and search results.
 - Recommendations are a roadmap, not authorization to implement every future phase at once. Continue with the task the user chooses.
 
 Repository: https://github.com/pointONEsixhsevuhn/RETURNO
