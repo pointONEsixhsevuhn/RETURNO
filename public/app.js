@@ -578,20 +578,19 @@ async function admin(version, status = "") {
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((status) => `<button class="stat" data-stat="${status}">${status.toUpperCase()}<span>${totals.stats[status]}</span></button>`).join("")}</div><div class="filters"><button class="active" id="all-posts">${status ? status.toUpperCase() : "ALL"}</button></div><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}<div class="stats">${["Lost", "Returned", "Found", "Claimed"].map((status) => `<div class="stat">${status.toUpperCase()}<span>${totals.stats[status]}</span></div>`).join("")}</div><nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"}</button>`).join("")}</nav><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
   bindNavigation();
   bindPostActions();
   if (!result.posts.length)
     app.querySelector(".admin-list").innerHTML =
       `<p class="empty" role="status">${status ? `No ${esc(status.toLowerCase())} posts.` : "No reports have been posted yet."}</p>`;
   app
-    .querySelectorAll("[data-stat]")
+    .querySelectorAll("[data-admin-filter]")
     .forEach(
       (el) =>
         (el.onclick = () =>
-          admin(++renderVersion, el.dataset.stat).catch(errorDialog)),
+          admin(++renderVersion, el.dataset.adminFilter).catch(errorDialog)),
     );
-  document.querySelector("#all-posts").onclick = () => render();
 }
 async function adminProfile(version) {
   listLoading("Loading admin profile...");

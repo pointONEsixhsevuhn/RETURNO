@@ -325,3 +325,25 @@ test("student login/register switcher supports taps, keyboard arrows and directi
  await expect(loginTab).toHaveAttribute("aria-selected","true");
  await noOverflow(page);
 });
+
+test("admin totals are display-only and separate filters select each report status", async ({page,testServer}) => {
+ const {db}=await import("../../db.js");
+ const admin=db.prepare("SELECT id FROM users WHERE email=?").get("admin@e2e.example");
+ const statuses=["Lost","Found","Returned","Claimed"]; const ids=statuses.map(()=>randomUUID());
+ try {
+  statuses.forEach((status,i)=>db.prepare("INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description) VALUES(?,?,?,?,?,?,?,?)").run(ids[i],admin.id,status==="Lost"?"Lost":"Found",status,"Filter fixture "+status,"2026-10-09T12:00","Test","Isolated filter test"));
+  await page.goto("/#role"); await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
+  await expect(page.locator(".stats .stat")).toHaveCount(4);
+  await expect(page.locator(".stats button")).toHaveCount(0);
+  const filters=page.getByRole("navigation",{name:"Report status"});
+  for(const [i,status] of statuses.entries()) {
+   const button=filters.getByRole("button",{name:status,exact:true});await button.click();
+   await expect(button).toHaveAttribute("aria-pressed","true");
+   await expect(page.locator('.admin-row [data-detail="'+ids[i]+'"]')).toBeVisible();
+   for(const id of ids.filter(id=>id!==ids[i])) await expect(page.locator('.admin-row [data-detail="'+id+'"]')).toHaveCount(0);
+   await noOverflow(page);
+  }
+  await filters.getByRole("button",{name:"All",exact:true}).click();
+  for(const id of ids) await expect(page.locator('.admin-row [data-detail="'+id+'"]')).toBeVisible();
+ } finally {for(const id of ids)db.prepare("DELETE FROM posts WHERE id=?").run(id);}
+});
