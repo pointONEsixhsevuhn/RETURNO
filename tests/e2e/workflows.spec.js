@@ -65,6 +65,12 @@ test("student report lifecycle and administrator review, edit, return and delete
   await noOverflow(page);
   await page.getByRole("button", { name: "Your posts", exact: true }).click();
   await page.getByRole("button", { name: "Add post", exact: true }).click();
+  await page.getByLabel("Item name:", {exact:true}).fill("Unsaved draft");
+  await page.getByRole("button", {name:"Cancel",exact:true}).click();
+  await expect(page).toHaveURL(/#mine$/);
+  await expect(page.locator("#post-form")).toHaveCount(0);
+  await page.getByRole("button", {name:"Add post",exact:true}).click();
+  await expect(page.getByLabel("Item name:", {exact:true})).toHaveValue("");
   await page.locator("#status-trigger").click();
   await page.getByRole("button", { name: "Lost", exact: true }).click();
   await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Facebook: Returno Test / contact.test@gmail.com / 09123456789");

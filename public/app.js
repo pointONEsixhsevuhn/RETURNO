@@ -451,7 +451,7 @@ function editor() {
   bindNavigation();
   document.querySelector("[data-cancel-post]").onclick = () => {
     state.edit = null;
-    go(state.user.role === "admin" ? state.back : "feed", { replace: true });
+    go(state.user.role === "admin" ? "admin-profile" : "mine", { replace: true });
   };
   const options = document.querySelector("#status-options"),
     trigger = document.querySelector("#status-trigger"),

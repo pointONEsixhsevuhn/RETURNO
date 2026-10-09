@@ -651,3 +651,13 @@ test("image picker accepts 10 MB and rejects larger files before reading", async
   await h.element("#image-input").onchange(rejected);
   assert.equal(readers.length,1); assert.match(h.element("#post-error").textContent,/10 MB/);
 });
+
+test("canceling a post clears editing and returns to the user's profile", () => {
+ for (const role of ["student","admin"]) {
+  const h=harness({role}); vm.runInContext("state.edit={id:'draft',kind:'Lost'};editor()",h.ctx);
+  h.element("[data-cancel-post]").onclick();
+  assert.equal(h.entries.at(-1),role==="admin"?"#admin-profile":"#mine");
+  assert.equal(vm.runInContext("state.edit",h.ctx),null);
+  assert.equal(h.requests.length,0);
+ }
+});
