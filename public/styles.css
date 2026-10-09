@@ -1186,3 +1186,16 @@ dialog input {
   .auth-page > p { font-size: 14px; line-height: 1.5; }
   .auth-page .logo { width: 180px; }
 }
+
+/* Two-column student home cards, including narrow phones. */
+.student-home .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.student-home .item-image { height: clamp(90px, 22vw, 160px); aspect-ratio: auto; }
+@media (max-width: 480px) {
+  .student-home .cards { gap: 8px; grid-auto-rows: 300px; }
+  .student-home .card { padding: 8px; border-radius: 16px; }
+  .student-home .card-head { flex-direction: column; gap: 6px; padding-bottom: 8px; }
+  .student-home .author { width: 100%; }
+  .student-home .author strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .student-home .status { font-size: 12px; padding: 4px 8px; }
+  .student-home .card-data { font-size: 12px; margin-top: 8px; }
+}

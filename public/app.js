@@ -423,7 +423,7 @@ async function feed(own, version) {
   }
   if (version !== renderVersion) return;
   state.posts = posts;
-  app.innerHTML = `<section class="screen page ${own ? "own" : ""}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!posts.length ? `<p class="empty" role="status">${own ? "You have not posted any items yet. Use Add post to report an item." : "No posts match this filter."}</p>` : ""}</section>`;
+  app.innerHTML = `<section class="screen page ${own ? "own" : "student-home"}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!posts.length ? `<p class="empty" role="status">${own ? "You have not posted any items yet. Use Add post to report an item." : "No posts match this filter."}</p>` : ""}</section>`;
   bindNavigation();
   bindPostActions();
   if (own)
