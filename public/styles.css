@@ -1248,7 +1248,7 @@ dialog input {
 /* Contact controls share one box, with each method on a single row. */
 .contact-methods { display: grid; gap: 7px; min-width: 0; font-size: 17px; }
 .contact-methods, .contact-note { grid-column: 1 / -1; }
-.contact-box { border: 1px solid #191919; border-radius: 22px; padding: 10px 14px; display: grid; gap: 6px; }
+.contact-box { background: var(--pill); border: 1px solid #191919; border-radius: 22px; padding: 10px 14px; display: grid; gap: 6px; }
 #contact-rows { display: grid; gap: 6px; }
 .contact-method-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .contact-method-row input, .contact-method-row select, .contact-method-row button, #add-contact { min-height: 44px; background: transparent; border: 0; border-radius: 0; padding: 6px; }

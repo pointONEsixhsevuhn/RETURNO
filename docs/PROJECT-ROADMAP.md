@@ -221,3 +221,5 @@ Multiple contact methods (2026-10-10): posting now offers Facebook, Contact numb
 Boxed contact rows (2026-10-10): contact selector, Type here input and Remove stay on one row within one rounded outlined box; Add contact method sits below rows inside the same box. Shared 44px control heights and 22px rounding match posting input sizing. Compact phone columns retain the requested order. Mocked measurements confirmed same-row alignment, containment, 44px heights and no overflow at 320, 390, 768 and 1280px; visually inspected the 320px contact section. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: physical-phone contact-box acceptance.
 
 Contact hint wording (2026-10-10): changed posting guidance to What you enter here will appear on your home post. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: refresh and verify the wording on the phone.
+
+Brown contact box (2026-10-10): How to contact you now uses the shared brown pill gradient behind its contact rows and Add contact method control. Full isolated suite: **98 passed**; **36 browser cases passed**. Next: refresh and check the contact box on the phone.
