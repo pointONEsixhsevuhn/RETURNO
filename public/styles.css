@@ -1226,5 +1226,5 @@ dialog input {
 
 /* Match logout and filters to the post status badge pill. */
 .logout-button { border-radius: 20px; background: var(--pill); min-width: 68px; }
-.filters button { border-radius: 20px; background: var(--pill); min-width: 58px; }
-.filters button.active { font-weight: 700; box-shadow: inset 0 0 0 2px var(--edge); }
+.filters button { border-radius: 20px; background: transparent; min-width: 58px; }
+.filters button.active { background: var(--pill); font-weight: 700; box-shadow: inset 0 0 0 2px var(--edge); }
