@@ -727,7 +727,7 @@ function searchPage() {
     const entries = document.querySelector("#history-entries");
     clearHistory.hidden = !state.searchHistory.length;
     entries.innerHTML = state.searchHistory.map((q, index) => `<div class="history-item"><button type="button" class="history-entry" data-history-search="${index}">${esc(q)}</button><button type="button" class="history-remove" data-history-remove="${index}" aria-label="Remove ${esc(q)} from search history">&times;</button></div>`).join("") || '<p class="empty">No recent searches.</p>';
-    entries.querySelectorAll("[data-history-search]").forEach(button => button.onclick = () => run(state.searchHistory[Number(button.dataset.historySearch)]));
+    entries.querySelectorAll("[data-history-search]").forEach(button => button.onclick = () => run(state.searchHistory[Number(button.dataset.historySearch)], 1, true));
     entries.querySelectorAll("[data-history-remove]").forEach(button => button.onclick = () => {
       const index = Number(button.dataset.historyRemove);
       state.searchHistory.splice(index, 1);
@@ -752,9 +752,9 @@ function searchPage() {
     content.innerHTML = suggestions();
     app
       .querySelectorAll("[data-category]")
-      .forEach((el) => (el.onclick = () => run(el.dataset.category)));
+      .forEach((el) => (el.onclick = () => run(el.dataset.category, 1, true)));
   };
-  const run = async (value, page = 1) => {
+  const run = async (value, page = 1, remember = false) => {
     if (pageVersion !== renderVersion) return;
     clearTimeout(timer);
     const q = value.trim();
@@ -773,8 +773,10 @@ function searchPage() {
     try {
       const { posts, pagination: meta } = await api("/posts?q=" + encodeURIComponent(q) + "&page=" + page + "&pageSize=28");
       if (version !== searchVersion || pageVersion !== renderVersion) return;
-      state.searchHistory = [q, ...state.searchHistory.filter(old => old.toLowerCase() !== q.toLowerCase())].slice(0, 5);
-      paintHistory();
+      if (remember) {
+        state.searchHistory = [q, ...state.searchHistory.filter(old => old.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+        paintHistory();
+      }
       historyPanel.hidden = true;
       state.posts = posts;
       content.setAttribute("aria-busy", "false");
@@ -790,7 +792,7 @@ function searchPage() {
         return;
       content.setAttribute("aria-busy", "false");
       content.innerHTML = `<div class="list-feedback"><p role="alert">${esc(e.message || e)}</p><button type="button" class="pill" data-retry-search>Retry search</button></div>`;
-      content.querySelector("[data-retry-search]").onclick = () => run(value, page);
+      content.querySelector("[data-retry-search]").onclick = () => run(value, page, remember);
     }
   };
   paintHistory();
@@ -819,13 +821,13 @@ function searchPage() {
   document.querySelector("#search-form").onsubmit = (event) => {
     event.preventDefault();
     clearTimeout(timer);
-    return run(input.value);
+    return run(input.value, 1, true);
   };
   app.querySelectorAll("[data-category]").forEach(
     (el) =>
       (el.onclick = () => {
         input.value = el.dataset.category;
-        run(input.value);
+        run(input.value, 1, true);
       }),
   );
 }

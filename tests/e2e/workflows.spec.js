@@ -229,6 +229,7 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   await page.route("**/api/posts?q=*", (route) => route.abort(), { times: 1 });
   const input = page.getByRole("searchbox", { name: "Search posts" });
   await input.fill("no-match-browser-test");
+  await input.press("Enter");
   await expect(
     page.getByRole("button", { name: "Retry search", exact: true }),
   ).toBeVisible();
@@ -257,6 +258,11 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   releaseSearch();
   await expect(page.getByText("No posts found.",{exact:true})).toBeVisible();
   await expect(history).toBeHidden();
+  await page.getByRole("button",{name:"Clear search",exact:true}).click();
+  await expect(history.locator(".history-entry")).toHaveText(["no-match-browser-test"]);
+  await input.fill("another-history-query");
+  await input.press("Enter");
+  await expect(page.getByText("No posts found.",{exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Clear search",exact:true}).click();
   await expect(history.locator(".history-entry")).toHaveCount(2);
   await history.getByRole("button",{name:"Remove no-match-browser-test from search history",exact:true}).click();

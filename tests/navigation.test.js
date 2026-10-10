@@ -478,6 +478,9 @@ test("search suggestions return when input clears and typing queries all post co
   input.oninput();
   await new Promise((resolve) => setTimeout(resolve, 280));
   assert.ok(h.requests.some((r) => r.url === "/posts?q=Library&page=1&pageSize=28"));
+  assert.equal(vm.runInContext("state.searchHistory.length", h.ctx), 0);
+  await h.element("#search-form").onsubmit({ preventDefault() {} });
+  assert.equal(vm.runInContext("state.searchHistory.join()", h.ctx), "Library");
   input.value = "";
   input.oninput();
   assert.match(
