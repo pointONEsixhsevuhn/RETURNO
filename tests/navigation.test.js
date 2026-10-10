@@ -711,7 +711,7 @@ test("posting shows saving feedback and ignores repeated submissions", async () 
  const button={disabled:false}; const event={preventDefault(){},currentTarget:{},submitter:button};
  const pending=h.element("#post-form").onsubmit(event);
  await h.element("#post-form").onsubmit(event);
- assert.equal(count,1); assert.equal(button.disabled,true); assert.equal(button.textContent,"Saving?");
+ assert.equal(count,1); assert.equal(button.disabled,true); assert.equal(button.textContent,"Saving...");
  assert.equal(h.element("#post-form").attributes["aria-busy"],"true");
  finish({post:{id:"saved"}}); await pending;
  assert.equal(vm.runInContext("state.notice",h.ctx),"Post published successfully.");

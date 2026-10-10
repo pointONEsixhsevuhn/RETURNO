@@ -564,9 +564,9 @@ function editor() {
     const button = event.submitter || document.querySelector(".post-button");
     saving = true;
     button.disabled = true;
-    button.textContent = "Saving?";
+    button.textContent = "Saving...";
     document.querySelector("#post-form").setAttribute("aria-busy", "true");
-    document.querySelector("#post-status").textContent = "Saving your post?";
+    document.querySelector("#post-status").textContent = "Saving your post...";
     try {
       await api("/posts" + (post ? "/" + post.id : ""), {
         method: post ? "PUT" : "POST",
