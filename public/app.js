@@ -6,6 +6,7 @@ const state = {
   role: "student",
   filter: "All",
   query: "",
+  searchHistory: [],
   posts: [],
   edit: null,
   back: "mine",
@@ -50,6 +51,7 @@ async function api(url, options) {
   }
 }
 function clearSession() {
+  state.searchHistory = [];
   ++sessionVersion;
   state.user = null;
   state.filter = "All";
@@ -674,12 +676,17 @@ function searchPage() {
   const pageVersion = renderVersion;
   const suggestions = () =>
     `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
-  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"><button type="button" class="search-clear" aria-label="Clear search" ${state.query ? "" : "hidden"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><div id="search-content">${suggestions()}</div></section>`;
+  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"><button type="button" class="search-clear" aria-label="Clear search" ${state.query ? "" : "hidden"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><section class="search-history" aria-label="Search history"><h2>History</h2><div id="history-entries"></div></section><div id="search-content">${suggestions()}</div></section>`;
   bindNavigation();
   let searchVersion = 0,
     timer;
   const content = document.querySelector("#search-content");
   const clearSearch = document.querySelector(".search-clear");
+  const paintHistory = () => {
+    const entries = document.querySelector("#history-entries");
+    entries.innerHTML = state.searchHistory.map(q => `<button type="button" class="history-entry">${esc(q)}</button>`).join("") || '<p class="empty">No recent searches.</p>';
+    entries.querySelectorAll("button").forEach((button, index) => button.onclick = () => run(state.searchHistory[index]));
+  };
   const showSuggestions = () => {
     clearTimeout(timer);
     ++searchVersion;
@@ -710,6 +717,8 @@ function searchPage() {
     try {
       const { posts } = await api("/posts?q=" + encodeURIComponent(q));
       if (version !== searchVersion || pageVersion !== renderVersion) return;
+      state.searchHistory = [q, ...state.searchHistory.filter(old => old.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+      paintHistory();
       state.posts = posts;
       content.setAttribute("aria-busy", "false");
       content.innerHTML = `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
@@ -726,6 +735,7 @@ function searchPage() {
       content.querySelector("[data-retry-search]").onclick = () => run(value);
     }
   };
+  paintHistory();
   const input = app.querySelector("[name=q]");
   clearSearch.onclick = () => {
     input.value = "";

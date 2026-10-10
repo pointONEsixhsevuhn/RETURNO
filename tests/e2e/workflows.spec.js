@@ -236,6 +236,7 @@ test("search failure offers manual retry and clearing restores suggestions", asy
     page.getByText("No posts found.", { exact: true }),
   ).toBeVisible();
   await expect(input).toHaveValue("no-match-browser-test");
+  await expect(page.getByRole("button", {name:"no-match-browser-test", exact:true})).toBeVisible();
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await expect(input).toHaveValue("");
   await expect(input).toBeFocused();

@@ -1430,3 +1430,17 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .search-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 .search-clear { flex-shrink: 0; width: 36px; min-height: 44px; padding: 8px; color: #44321d; }
 .search-clear svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.search-history { margin: 0 0 22px; }
+.search-history h2 { font-size: 15px; margin-bottom: 8px; }
+#history-entries { display: flex; flex-wrap: wrap; gap: 8px; }
+.history-entry { background: #eee5d7; border-radius: 12px; padding: 6px 12px; font-size: 14px; overflow-wrap: anywhere; max-width: 100%; }
+.search-history .empty { margin: 0; font-size: 13px; }
+.categories { max-width: 720px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.category { aspect-ratio: auto; height: 88px; flex-direction: row; justify-content: center; gap: 10px; padding: 10px; font-size: 15px; }
+.category img { width: 42%; height: 54px; flex: 0 1 42%; object-fit: contain; }
+@media (max-width: 480px) {
+ .categories { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+ .category { height: 72px; padding: 8px; gap: 6px; font-size: 13px; }
+ .category img { height: 40px; }
+}
