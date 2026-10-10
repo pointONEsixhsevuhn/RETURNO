@@ -370,14 +370,22 @@ test("admin status filters show counts and select each report status", async ({p
   for(const status of statuses) await expect(page.locator(`[data-admin-filter="${status}"] .filter-count`)).toHaveText("("+totals[status]+")");
   await expect(page.locator('[data-admin-filter=""] .filter-count')).toHaveText("("+statuses.reduce((sum,status)=>sum+totals[status],0)+")");
   const filters=page.getByRole("navigation",{name:"Report status"});
+  const statusColors=new Set();
   for(const [i,status] of statuses.entries()) {
    const button=filters.getByRole("button",{name:status,exact:true});await button.click();
    await expect(button).toHaveAttribute("aria-pressed","true");
+   const color=await button.evaluate(node=>getComputedStyle(node).backgroundColor);
+   statusColors.add(color);
+   await page.locator('.admin-row [data-detail="'+ids[i]+'"]').click();
+   await expect(page.locator('dialog .status[data-status="'+status+'"]')).toHaveCSS("background-color",color);
+   await page.getByRole("button",{name:"Close",exact:true}).click();
    await expect(page.locator('.admin-row [data-detail="'+ids[i]+'"]')).toBeVisible();
    for(const id of ids.filter(id=>id!==ids[i])) await expect(page.locator('.admin-row [data-detail="'+id+'"]')).toHaveCount(0);
    await noOverflow(page);
   }
+  expect(statusColors.size).toBe(4);
   await filters.getByRole("button",{name:"All",exact:true}).click();
+  for(const status of statuses) await expect(page.locator(`[data-admin-filter="${status}"]`)).toHaveCSS("background-color","rgba(0, 0, 0, 0)");
   for(const id of ids) await expect(page.locator('.admin-row [data-detail="'+id+'"]')).toBeVisible();
  } finally {for(const id of ids)db.prepare("DELETE FROM posts WHERE id=?").run(id);}
 });

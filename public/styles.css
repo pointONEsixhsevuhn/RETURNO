@@ -1456,3 +1456,21 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 22px 0 8px; font-size: 14px; }
 .pagination button { padding: 8px 14px; border-radius: 12px; }
 .pagination button:disabled { cursor: default; opacity: 0.45; }
+
+/* Distinct status colors within the warm, muted theme. */
+:is(.status[data-status="Lost"], .filters button.active[data-filter="Lost"], .filters button.active[data-admin-filter="Lost"]) {
+  background: #f1ddd3;
+  color: #783e2c;
+}
+:is(.status[data-status="Found"], .filters button.active[data-filter="Found"], .filters button.active[data-admin-filter="Found"]) {
+  background: #e0e8d8;
+  color: #3e5932;
+}
+:is(.status[data-status="Returned"], .filters button.active[data-admin-filter="Returned"]) {
+  background: #dce8e5;
+  color: #345a52;
+}
+:is(.status[data-status="Claimed"], .filters button.active[data-admin-filter="Claimed"]) {
+  background: #f0e3c3;
+  color: #70551f;
+}
