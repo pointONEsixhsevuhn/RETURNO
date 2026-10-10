@@ -694,3 +694,12 @@ test("admin editing preserves legacy free-form contact text", async () => {
   await h.element("#post-form").onsubmit({ preventDefault() {}, currentTarget: {}, submitter: {disabled:false} });
   assert.equal(JSON.parse(h.requests[0].options.body).contact_details, "Other: Telegram @example");
 });
+
+
+test("student greeting uses an escaped registered name", () => {
+  const h = harness();
+  vm.runInContext("state.user.fullName = 'Maria <img src=x>'", h.ctx);
+  const html = vm.runInContext("header()", h.ctx);
+  assert.match(html, /Welcome, Maria &lt;img src=x&gt;!/);
+  assert.doesNotMatch(html, /WELCOME, STUDENT!/);
+});

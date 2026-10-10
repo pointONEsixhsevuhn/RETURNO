@@ -70,7 +70,7 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
     page.getByRole("button", { name: "Confirm email", exact: true }),
   );
   await expect(
-    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+    page.getByRole("heading", { name: "Welcome, Keyboard Test Student With A Long Display Name!" }),
   ).toBeVisible();
   await activate(
     page,
@@ -101,7 +101,7 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
     page.getByRole("button", { name: "Cancel", exact: true }),
   );
   await expect(
-    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+    page.getByRole("heading", { name: "Welcome, Keyboard Test Student With A Long Display Name!" }),
   ).toBeVisible();
 
   // Seed a record through the isolated API; the card/dialog interactions are keyboard-only.

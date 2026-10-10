@@ -30,7 +30,7 @@ async function register(page) {
     .getByRole("button", { name: "Confirm email", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+    page.getByRole("heading", { name: "Welcome, Browser Test Student!" }),
   ).toBeVisible();
   return email;
 }
@@ -40,7 +40,7 @@ async function login(page, role, email, pass) {
   await page.getByLabel("Password", { exact: true }).fill(pass);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: `WELCOME, ${role.toUpperCase()}!` }),
+    page.getByRole("heading", { name: role === "Student" ? "Welcome, Browser Test Student!" : "WELCOME, ADMIN!" }),
   ).toBeVisible();
 }
 async function logout(page) {
@@ -215,7 +215,7 @@ test("expired session returns to login and allows the student to sign in again",
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "WELCOME, STUDENT!" }),
+    page.getByRole("heading", { name: "Welcome, Browser Test Student!" }),
   ).toBeVisible();
   await logout(page);
 });
@@ -317,7 +317,7 @@ test("student recovers a forgotten password using the emailed code and signs in 
  await page.getByLabel("Email",{exact:true}).fill(email);
  await page.getByLabel("Password",{exact:true}).fill(newPassword);
  await page.getByRole("button",{name:"Log In",exact:true}).click();
- await expect(page.getByRole("heading",{name:"WELCOME, STUDENT!"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Welcome, Browser Test Student!"})).toBeVisible();
 });
 
 test("student login/register switcher supports taps, keyboard arrows and directional swipes", async ({ page }) => {
