@@ -7,6 +7,7 @@ const state = {
   filter: "All",
   query: "",
   searchHistory: [],
+  notice: "",
   posts: [],
   edit: null,
   back: "mine",
@@ -52,6 +53,7 @@ async function api(url, options) {
 }
 function clearSession() {
   state.searchHistory = [];
+  state.notice = "";
   ++sessionVersion;
   state.user = null;
   state.filter = "All";
@@ -428,7 +430,8 @@ async function feed(own, version) {
   }
   if (version !== renderVersion) return;
   state.posts = posts;
-  app.innerHTML = `<section class="screen page ${own ? "own" : "student-home"}">${header(!own)}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!posts.length ? `<p class="empty" role="status">${own ? "You have not posted any items yet. Use Add post to report an item." : "No posts match this filter."}</p>` : ""}</section>`;
+  app.innerHTML = `<section class="screen page ${own ? "own" : "student-home"}">${header(!own)}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${own ? '<h2 class="own-title">Your post</h2>' : filters()}<div class="cards">${posts.map((p) => card(p, own)).join("")}${own ? '<button class="card add-card" id="add-post" aria-label="Add post">+</button>' : ""}</div>${!posts.length ? `<p class="empty" role="status">${own ? "You have not posted any items yet. Use Add post to report an item." : "No posts match this filter."}</p>` : ""}</section>`;
+  state.notice = "";
   bindNavigation();
   bindPostActions();
   if (own)
@@ -451,8 +454,9 @@ function editor() {
   const post = state.user?.role === "admin" ? state.edit : null;
   let kind = post?.kind || "",
     image = post?.image || null,
-    reading = false;
-  app.innerHTML = `<section class="screen editor"><form class="editor-panel" id="post-form"><div class="editor-head"><button type="button" class="editor-logo" data-go="${state.user.role === "admin" ? state.back : "feed"}" aria-label="${state.user.role === "admin" ? "Back" : "Home"}">${logo}</button><div class="editor-actions"><button type="button" class="pill cancel-post-button" data-cancel-post>Cancel</button><button class="pill post-button" type="submit">${post ? "Update" : "Post"}</button></div></div><label class="upload-area" id="upload-area"><span id="upload-preview">${image ? `<img src="${esc(image)}" alt="Selected item">` : "Upload your image here"}</span><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" aria-label="Upload your image here"></label><div class="post-fields"><div class="post-field status-field"><span>Status:</span><button id="status-trigger" class="pill status-trigger" type="button" aria-expanded="false" aria-controls="status-options"><span id="chosen-kind">${kind}</span><span class="triangle"></span></button><div class="status-options" id="status-options" hidden><button type="button" data-kind="Lost">Lost</button><button type="button" data-kind="Found">Found</button></div></div><label class="post-field"><span>Item name:</span><input name="item_name" required maxlength="200" value="${esc(post?.item_name)}"></label><label class="post-field"><span id="event-time-label">${kind ? `Date time ${kind.toLowerCase()}:` : "Date time:"}</span><input name="event_at" type="datetime-local" required value="${esc(post?.event_at)}"></label><label class="post-field"><span>Location/Address :</span><input name="location" required maxlength="500" value="${esc(post?.location)}"></label><div class="contact-methods"><span>How to contact you (optional):</span><div class="contact-box"><div id="contact-rows"></div><button type="button" id="add-contact">Add contact method</button></div></div><p class="contact-note">What you enter here will appear on your home post.</p><label class="post-field"><span>Description:</span><textarea name="description" required maxlength="3000">${esc(post?.description)}</textarea></label></div><p id="post-error" class="error" role="alert"></p></form></section>`;
+    reading = false,
+    saving = false;
+  app.innerHTML = `<section class="screen editor"><form class="editor-panel" id="post-form"><div class="editor-head"><button type="button" class="editor-logo" data-go="${state.user.role === "admin" ? state.back : "feed"}" aria-label="${state.user.role === "admin" ? "Back" : "Home"}">${logo}</button><div class="editor-actions"><button type="button" class="pill cancel-post-button" data-cancel-post>Cancel</button><button class="pill post-button" type="submit">${post ? "Update" : "Post"}</button></div></div><label class="upload-area" id="upload-area"><span id="upload-preview">${image ? `<img src="${esc(image)}" alt="Selected item">` : "Upload your image here"}</span><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" aria-label="Upload your image here"></label><div class="post-fields"><div class="post-field status-field"><span>Status:</span><button id="status-trigger" class="pill status-trigger" type="button" aria-expanded="false" aria-controls="status-options"><span id="chosen-kind">${kind}</span><span class="triangle"></span></button><div class="status-options" id="status-options" hidden><button type="button" data-kind="Lost">Lost</button><button type="button" data-kind="Found">Found</button></div></div><label class="post-field"><span>Item name:</span><input name="item_name" required maxlength="200" value="${esc(post?.item_name)}"></label><label class="post-field"><span id="event-time-label">${kind ? `Date time ${kind.toLowerCase()}:` : "Date time:"}</span><input name="event_at" type="datetime-local" required value="${esc(post?.event_at)}"></label><label class="post-field"><span>Location/Address :</span><input name="location" required maxlength="500" value="${esc(post?.location)}"></label><div class="contact-methods"><span>How to contact you (optional):</span><div class="contact-box"><div id="contact-rows"></div><button type="button" id="add-contact">Add contact method</button></div></div><p class="contact-note">What you enter here will appear on your home post.</p><label class="post-field"><span>Description:</span><textarea name="description" required maxlength="3000">${esc(post?.description)}</textarea></label></div><p id="post-status" role="status" aria-live="polite"></p><p id="post-error" class="error" role="alert"></p></form></section>`;
   bindNavigation();
   document.querySelector("[data-cancel-post]").onclick = () => {
     state.edit = null;
@@ -538,6 +542,7 @@ function editor() {
   };
   document.querySelector("#post-form").onsubmit = async (event) => {
     event.preventDefault();
+    if (saving) return;
     output.textContent = "";
     if (!kind) return errorAt(output, "Select Lost or Found.");
     if (reading) return errorAt(output, "Please wait for the image.");
@@ -556,14 +561,19 @@ function editor() {
       data.status = ["Lost", "Found"].includes(post.status)
         ? kind
         : post.status;
-    const button = event.submitter;
+    const button = event.submitter || document.querySelector(".post-button");
+    saving = true;
     button.disabled = true;
+    button.textContent = "Saving?";
+    document.querySelector("#post-form").setAttribute("aria-busy", "true");
+    document.querySelector("#post-status").textContent = "Saving your post?";
     try {
       await api("/posts" + (post ? "/" + post.id : ""), {
         method: post ? "PUT" : "POST",
         body: JSON.stringify(data),
       });
       if (pageVersion !== renderVersion) return;
+      state.notice = post ? "Post updated successfully." : "Post published successfully.";
       state.edit = null;
       state.filter = "All";
       state.query = "";
@@ -571,7 +581,11 @@ function editor() {
     } catch (e) {
       if (pageVersion !== renderVersion) return;
       errorAt(output, e);
+      saving = false;
       button.disabled = false;
+      button.textContent = post ? "Update" : "Post";
+      document.querySelector("#post-form").setAttribute("aria-busy", "false");
+      document.querySelector("#post-status").textContent = "";
     }
   };
 }
@@ -614,7 +628,8 @@ async function admin(version, status = "") {
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div></section>`;
+  state.notice = "";
   bindNavigation();
   bindPostActions();
   if (!result.posts.length)

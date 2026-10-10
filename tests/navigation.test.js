@@ -703,3 +703,16 @@ test("student greeting uses an escaped registered name", () => {
   assert.match(html, /Welcome, Maria &lt;img src=x&gt;!/);
   assert.doesNotMatch(html, /WELCOME, STUDENT!/);
 });
+
+
+test("posting shows saving feedback and ignores repeated submissions", async () => {
+ const h=harness(); vm.runInContext("editor()",h.ctx); h.kinds[0].onclick();
+ let finish, count=0; h.ctx.RetornoAPI.request=()=>{count++;return new Promise(resolve=>{finish=resolve})};
+ const button={disabled:false}; const event={preventDefault(){},currentTarget:{},submitter:button};
+ const pending=h.element("#post-form").onsubmit(event);
+ await h.element("#post-form").onsubmit(event);
+ assert.equal(count,1); assert.equal(button.disabled,true); assert.equal(button.textContent,"Saving?");
+ assert.equal(h.element("#post-form").attributes["aria-busy"],"true");
+ finish({post:{id:"saved"}}); await pending;
+ assert.equal(vm.runInContext("state.notice",h.ctx),"Post published successfully.");
+});

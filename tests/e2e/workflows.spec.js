@@ -118,6 +118,7 @@ test("student report lifecycle and administrator review, edit, return and delete
     name: `View details for ${item}`,
     exact: true,
   });
+  await expect(page.getByRole("status")).toContainText("Post published successfully.");
   await expect(card).toBeVisible();
   await expect(card.locator("img")).toBeVisible();
   await expect(card.locator(".card-contact")).toBeVisible();

@@ -1444,3 +1444,7 @@ dialog:has(.detail-layout) h2 { text-align: left; }
  .category { height: 72px; padding: 8px; gap: 6px; font-size: 13px; }
  .category img { height: 40px; }
 }
+
+.success-notice { padding: 12px 16px; margin: 0 0 16px; border: 1px solid #b5c8a6; border-radius: 12px; background: #edf3e7; color: #345425; }
+#post-status { color: #655a4c; font-size: 14px; margin: 12px 0 0; }
+#post-status:empty { display: none; }
