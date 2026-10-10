@@ -1413,3 +1413,14 @@ dialog textarea:focus {
   border-color: #916a34;
   box-shadow: 0 2px 0 #d9cbb6, 0 0 0 4px rgba(174, 129, 60, 0.12);
 }
+
+/* A larger item view separates the photograph, details and contact. */
+dialog:has(.detail-layout) { width: min(calc(100% - 24px), 820px); }
+dialog:has(.detail-layout) h2 { text-align: left; }
+.detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.detail-media, .detail-column { min-width: 0; }
+.detail-media { background: #f8f6f2; border: 1px solid #e7e1d7; border-radius: 14px; padding: 12px; }
+.detail-media .detail-image { border: 0; border-radius: 8px; max-height: 360px; width: 100%; object-fit: contain; }
+.detail-data p { margin: 0 0 12px; font-weight: 400; }
+.detail-contact { border-top: 1px solid #d9cbb6; padding-top: 16px; margin: 16px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; }
+@media (min-width: 600px) { .detail-layout:has(.detail-media) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }

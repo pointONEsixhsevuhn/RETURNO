@@ -299,7 +299,7 @@ function errorDialog(error) {
 function showDetails(id) {
   const post = state.posts.find((p) => p.id === id);
   if (!post) return;
-  dialog.innerHTML = `<h2>${esc(post.item_name || "Item name")}</h2>${post.image ? `<img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}">` : ""}<div class="detail-data"><p>Posted by: <strong>${esc(post.author)}</strong></p><p>Status: ${esc(post.status)}</p><p>Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p><p>Contact: ${esc(postContact(post))}</p></div><div class="dialog-actions"><button data-close>Close</button></div>`;
+  dialog.innerHTML = `<h2>${esc(post.item_name || "Item name")}</h2><div class="detail-layout">${post.image ? `<div class="detail-media"><img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}"></div>` : ""}<div class="detail-column"><div class="detail-data"><p>Posted by: ${esc(post.author)}</p><p>Status: ${esc(post.status)}</p><p>Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div><p class="detail-contact">Contact: ${esc(postContact(post))}</p></div></div><div class="dialog-actions"><button data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = () => dialog.close();
   openDialog(post.item_name || "Item details");
 }
