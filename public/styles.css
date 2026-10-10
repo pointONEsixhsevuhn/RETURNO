@@ -1381,3 +1381,35 @@ dialog select:focus {
 @media (prefers-reduced-motion: no-preference) {
   input, textarea, select, .search-box, .contact-box { transition: border-color 180ms ease, box-shadow 180ms ease; }
 }
+/* One field treatment across login, registration and all text-entry forms. */
+.auth-field input,
+.auth-page input,
+.search-box,
+.login .auth-field input.pill,
+.registration .auth-field input.pill,
+.password-recovery .auth-field input,
+#verification-code,
+.post-field input,
+.post-field textarea,
+.contact-method-row input,
+dialog input,
+dialog textarea {
+  background: linear-gradient(160deg, #fffdf9 0%, #f3ede3 100%);
+  border: 1px solid #c8b99f;
+  border-radius: 14px;
+  box-shadow: 0 3px 0 #d9cbb6, 0 7px 14px rgba(76, 54, 24, 0.10);
+}
+.auth-field input:focus,
+.auth-page input:focus,
+.login .auth-field input.pill:focus,
+.registration .auth-field input.pill:focus,
+.password-recovery .auth-field input:focus,
+#verification-code:focus,
+.post-field input:focus,
+.post-field textarea:focus,
+.contact-method-row input:focus,
+dialog input:focus,
+dialog textarea:focus {
+  border-color: #916a34;
+  box-shadow: 0 2px 0 #d9cbb6, 0 0 0 4px rgba(174, 129, 60, 0.12);
+}
