@@ -1361,7 +1361,7 @@ dialog select,
 .contact-box {
   background: linear-gradient(160deg, #fffdf9 0%, #f3ede3 100%);
   border-color: #c8b99f;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 3px 0 #d9cbb6, 0 7px 14px rgba(76, 54, 24, 0.10);
+  box-shadow: 0 3px 0 #d9cbb6, 0 7px 14px rgba(76, 54, 24, 0.10);
 }
 .contact-box { background: linear-gradient(150deg, #f0dfc5, #d9bd94); }
 .auth-field input:focus,
@@ -1373,10 +1373,10 @@ dialog select,
 dialog input:focus,
 dialog select:focus {
   border-color: #916a34;
-  box-shadow: inset 0 2px 4px rgba(76, 54, 24, 0.08), 0 2px 0 #d9cbb6, 0 0 0 4px rgba(174, 129, 60, 0.12);
+  box-shadow: 0 2px 0 #d9cbb6, 0 0 0 4px rgba(174, 129, 60, 0.12);
 }
 .search-box:focus-within,
-.contact-box:focus-within { border-color: #916a34; box-shadow: inset 0 1px 0 #fff8ed, 0 2px 0 #cbb492, 0 0 0 4px rgba(174, 129, 60, 0.12); }
+.contact-box:focus-within { border-color: #916a34; box-shadow: 0 2px 0 #cbb492, 0 0 0 4px rgba(174, 129, 60, 0.12); }
 .contact-method-row input { background: transparent; box-shadow: none; }
 @media (prefers-reduced-motion: no-preference) {
   input, textarea, select, .search-box, .contact-box { transition: border-color 180ms ease, box-shadow 180ms ease; }
