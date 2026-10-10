@@ -252,7 +252,7 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   const gate=new Promise(resolve=>{releaseSearch=resolve;});
   await page.route("**/api/posts?q=*", async route=>{await gate;await route.continue();},{times:1});
   await input.fill("another-history-query");
-  await expect(history).toBeVisible();
+  await expect(history).toBeHidden();
   await expect(page.getByText("Searching posts...",{exact:true})).toBeVisible();
   releaseSearch();
   await expect(page.getByText("No posts found.",{exact:true})).toBeVisible();

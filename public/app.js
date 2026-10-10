@@ -721,6 +721,7 @@ function searchPage() {
   const content = document.querySelector("#search-content");
   const clearSearch = document.querySelector(".search-clear");
   const historyPanel = document.querySelector(".search-history");
+  historyPanel.hidden = Boolean(state.query.trim());
   const clearHistory = document.querySelector("#clear-history");
   const paintHistory = () => {
     const entries = document.querySelector("#history-entries");
@@ -763,7 +764,7 @@ function searchPage() {
       return;
     }
     const version = ++searchVersion;
-    historyPanel.hidden = false;
+    historyPanel.hidden = true;
     app.querySelector("[name=q]").value = value;
     clearSearch.hidden = false;
     state.posts = [];
@@ -800,7 +801,7 @@ function searchPage() {
     input.focus();
   };
   input.oninput = () => {
-    historyPanel.hidden = false;
+    historyPanel.hidden = Boolean(input.value.trim());
     clearSearch.hidden = !input.value;
     clearTimeout(timer);
     ++searchVersion;
