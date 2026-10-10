@@ -1474,3 +1474,11 @@ dialog:has(.detail-layout) h2 { text-align: left; }
   background: #f0e3c3;
   color: #70551f;
 }
+
+.history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.history-heading h2 { margin: 0; }
+#clear-history { background: transparent; color: #44321d; font-size: 13px; padding: 5px 0; }
+.history-item { display: inline-flex; align-items: center; background: #eee5d7; border-radius: 12px; max-width: 100%; }
+.history-item .history-entry { min-width: 0; text-align: left; }
+.history-remove { background: transparent; color: #44321d; flex-shrink: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
+.search-history[hidden], #clear-history[hidden] { display: none; }

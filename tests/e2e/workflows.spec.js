@@ -237,7 +237,7 @@ test("search failure offers manual retry and clearing restores suggestions", asy
     page.getByText("No posts found.", { exact: true }),
   ).toBeVisible();
   await expect(input).toHaveValue("no-match-browser-test");
-  await expect(page.getByRole("button", {name:"no-match-browser-test", exact:true})).toBeVisible();
+  await expect(page.getByRole("region", {name:"Search history", exact:true})).toBeHidden();
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await expect(input).toHaveValue("");
   await expect(input).toBeFocused();
@@ -245,6 +245,26 @@ test("search failure offers manual retry and clearing restores suggestions", asy
   await expect(
     page.getByRole("heading", { name: "What are you looking for?" }),
   ).toBeVisible();
+  const history=page.getByRole("region",{name:"Search history",exact:true});
+  await expect(history).toBeVisible();
+  await expect(history.getByRole("button",{name:"no-match-browser-test",exact:true})).toBeVisible();
+  let releaseSearch;
+  const gate=new Promise(resolve=>{releaseSearch=resolve;});
+  await page.route("**/api/posts?q=*", async route=>{await gate;await route.continue();},{times:1});
+  await input.fill("another-history-query");
+  await expect(history).toBeVisible();
+  await expect(page.getByText("Searching posts...",{exact:true})).toBeVisible();
+  releaseSearch();
+  await expect(page.getByText("No posts found.",{exact:true})).toBeVisible();
+  await expect(history).toBeHidden();
+  await page.getByRole("button",{name:"Clear search",exact:true}).click();
+  await expect(history.locator(".history-entry")).toHaveCount(2);
+  await history.getByRole("button",{name:"Remove no-match-browser-test from search history",exact:true}).click();
+  await expect(history.locator(".history-entry")).toHaveText(["another-history-query"]);
+  await history.getByRole("button",{name:"Clear history",exact:true}).click();
+  await expect(history.getByText("No recent searches.",{exact:true})).toBeVisible();
+  await expect(history.getByRole("button",{name:"Clear history",exact:true})).toBeHidden();
+  await expect(input).toBeFocused();
   for (const category of await page.locator(".category").all()) {
     const image = category.locator("img");
     await expect(image).toBeVisible();

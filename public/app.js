@@ -714,18 +714,34 @@ function searchPage() {
   const pageVersion = renderVersion;
   const suggestions = () =>
     `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
-  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"><button type="button" class="search-clear" aria-label="Clear search" ${state.query ? "" : "hidden"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><section class="search-history" aria-label="Search history"><h2>History</h2><div id="history-entries"></div></section><div id="search-content">${suggestions()}</div></section>`;
+  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"><button type="button" class="search-clear" aria-label="Clear search" ${state.query ? "" : "hidden"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><section class="search-history" aria-label="Search history"><div class="history-heading"><h2>History</h2><button type="button" id="clear-history">Clear history</button></div><div id="history-entries"></div></section><div id="search-content">${suggestions()}</div></section>`;
   bindNavigation();
   let searchVersion = 0,
     timer;
   const content = document.querySelector("#search-content");
   const clearSearch = document.querySelector(".search-clear");
+  const historyPanel = document.querySelector(".search-history");
+  const clearHistory = document.querySelector("#clear-history");
   const paintHistory = () => {
     const entries = document.querySelector("#history-entries");
-    entries.innerHTML = state.searchHistory.map(q => `<button type="button" class="history-entry">${esc(q)}</button>`).join("") || '<p class="empty">No recent searches.</p>';
-    entries.querySelectorAll("button").forEach((button, index) => button.onclick = () => run(state.searchHistory[index]));
+    clearHistory.hidden = !state.searchHistory.length;
+    entries.innerHTML = state.searchHistory.map((q, index) => `<div class="history-item"><button type="button" class="history-entry" data-history-search="${index}">${esc(q)}</button><button type="button" class="history-remove" data-history-remove="${index}" aria-label="Remove ${esc(q)} from search history">&times;</button></div>`).join("") || '<p class="empty">No recent searches.</p>';
+    entries.querySelectorAll("[data-history-search]").forEach(button => button.onclick = () => run(state.searchHistory[Number(button.dataset.historySearch)]));
+    entries.querySelectorAll("[data-history-remove]").forEach(button => button.onclick = () => {
+      const index = Number(button.dataset.historyRemove);
+      state.searchHistory.splice(index, 1);
+      paintHistory();
+      const next = entries.querySelectorAll(".history-remove");
+      (next[Math.min(index, next.length - 1)] || app.querySelector("[name=q]")).focus();
+    });
+  };
+  clearHistory.onclick = () => {
+    state.searchHistory = [];
+    paintHistory();
+    app.querySelector("[name=q]").focus();
   };
   const showSuggestions = () => {
+    historyPanel.hidden = false;
     clearTimeout(timer);
     ++searchVersion;
     state.query = "";
@@ -747,6 +763,7 @@ function searchPage() {
       return;
     }
     const version = ++searchVersion;
+    historyPanel.hidden = false;
     app.querySelector("[name=q]").value = value;
     clearSearch.hidden = false;
     state.posts = [];
@@ -757,6 +774,7 @@ function searchPage() {
       if (version !== searchVersion || pageVersion !== renderVersion) return;
       state.searchHistory = [q, ...state.searchHistory.filter(old => old.toLowerCase() !== q.toLowerCase())].slice(0, 5);
       paintHistory();
+      historyPanel.hidden = true;
       state.posts = posts;
       content.setAttribute("aria-busy", "false");
       content.innerHTML = `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${pagination(meta)}${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
@@ -782,6 +800,7 @@ function searchPage() {
     input.focus();
   };
   input.oninput = () => {
+    historyPanel.hidden = false;
     clearSearch.hidden = !input.value;
     clearTimeout(timer);
     ++searchVersion;
