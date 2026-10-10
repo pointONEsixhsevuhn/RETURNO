@@ -674,15 +674,17 @@ function searchPage() {
   const pageVersion = renderVersion;
   const suggestions = () =>
     `<h2>What are you looking for?</h2><div class="categories">${["Wallet", "Key", "Phone", "Tumbler", "ID", "Bracelet"].map((x) => `<button class="category" data-category="${x}"><img src="assets/${x.toLowerCase()}.png" alt=""><span>${x}</span></button>`).join("")}</div>`;
-  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"></form><div id="search-content">${suggestions()}</div></section>`;
+  app.innerHTML = `<section class="screen page search-page">${header(false, false)}<form id="search-form" class="search-box pill"><button class="icon" aria-label="Search">${searchIcon}</button><input name="q" type="search" maxlength="200" placeholder="Search items" aria-label="Search posts" value="${esc(state.query)}"><button type="button" class="search-clear" aria-label="Clear search" ${state.query ? "" : "hidden"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><div id="search-content">${suggestions()}</div></section>`;
   bindNavigation();
   let searchVersion = 0,
     timer;
   const content = document.querySelector("#search-content");
+  const clearSearch = document.querySelector(".search-clear");
   const showSuggestions = () => {
     clearTimeout(timer);
     ++searchVersion;
     state.query = "";
+    clearSearch.hidden = true;
     state.posts = [];
     content.setAttribute("aria-busy", "false");
     content.innerHTML = suggestions();
@@ -701,6 +703,7 @@ function searchPage() {
     }
     const version = ++searchVersion;
     app.querySelector("[name=q]").value = value;
+    clearSearch.hidden = false;
     state.posts = [];
     content.setAttribute("aria-busy", "true");
     content.innerHTML = '<p class="empty" role="status">Searching posts...</p>';
@@ -724,7 +727,13 @@ function searchPage() {
     }
   };
   const input = app.querySelector("[name=q]");
+  clearSearch.onclick = () => {
+    input.value = "";
+    input.oninput();
+    input.focus();
+  };
   input.oninput = () => {
+    clearSearch.hidden = !input.value;
     clearTimeout(timer);
     ++searchVersion;
     state.query = input.value.trim();

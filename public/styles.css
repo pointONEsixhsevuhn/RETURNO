@@ -1424,3 +1424,9 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .detail-data p { margin: 0 0 12px; font-weight: 400; }
 .detail-contact { border-top: 1px solid #d9cbb6; padding-top: 16px; margin: 16px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; }
 @media (min-width: 600px) { .detail-layout:has(.detail-media) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }
+
+/* Focus belongs to the search bar as a whole, with a matching clear icon. */
+.search-box input:focus { outline: none; box-shadow: none; border: 0; background: transparent; }
+.search-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+.search-clear { flex-shrink: 0; width: 36px; min-height: 44px; padding: 8px; color: #44321d; }
+.search-clear svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
