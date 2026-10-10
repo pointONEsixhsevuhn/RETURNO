@@ -1266,3 +1266,85 @@ dialog input {
   .contact-method-row input { padding: 6px; }
   .contact-method-row input::placeholder { font-size: 12px; }
 }
+/* Consistent warm surfaces and controls across every RETURNO screen. */
+:root {
+  color: #302a23;
+  background: #f5f2ec;
+  font-family: "Segoe UI", "Avenir Next", Arial, sans-serif;
+  --pill: linear-gradient(135deg, #ead9c1, #dcc4a2);
+  --edge: #ddd5c9;
+  --surface-shadow: 0 4px 18px rgba(63, 45, 24, 0.05);
+}
+body { line-height: 1.45; }
+.screen { background: #f5f2ec; }
+.page { padding: clamp(12px, 2.2vw, 28px); }
+.page-header { padding-bottom: 18px; border-bottom: 1px solid #ddd5c9; margin-bottom: 20px; }
+.brand-line { border-color: #c4ad8c; border-width: 1px; }
+.welcome { color: #655a4c; font-weight: 500; letter-spacing: 0; }
+.pill, .logout-button, .role-button, .login-button, .post-button { color: #44321d; }
+.auth-switcher { border-radius: 14px; }
+.auth-switcher button { border-radius: 10px; }
+.auth-switcher button[aria-selected="true"] { background: #fffaf3; box-shadow: 0 1px 4px #765c2420; }
+.auth-field input, .registration .auth-field input.pill, .password-recovery .auth-field input, #verification-code {
+  background: transparent; border: 1px solid #998874; border-radius: 14px;
+}
+.auth-field label { color: #655a4c; }
+.login-button, .role-button { border-radius: 14px; font-weight: 650; }
+.legal, .contact-note { color: #6b6053; }
+.card, .admin-row, .category, .registered-users, .editor-panel {
+  background: #fff; border: 1px solid var(--edge); box-shadow: var(--surface-shadow);
+}
+.card { border-radius: 18px; }
+.author { color: #766a5b; }
+.author strong { color: #302a23; font-weight: 650; }
+.status { color: #44321d; font-weight: 600; }
+.item-image, .row-image { background: #f8f6f2; border-color: #e7e1d7; border-radius: 12px; }
+.card-data { color: #655a4c; }
+.card-contact { color: #44321d; border-top: 1px solid #eee8df; padding-top: 8px; margin-top: 8px; }
+.add-card { border: 1px dashed #b8a282; background: #faf7f0; color: #735733; box-shadow: none; }
+.filters { gap: 8px; margin-bottom: 16px; }
+.filters button { color: #756957; letter-spacing: 0; }
+.filters button.active { color: #44321d; }
+.editor-panel { border-radius: 22px; }
+.upload-area { background: #faf8f4; border: 1px dashed #b8a282; border-radius: 16px; color: #74644e; }
+.post-field > span, .contact-methods > span { font-weight: 600; color: #514638; }
+.post-field input, .post-field textarea { border: 1px solid #d4c6b2; border-radius: 14px; background: #fbf8f3; }
+.contact-box { border-color: #d4b991; border-radius: 14px; }
+.contact-method-row input { border-color: #b99d76; }
+.contact-method-row button, #add-contact { color: #51402a; }
+.status-trigger, .cancel-post-button, .post-button { border-radius: 14px; }
+.status-options, .menu { background: #fff; border: 1px solid var(--edge); box-shadow: 0 8px 28px #302a231a; border-radius: 12px; }
+.menu button:hover, .status-options button:hover { background: #f7f1e7; }
+.search-box { background: #fff; border: 1px solid var(--edge); border-radius: 16px; box-shadow: var(--surface-shadow); }
+.search-page h2 { color: #514638; font-weight: 650; }
+.category { border-radius: 16px; color: #514638; }
+.registered-users { border-radius: 18px; }
+.registered-users-head { color: #514638; }
+.registered-user { border-color: #eee8df; }
+.registered-user-email, .row-info small { color: #766a5b; }
+.admin-row { border-radius: 16px; }
+.row-info strong { font-weight: 650; }
+.empty, .list-feedback { color: #766a5b; }
+dialog { border: 1px solid var(--edge); border-radius: 20px; box-shadow: 0 24px 80px #302a2330; background: #fffdf9; color: #302a23; }
+dialog::backdrop { background: rgba(35, 29, 22, 0.48); }
+dialog h2 { font-weight: 650; }
+dialog input, dialog select { border-color: #cbbca7; border-radius: 12px; background: #fff; }
+.detail-image { background: #f8f6f2; border-radius: 14px; }
+.detail-data { color: #655a4c; }
+.detail-data strong { color: #302a23; }
+.dialog-actions button { border-radius: 12px; }
+button:focus-visible, a:focus-visible, input:focus, textarea:focus, select:focus { outline-color: #8a622b; }
+@media (hover: hover) {
+  .card:hover, .category:hover, .admin-row:hover { border-color: #b9a07e; box-shadow: 0 6px 22px #503d2410; }
+  .filters button:hover { color: #44321d; }
+  .pill:hover, .logout-button:hover { filter: brightness(0.97); }
+}
+@media (max-width: 480px) {
+  .page-header { padding-bottom: 12px; margin-bottom: 14px; }
+  .card { border-radius: 14px; }
+  .welcome { font-size: 16px; }
+  .filters { gap: 6px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button, .card, .category, .admin-row { transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+}
