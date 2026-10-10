@@ -209,7 +209,7 @@ test("keyboard login errors, password toggle and loading/retry states", async ({
     release = resolve;
   });
   await page.route(
-    "**/api/posts",
+    "**/api/posts?*",
     async (route) => {
       await gate;
       await route.abort();

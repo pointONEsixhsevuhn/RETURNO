@@ -328,7 +328,7 @@ test("feed failure offers a manual retry with the original filter", async () => 
   assert.match(h.element("#app").innerHTML, /role="alert"/);
   assert.equal(h.requests.length, 1);
   h.ctx.RetornoAPI.request = async (url) => {
-    assert.equal(url, "/posts?kind=Lost");
+    assert.equal(url, "/posts?page=1&pageSize=28&kind=Lost");
     return { posts: [{ id: "recovered", kind: "Lost", status: "Lost" }] };
   };
   await h.element("[data-retry-list]").onclick();
@@ -344,7 +344,7 @@ test("admin loading and retry preserve status and render an empty report list", 
   assert.match(h.element("#app").innerHTML, /data-retry-list/);
   h.ctx.RetornoAPI.request = async (url) => {
     if (url.startsWith("/posts")) {
-      assert.equal(url, "/posts?status=Returned");
+      assert.equal(url, "/posts?page=1&pageSize=28&status=Returned");
       return { posts: [] };
     }
     return url === "/stats" ? { stats: { Lost: 0, Found: 0, Claimed: 0, Returned: 0 } } : { users: [] };
@@ -370,7 +370,7 @@ test("search shows loading, retry and empty results without changing the query",
   assert.match(h.element("#search-content").innerHTML, /Disconnected/);
   assert.equal(h.element("#search-content").attributes["aria-busy"], "false");
   h.ctx.RetornoAPI.request = async (url) => {
-    assert.equal(url, "/posts?q=wallet");
+    assert.equal(url, "/posts?q=wallet&page=1&pageSize=28");
     return { posts: [] };
   };
   await h.element("[data-retry-search]").onclick();
@@ -477,7 +477,7 @@ test("search suggestions return when input clears and typing queries all post co
   input.value = "Library";
   input.oninput();
   await new Promise((resolve) => setTimeout(resolve, 280));
-  assert.ok(h.requests.some((r) => r.url === "/posts?q=Library"));
+  assert.ok(h.requests.some((r) => r.url === "/posts?q=Library&page=1&pageSize=28"));
   input.value = "";
   input.oninput();
   assert.match(
@@ -518,7 +518,7 @@ test("typing immediately invalidates an older search before the debounce runs", 
   assert.doesNotMatch(h.element("#search-content").innerHTML, /old-wallet/);
   assert.equal(vm.runInContext("state.query", h.ctx), "phone");
   h.ctx.RetornoAPI.request = async (url) => {
-    assert.equal(url, "/posts?q=phone");
+    assert.equal(url, "/posts?q=phone&page=1&pageSize=28");
     return { posts: [{ id: "new-phone" }] };
   };
   await queued();
@@ -552,7 +552,7 @@ test("category search cancels a previously queued typed query", async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(timers.size, 0);
   assert.equal(h.requests.length, 1);
-  assert.equal(h.requests[0].url, "/posts?q=Phone");
+  assert.equal(h.requests[0].url, "/posts?q=Phone&page=1&pageSize=28");
 });
 
 function imageReaders(h) {

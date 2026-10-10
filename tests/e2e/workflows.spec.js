@@ -401,3 +401,28 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await search.fill(""); await expect(page.locator('.registered-user:visible')).toHaveCount(4);
  await noOverflow(page);
 });
+
+
+test("post pages navigate without losing filters and details", async ({page}) => {
+ const email=await register(page);
+ const {db}=await import("../../db.js");
+ const owner=db.prepare("SELECT id FROM users WHERE email=?").get(email);
+ const ids=Array.from({length:30},()=>randomUUID());
+ try {
+  ids.forEach((id,i)=>db.prepare("INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description) VALUES(?,?,?,?,?,?,?,?)").run(id,owner.id,"Found","Found","Paged fixture "+i,"2026-10-10T09:00","Test","Page details"));
+  await page.getByRole("button",{name:"Your posts",exact:true}).click();
+  const nav=page.getByRole("navigation",{name:"Post pages"});
+  await expect(page.locator('.own .card[data-detail]')).toHaveCount(28);
+  await expect(nav).toContainText("Page 1 of 2");
+  await nav.getByRole("button",{name:"Next",exact:true}).click();
+  await expect(nav).toContainText("Page 2 of 2");
+  await expect(page.locator('.own .card[data-detail]')).toHaveCount(2);
+  await expect(nav.getByRole("button",{name:"Next",exact:true})).toBeDisabled();
+  await page.locator('.own .card[data-detail]').first().click();await expect(page.getByRole("dialog")).toContainText("Page details");await page.getByRole("button",{name:"Close",exact:true}).click();
+  await nav.getByRole("button",{name:"Previous",exact:true}).click();await expect(nav).toContainText("Page 1 of 2");
+  await page.getByRole("button",{name:"Home",exact:true}).click();await page.getByRole("button",{name:"Search",exact:true}).click();
+  await page.getByRole("searchbox",{name:"Search posts"}).fill("Paged fixture");await expect(nav).toContainText("Page 1 of 2");
+  await nav.getByRole("button",{name:"Next",exact:true}).click();await expect(nav).toContainText("Page 2 of 2");await expect(page.locator('.search-results .card')).toHaveCount(2);
+  await noOverflow(page);
+ } finally {ids.forEach(id=>db.prepare("DELETE FROM posts WHERE id=?").run(id));}
+});

@@ -451,13 +451,21 @@ export const server = http.createServer(async (req, res) => {
           );
           for (let i = 0; i < 7; i++) params.push(q.slice(0, 200));
         }
-        const posts = db
-          .prepare(
-            queryPosts +
-              (where.length ? " WHERE " + where.join(" AND ") : "") +
-              " ORDER BY p.created_at DESC,p.rowid ASC",
-          )
-          .all(...params);
+        const filtered = queryPosts + " WHERE " + where.join(" AND ");
+        const order = " ORDER BY p.created_at DESC,p.rowid ASC";
+        if (url.searchParams.has("page") || url.searchParams.has("pageSize")) {
+          const rawPage = url.searchParams.get("page") ?? "1";
+          const rawSize = url.searchParams.get("pageSize") ?? "28";
+          if (!/^[1-9][0-9]{0,5}$/.test(rawPage) || !/^[1-9][0-9]{0,2}$/.test(rawSize) || Number(rawSize) > 100)
+            fail(400, "Invalid pagination parameters.");
+          const pageSize = Number(rawSize);
+          const total = db.prepare("SELECT COUNT(*) AS total FROM (" + filtered + ")").get(...params).total;
+          const totalPages = Math.max(1, Math.ceil(total / pageSize));
+          const page = Math.min(Number(rawPage), totalPages);
+          const posts = db.prepare(filtered + order + " LIMIT ? OFFSET ?").all(...params, pageSize, (page - 1) * pageSize);
+          return json(res, 200, { posts, pagination: { page, pageSize, total, totalPages } });
+        }
+        const posts = db.prepare(filtered + order).all(...params);
         return json(res, 200, { posts });
       }
       if (route === "/api/posts" && req.method === "POST") {

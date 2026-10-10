@@ -517,3 +517,20 @@ test("general contact methods accept free text and reject invalid or oversized v
  const retained=await request("/api/posts/"+id,"PUT",omitted,admin.cookie);assert.equal(retained.data.post.contact_details,input.contact_details);
  const cleared=await request("/api/posts/"+id,"PUT",{...input,contact_details:""},admin.cookie);assert.equal(cleared.data.post.contact_details,"");
 });
+
+
+test("post pagination preserves filters and ownership with bounded validated pages", async () => {
+ createUser("paged@test.example","Paged Student","Contact123!");
+ const student=await request("/api/login","POST",{email:"paged@test.example",password:"Contact123!",role:"student"});
+ const ids=[];
+ for(let i=0;i<3;i++){const made=await request("/api/posts","POST",{kind:i===0?"Lost":"Found",item_name:"Pagination isolated "+i,event_at:"2026-10-10T09:00",location:"Test",description:"Test"},student.cookie);assert.equal(made.status,201);ids.push(made.data.post.id);}
+ const first=await request("/api/posts?mine=1&page=1&pageSize=2", "GET",undefined,student.cookie);
+ assert.equal(first.data.pagination.total,3);assert.equal(first.data.pagination.totalPages,2);assert.equal(first.data.posts.length,2);
+ const second=await request("/api/posts?mine=1&page=2&pageSize=2", "GET",undefined,student.cookie);
+ assert.equal(second.data.posts.length,1);assert.equal(new Set([...first.data.posts,...second.data.posts].map(p=>p.id)).size,3);
+ const filtered=await request("/api/posts?mine=1&kind=Found&q=Pagination&page=1&pageSize=1", "GET",undefined,student.cookie);assert.equal(filtered.data.pagination.total,2);assert.equal(filtered.data.posts[0].kind,"Found");
+ const last=await request("/api/posts?mine=1&page=999&pageSize=2", "GET",undefined,student.cookie);assert.equal(last.data.pagination.page,2);
+ const empty=await request("/api/posts?mine=1&q=nonexistent-page-fixture&page=2", "GET",undefined,student.cookie);assert.equal(empty.data.pagination.total,0);assert.deepEqual(empty.data.posts,[]);
+ for(const query of ["page=0","page=-1","page=1.5","page=abc","page=1&pageSize=101","page=1&pageSize=0"])assert.equal((await request("/api/posts?"+query,"GET",undefined,student.cookie)).status,400);
+ assert.equal((await request("/api/posts?page=1")).status,401);
+});
