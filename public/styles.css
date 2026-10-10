@@ -1448,3 +1448,7 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .success-notice { padding: 12px 16px; margin: 0 0 16px; border: 1px solid #b5c8a6; border-radius: 12px; background: #edf3e7; color: #345425; }
 #post-status { color: #655a4c; font-size: 14px; margin: 12px 0 0; }
 #post-status:empty { display: none; }
+
+.user-search { display: grid; gap: 8px; font-size: 14px; margin: 16px 0; }
+.user-search input { width: 100%; min-width: 0; height: 44px; padding: 8px 14px; font-size: 16px; border: 1px solid #c8b99f; border-radius: 14px; background: #fffdf9; box-shadow: 0 3px 0 #d9cbb6, 0 7px 14px #4c361a19; }
+#user-filter-status:empty { display: none; }

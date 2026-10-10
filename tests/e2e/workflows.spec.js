@@ -381,3 +381,23 @@ test("admin status filters show counts and select each report status", async ({p
   for(const id of ids) await expect(page.locator('.admin-row [data-detail="'+id+'"]')).toBeVisible();
  } finally {for(const id of ids)db.prepare("DELETE FROM posts WHERE id=?").run(id);}
 });
+
+
+test("admin directory sorts names and filters by name or email", async ({page}) => {
+ await page.goto("/#role"); await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
+ await page.route("**/api/users", route=>route.fulfill({json:{users:[
+ {id:"a",role:"admin",full_name:"Zara Admin",email:"zara@test.example"},
+ {id:"b",role:"admin",full_name:"Alice Admin",email:"alice@test.example"},
+ {id:"c",role:"student",full_name:"Zoe Student",email:"zoe@test.example"},
+ {id:"d",role:"student",full_name:"Ben Student",email:"ben@test.example"}]}}));
+ await page.getByRole("button",{name:"Admin profile",exact:true}).click();
+ await expect(page.locator('.registered-user strong')).toHaveText(["Alice Admin","Zara Admin","Ben Student","Zoe Student"]);
+ const search=page.getByRole("searchbox",{name:"Search registered users"});
+ await search.fill("zoe@");
+ await expect(page.locator('.registered-user:visible strong')).toHaveText(["Zoe Student"]);
+ await search.fill("alice");
+ await expect(page.locator('.registered-user:visible strong')).toHaveText(["Alice Admin"]);
+ await search.fill("no-match"); await expect(page.getByRole("status")).toHaveText("0 matching users.");
+ await search.fill(""); await expect(page.locator('.registered-user:visible')).toHaveCount(4);
+ await noOverflow(page);
+});

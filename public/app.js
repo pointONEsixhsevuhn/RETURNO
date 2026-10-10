@@ -654,10 +654,24 @@ async function adminProfile(version) {
   }
   if (version !== renderVersion) return;
   const group = (role, title) => {
-    const users = result.users.filter((user) => user.role === role);
-    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><div class="registered-user-actions"><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</div></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
+    const users = result.users.filter((user) => user.role === role).sort((a, b) => a.full_name.localeCompare(b.full_name, undefined, {sensitivity:"base"}) || a.email.localeCompare(b.email));
+    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user" data-user-search="${esc(user.full_name + " " + user.email)}"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><div class="registered-user-actions"><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</div></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
   };
-  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><label class="user-search">Search registered users<input type="search" id="user-search" placeholder="Search by name or email" maxlength="254"></label><p id="user-filter-status" role="status" aria-live="polite"></p><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
+  document.querySelector("#user-search").oninput = event => {
+    const q = event.target.value.trim().toLowerCase();
+    let count = 0;
+    app.querySelectorAll(".registered-users").forEach(group => {
+      let visible = 0;
+      group.querySelectorAll("[data-user-search]").forEach(row => {
+        row.hidden = !row.dataset.userSearch.toLowerCase().includes(q);
+        if (!row.hidden) visible++;
+      });
+      group.querySelector(".registered-users-head > span").textContent = visible;
+      count += visible;
+    });
+    document.querySelector("#user-filter-status").textContent = q ? count + " matching users." : "";
+  };
   bindNavigation();
   bindPostActions();
   app.querySelectorAll("[data-delete-account]").forEach(button => {
