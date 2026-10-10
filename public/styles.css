@@ -1457,22 +1457,22 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .pagination button { padding: 8px 14px; border-radius: 12px; }
 .pagination button:disabled { cursor: default; opacity: 0.45; }
 
-/* Distinct status colors within the warm, muted theme. */
+/* Distinct brown shades for report statuses. */
 :is(.status[data-status="Lost"], .filters button.active[data-filter="Lost"], .filters button.active[data-admin-filter="Lost"]) {
-  background: #f1ddd3;
-  color: #783e2c;
+  background: #ead8bd;
+  color: #503820;
 }
 :is(.status[data-status="Found"], .filters button.active[data-filter="Found"], .filters button.active[data-admin-filter="Found"]) {
-  background: #e0e8d8;
-  color: #3e5932;
+  background: #caa477;
+  color: #382719;
 }
 :is(.status[data-status="Returned"], .filters button.active[data-admin-filter="Returned"]) {
-  background: #dce8e5;
-  color: #345a52;
+  background: #946b49;
+  color: #fffaf2;
 }
 :is(.status[data-status="Claimed"], .filters button.active[data-admin-filter="Claimed"]) {
-  background: #f0e3c3;
-  color: #70551f;
+  background: #573c2a;
+  color: #fffaf2;
 }
 
 .history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
