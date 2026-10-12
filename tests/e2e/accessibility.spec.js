@@ -234,6 +234,7 @@ test("keyboard login errors, password toggle and loading/retry states", async ({
   ).toHaveCount(0);
   await expect(page.locator(".stats")).toHaveCount(0);
   await expect(page.locator("[data-admin-filter] .filter-count")).toHaveCount(5);
+  await activate(page,page.getByRole("button",{name:"Profile options",exact:true}));
   await activate(
     page,
     page.getByRole("button", { name: "Admin profile", exact: true }),
@@ -253,6 +254,7 @@ test("keyboard login errors, password toggle and loading/retry states", async ({
     "Admin users",
   );
   await fits(page);
+  await activate(page,page.getByRole("button",{name:"Profile options",exact:true}));
   await activate(
     page,
     page.getByRole("button", { name: "Log out", exact: true }),

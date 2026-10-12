@@ -1482,3 +1482,15 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .history-item .history-entry { min-width: 0; text-align: left; }
 .history-remove { background: transparent; color: #44321d; flex-shrink: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
 .search-history[hidden], #clear-history[hidden] { display: none; }
+
+/* Compact administrator account options. */
+.profile-dropdown { position: relative; }
+.header-actions .profile-trigger { display: flex; align-items: center; justify-content: center; gap: 5px; width: 48px; height: 44px; padding: 6px; border-radius: 12px; background: var(--pill); cursor: pointer; list-style: none; }
+.profile-trigger::-webkit-details-marker { display: none; }
+.profile-trigger svg { width: 24px; height: 24px; flex-shrink: 0; }
+.profile-chevron { width: 6px; height: 6px; border-right: 1.5px solid #44321d; border-bottom: 1.5px solid #44321d; transform: rotate(45deg); }
+.profile-dropdown[open] .profile-chevron { transform: rotate(225deg); }
+.profile-options { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 180px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--edge); border-radius: 14px; background: #fff; box-shadow: 0 8px 28px #302a2326; }
+.profile-options button { display: block; width: 100%; min-height: 42px; padding: 9px 12px; border-radius: 9px; background: transparent; color: #44321d; text-align: left; font-size: 14px; }
+.profile-options button:hover, .profile-options button:focus-visible { background: #f2e7d7; }
+.profile-options [data-logout] { border-top: 1px solid var(--edge); margin-top: 4px; }

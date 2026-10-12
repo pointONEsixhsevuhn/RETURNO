@@ -44,6 +44,7 @@ async function login(page, role, email, pass) {
   ).toBeVisible();
 }
 async function logout(page) {
+  if (!(await page.getByRole("button", {name:"Log out",exact:true}).isVisible())) await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Student", exact: true }),
@@ -226,13 +227,14 @@ test("search failure offers manual retry and clearing restores suggestions", asy
 }) => {
   await register(page);
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page.route("**/api/posts?q=*", (route) => route.abort(), { times: 1 });
+  await page.route("**/api/posts?q=*", (route) => route.abort());
   const input = page.getByRole("searchbox", { name: "Search posts" });
   await input.fill("no-match-browser-test");
   await input.press("Enter");
   await expect(
     page.getByRole("button", { name: "Retry search", exact: true }),
   ).toBeVisible();
+  await page.unroute("**/api/posts?q=*");
   await page.getByRole("button", { name: "Retry search", exact: true }).click();
   await expect(
     page.getByText("No posts found.", { exact: true }),
@@ -303,6 +305,7 @@ test("admin confirms account deletion, removes its reports and invalidates the s
  expect((await page.request.delete(`/api/users/${target.id}`, { data: { confirmEmail: email } })).status()).toBe(403);
  await logout(page);
  await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
+ await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button", { name: "Admin profile", exact: true }).click();
  await expect(page.getByRole("button", { name: "Delete account for admin@e2e.example", exact: true })).toHaveCount(0);
  const remove = page.getByRole("button", { name: `Delete account for ${email}`, exact: true });
@@ -424,8 +427,23 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  {id:"b",role:"admin",full_name:"Alice Admin",email:"alice@test.example"},
  {id:"c",role:"student",full_name:"Zoe Student",email:"zoe@test.example"},
  {id:"d",role:"student",full_name:"Ben Student",email:"ben@test.example"}]}}));
+ await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button",{name:"Admin profile",exact:true}).click();
  await expect(page.locator('.registered-user strong')).toHaveText(["Alice Admin","Zara Admin","Ben Student","Zoe Student"]);
+ await expect(page.getByRole("button",{name:"Search",exact:true})).toHaveCount(0);
+ const options=page.getByRole("button",{name:"Profile options",exact:true});
+ await options.click();
+ await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeVisible();
+ await noOverflow(page);
+ await page.screenshot({path:test.info().outputPath("admin-profile-menu.png")});
+ await page.keyboard.press("Escape");await expect(options).toBeFocused();
+ await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeHidden();
+ await options.click();await page.getByRole("heading",{name:"Registered users",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeHidden();
+ await options.click();await page.getByRole("button",{name:"Register admin",exact:true}).click();
+ await expect(page.getByRole("dialog")).toBeVisible();
+ await page.getByRole("button",{name:"Cancel",exact:true}).click();
+
  const search=page.getByRole("searchbox",{name:"Search registered users"});
  await search.fill("zoe@");
  await expect(page.locator('.registered-user:visible strong')).toHaveText(["Zoe Student"]);
@@ -433,6 +451,13 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await expect(page.locator('.registered-user:visible strong')).toHaveText(["Alice Admin"]);
  await search.fill("no-match"); await expect(page.getByRole("status")).toHaveText("0 matching users.");
  await search.fill(""); await expect(page.locator('.registered-user:visible')).toHaveCount(4);
+ await noOverflow(page);
+ await page.getByRole("button",{name:"Home",exact:true}).click();
+ await page.getByRole("button",{name:"Search",exact:true}).click();
+ await page.getByRole("button",{name:"Profile options",exact:true}).click();
+ await page.getByRole("button",{name:"Register admin",exact:true}).click();
+ await expect(page.getByRole("dialog")).toBeVisible();
+ await page.getByRole("button",{name:"Cancel",exact:true}).click();
  await noOverflow(page);
 });
 

@@ -79,7 +79,10 @@ function errorAt(target, error) {
   target.textContent = error.message || error;
 }
 function header(search = true, welcome = true) {
-  return `<header class="page-header"><button class="home-logo" data-go="${state.user.role === "admin" ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">${state.user.role === "student" ? `Welcome, ${esc(state.user.fullName || "Student")}!` : "WELCOME, ADMIN!"}</h1>` : ""}<div class="header-actions"><button type="button" class="pill logout-button" data-logout>Log out</button>${state.user.role === "admin" ? '<button class="pill admin-create" data-add-admin>Register admin</button>' : ""}<div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}<button class="icon" data-go="${state.user.role === "admin" ? "admin-profile" : "mine"}" aria-label="${state.user.role === "admin" ? "Admin profile" : "Your posts"}">${profileIcon}</button></div></div></header>`;
+  const admin = state.user.role === "admin";
+  if (admin && location.hash === "#admin-profile") search = false;
+  const profile = admin ? '<details class="profile-dropdown"><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options"><button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-logout>Log out</button></div></details>' : '<button class="icon" data-go="mine" aria-label="Your posts">' + profileIcon + '</button>';
+  return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">${state.user.role === "student" ? `Welcome, ${esc(state.user.fullName || "Student")}!` : "WELCOME, ADMIN!"}</h1>` : ""}<div class="header-actions">${admin ? "" : '<button type="button" class="pill logout-button" data-logout>Log out</button>'}<div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
 function bindNavigation() {
   app
@@ -88,6 +91,26 @@ function bindNavigation() {
   app
     .querySelectorAll("[data-logout]")
     .forEach((button) => (button.onclick = () => logout(button)));
+  if (state.user?.role === "admin") app.querySelectorAll("[data-add-admin]").forEach(button => button.onclick = () => {
+    const menu = app.querySelector(".profile-dropdown");
+    if (menu) {
+      menu.open = false;
+      menu.querySelector("summary").focus();
+    }
+    showAdminRegistration();
+  });
+  app.onclick = event => {
+    const menu = app.querySelector(".profile-dropdown");
+    if (menu?.open && !menu.contains(event.target)) menu.open = false;
+  };
+  app.onkeydown = event => {
+    const menu = app.querySelector(".profile-dropdown");
+    if (event.key === "Escape" && menu?.open) {
+      menu.open = false;
+      menu.querySelector("summary").focus();
+      event.preventDefault();
+    }
+  };
 }
 async function logout(button) {
   button.disabled = true;
@@ -328,9 +351,6 @@ function bindPostActions() {
     };
   });
   if (state.user?.role !== "admin") return;
-  app
-    .querySelectorAll("[data-add-admin]")
-    .forEach((button) => (button.onclick = () => showAdminRegistration()));
   app.querySelectorAll("[data-more]").forEach(
     (button) =>
       (button.onclick = () => {
@@ -666,7 +686,7 @@ async function adminProfile(version) {
     const users = result.users.filter((user) => user.role === role).sort((a, b) => a.full_name.localeCompare(b.full_name, undefined, {sensitivity:"base"}) || a.email.localeCompare(b.email));
     return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user" data-user-search="${esc(user.full_name + " " + user.email)}"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><div class="registered-user-actions"><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</div></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
   };
-  app.innerHTML = `<section class="screen page admin-profile">${header()}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><label class="user-search">Search registered users<input type="search" id="user-search" placeholder="Search by name or email" maxlength="254"></label><p id="user-filter-status" role="status" aria-live="polite"></p><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
+  app.innerHTML = `<section class="screen page admin-profile">${header(false)}<h2>Admin profile</h2><p>${esc(state.user.fullName)} · ${esc(state.user.email)}</p><h2>Registered users</h2><label class="user-search">Search registered users<input type="search" id="user-search" placeholder="Search by name or email" maxlength="254"></label><p id="user-filter-status" role="status" aria-live="polite"></p><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
   document.querySelector("#user-search").oninput = event => {
     const q = event.target.value.trim().toLowerCase();
     let count = 0;
