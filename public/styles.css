@@ -1269,14 +1269,14 @@ dialog input {
 /* Consistent warm surfaces and controls across every RETURNO screen. */
 :root {
   color: #302a23;
-  background: #f5f2ec;
+  background: #fff;
   font-family: "Segoe UI", "Avenir Next", Arial, sans-serif;
   --pill: linear-gradient(135deg, #ead9c1, #dcc4a2);
   --edge: #ddd5c9;
   --surface-shadow: 0 4px 18px rgba(63, 45, 24, 0.05);
 }
 body { line-height: 1.45; }
-.screen { background: #f5f2ec; }
+.screen { background: #fff; }
 .page { padding: clamp(12px, 2.2vw, 28px); }
 .page-header { padding-bottom: 18px; border-bottom: 1px solid #ddd5c9; margin-bottom: 20px; }
 .brand-line { border-color: #c4ad8c; border-width: 1px; }
