@@ -1510,7 +1510,6 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .about-steps li::before { content: counter(about-step); display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--pill); color: #44321d; border-radius: 10px; font-weight: 700; }
 .about-steps h3 { font-size: 16px; margin: 12px 0 8px; }
 .about-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.about-back { padding: 10px 24px; border-radius: 12px; font-size: 14px; }
 @media (max-width: 699px) { .about-steps, .about-columns { grid-template-columns: 1fr; } .about-columns { gap: 0; } .about-steps li { padding: 16px; } }
 
 .profile-back-home { grid-column: 1 / -1; grid-row: 4; justify-self: start; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 40px; margin-top: 8px; padding: 8px; border: 1px solid #998874; border-radius: 10px; background: #fff; color: #735733; }
