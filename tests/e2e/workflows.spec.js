@@ -18,6 +18,7 @@ async function register(page) {
     page.getByRole("heading", { name: "Confirm your email" }),
   ).toBeVisible();
   expect((await page.request.get("/api/me")).status()).toBe(401);
+  await expect(page.getByRole("button", {name:"Back to registration",exact:true})).toBeVisible();
   await page.getByLabel("Verification code").fill("000000");
   await page
     .getByRole("button", { name: "Confirm email", exact: true })
@@ -397,6 +398,9 @@ test("admin status filters show counts and select each report status", async ({p
  try {
   statuses.forEach((status,i)=>db.prepare("INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description) VALUES(?,?,?,?,?,?,?,?)").run(ids[i],admin.id,status==="Lost"?"Lost":"Found",status,"Filter fixture "+status,"2026-10-09T12:00","Test","Isolated filter test"));
   await page.goto("/#role"); await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
+  await page.getByRole("button",{name:"Search",exact:true}).click();
+  await page.getByRole("button",{name:"Back to home",exact:true}).click();
+  await expect(page).toHaveURL(/#admin$/);
   await expect(page.locator(".stats")).toHaveCount(0);
   const totals=(await (await page.request.get("/api/stats")).json()).stats;
   for(const status of statuses) await expect(page.locator(`[data-admin-filter="${status}"] .filter-count`)).toHaveText("("+totals[status]+")");
@@ -565,4 +569,42 @@ test("About page is public, responsive and available to both roles", async ({pag
  await page.getByRole("button",{name:"Back",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Admin profile",exact:true})).toBeVisible();
  await noOverflow(page);
+});
+
+
+test("back arrows return from authentication, recovery, search and own posts", async ({page}) => {
+ await page.goto("/#role");
+ await page.getByRole("button",{name:"Admin",exact:true}).click();
+ await page.getByRole("button",{name:"Back to role selection",exact:true}).click();
+ await expect(page).toHaveURL(/#role$/);
+ await page.getByRole("button",{name:"Student",exact:true}).click();
+ await page.getByRole("tab",{name:"Register",exact:true}).click();
+ await noOverflow(page);
+ await page.screenshot({path:test.info().outputPath("registration-back.png"),fullPage:true});
+ await page.getByRole("button",{name:"Back to role selection",exact:true}).click();
+ await page.getByRole("button",{name:"Student",exact:true}).click();
+ await page.getByRole("button",{name:"Forgot password?",exact:true}).click();
+ await page.getByRole("button",{name:"Back to log in",exact:true}).click();
+ await expect(page).toHaveURL(/#login$/);
+ await page.getByRole("button",{name:"Forgot password?",exact:true}).click();
+ await page.getByLabel("Enter your registered email",{exact:true}).fill("nobody@e2e.example");
+ await page.getByRole("button",{name:"Send reset code",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Reset password",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Back to log in",exact:true}).click();
+ await expect(page).toHaveURL(/#login$/);
+ await register(page);
+ await page.getByRole("button",{name:"Profile options",exact:true}).click();
+ await page.getByRole("button",{name:"Your posts",exact:true}).click();
+ await page.getByRole("button",{name:"Add post",exact:true}).click();
+ await page.getByLabel("Item name:",{exact:true}).fill("Discarded draft");
+ await page.getByRole("button",{name:"Back",exact:true}).click();
+ await expect(page).toHaveURL(/#mine$/);
+ await page.getByRole("button",{name:"Back to home",exact:true}).click();
+ await expect(page).toHaveURL(/#feed$/);
+ await page.getByRole("button",{name:"Search",exact:true}).click();
+ await noOverflow(page);
+ const back=page.getByRole("button",{name:"Back to home",exact:true});
+ await expect(back).toHaveCSS("width","40px");
+ await expect(back).toHaveText("");
+ await back.click(); await expect(page).toHaveURL(/#feed$/);
 });

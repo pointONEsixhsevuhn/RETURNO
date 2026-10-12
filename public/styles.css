@@ -1514,3 +1514,13 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 
 .profile-back-home { grid-column: 1 / -1; grid-row: 4; justify-self: start; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 40px; margin-top: 8px; padding: 8px; border: 1px solid #998874; border-radius: 10px; background: var(--pill); color: #44321d; }
 .profile-back-home svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Shared back controls on authentication and editor pages. */
+.login, .registration, .auth-page { position: relative; }
+.login, .registration { padding-top: 64px; }
+.auth-page { padding-top: 64px; }
+.auth-back { position: absolute; top: 12px; left: 16px; margin: 0; }
+.auth-page > .auth-back { margin: 0; }
+.editor-back { margin: 0 0 12px; }
+
+.login:has(.auth-switcher), .registration:has(.auth-switcher) { padding-top: 64px; }
