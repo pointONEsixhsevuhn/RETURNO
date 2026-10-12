@@ -68,6 +68,14 @@ test("all page layouts fit six widths and short landscape screens", async ({page
    else if(route==='post') await expect(page.locator('#post-form')).toBeVisible();
    else await expect(page.locator('.page-header')).toBeVisible();
    await inspect('student-'+route,w,h);
+   if(route==='feed') {
+    await expect(page.locator('.page-header [data-go="search"]')).toHaveCount(0);
+    const tools=page.locator('.post-toolbar');await expect(tools.getByRole('button',{name:'Search',exact:true})).toBeVisible();
+    const filtersBox=await tools.locator('.filters').boundingBox();const searchBox=await tools.locator('.home-search').boundingBox();
+    expect(searchBox.x).toBeGreaterThanOrEqual(filtersBox.x+filtersBox.width);
+    const firstFilter=await tools.locator('.filters button').first().boundingBox();
+    expect(Math.abs(searchBox.y+searchBox.height/2-firstFilter.y-firstFilter.height/2)).toBeLessThan(2);
+   }
    if(route==='feed'||route==='mine') {
     const columns=await page.locator('.cards').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(w>=1500?7:w>=1200?6:w>=900?5:w>=700?4:2);
@@ -94,6 +102,12 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     await page.getByRole('button',{name:'Delete account for '+studentEmail,exact:true}).click();await inspect('delete-dialog',w,h);await page.keyboard.press('Escape');
    }
    if(route==='admin') {
+    await expect(page.locator('.page-header [data-go="search"]')).toHaveCount(0);
+    const tools=page.locator('.post-toolbar');await expect(tools.getByRole('button',{name:'Search',exact:true})).toBeVisible();
+    const filtersBox=await tools.locator('.filters').boundingBox();const searchBox=await tools.locator('.home-search').boundingBox();
+    expect(searchBox.x).toBeGreaterThanOrEqual(filtersBox.x+filtersBox.width);
+    const firstFilter=await tools.locator('.filters button').first().boundingBox();
+    expect(Math.abs(searchBox.y+searchBox.height/2-firstFilter.y-firstFilter.height/2)).toBeLessThan(2);
     await page.locator(`[data-more="${id}"]`).click();
     await page.locator(`[data-update="${id}"]`).click();await inspect('update-dialog',w,h);await page.keyboard.press('Escape');
     await page.locator(`[data-more="${id}"]`).click();

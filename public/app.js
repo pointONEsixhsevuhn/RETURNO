@@ -87,7 +87,7 @@ function backButton(route, label = "Back", extraClass = "") {
 function header(search = true, welcome = true, backControl = "") {
   if (!backControl && ["mine", "search"].includes(location.hash.slice(1))) backControl = backButton(state.user.role === "admin" ? "admin" : "feed", "Back to home");
   const admin = state.user.role === "admin";
-  if (admin && location.hash === "#admin-profile") search = false;
+  if (["#feed", "#admin"].includes(location.hash) || (admin && location.hash === "#admin-profile")) search = false;
   const profile = '<details class="profile-dropdown"><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button>' : '<button type="button" data-go="mine">Your posts</button>') + '<button type="button" data-go="about">About RETURNO</button><button type="button" data-logout>Log out</button></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
@@ -318,8 +318,11 @@ function card(post, own = false) {
   const manage = own && state.user?.role === "admin";
   return `<article class="card" data-detail="${esc(post.id)}" role="${manage ? "group" : "button"}" tabindex="0" aria-label="View details for ${esc(post.item_name)}"><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact">Contact: ${esc(postContact(post))}</p>${manage ? menu(post) : ""}</article>`;
 }
+function postToolbar(filtersMarkup) {
+  return `<div class="post-toolbar">${filtersMarkup}<button type="button" class="icon home-search" data-go="search" aria-label="Search">${searchIcon}</button></div>`;
+}
 function filters() {
-  return `<nav class="filters" aria-label="Post type">${["All", "Lost", "Found"].map((x) => `<button data-filter="${x}" class="${state.filter === x ? "active" : ""}">${x.toUpperCase()}</button>`).join("")}</nav>`;
+  return postToolbar(`<nav class="filters" aria-label="Post type">${["All", "Lost", "Found"].map((x) => `<button data-filter="${x}" class="${state.filter === x ? "active" : ""}">${x.toUpperCase()}</button>`).join("")}</nav>`);
 }
 function openDialog(label) {
   dialog.setAttribute("aria-label", label);
@@ -670,7 +673,7 @@ async function admin(version, status = "", page = 1) {
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav><div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div>${pagination(result.pagination)}</section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div>${pagination(result.pagination)}</section>`;
   bindPagination(next => admin(++renderVersion, status, next));
   state.notice = "";
   bindNavigation();

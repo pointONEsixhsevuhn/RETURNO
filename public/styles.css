@@ -1530,3 +1530,8 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 
 /* Registered names and email addresses can wrap on the admin profile. */
 .admin-profile > p { overflow-wrap: anywhere; }
+
+/* Home search sits to the right of the status filters. */
+.post-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; margin-bottom: 12px; }
+.post-toolbar .filters { min-width: 0; margin: 0; padding-top: 7px; }
+.post-toolbar .home-search { width: 40px; height: 44px; padding: 6px; justify-self: end; }
