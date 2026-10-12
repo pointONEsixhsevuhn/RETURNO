@@ -1513,3 +1513,8 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .about-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 .about-back { padding: 10px 24px; border-radius: 12px; font-size: 14px; }
 @media (max-width: 699px) { .about-steps, .about-columns { grid-template-columns: 1fr; } .about-columns { gap: 0; } .about-steps li { padding: 16px; } }
+
+.admin-profile-heading { display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
+.admin-profile-heading h2 { margin: 0; min-width: 0; font-size: clamp(20px, 3vw, 24px); }
+.profile-back-home { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 6px 0; font-size: 12px; color: #735733; }
+.profile-back-home svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

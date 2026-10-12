@@ -431,6 +431,11 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await page.getByRole("button",{name:"Admin profile",exact:true}).click();
  await expect(page.locator('.registered-user strong')).toHaveText(["Alice Admin","Zara Admin","Ben Student","Zoe Student"]);
  await expect(page.getByRole("button",{name:"Search",exact:true})).toHaveCount(0);
+ const backHome=page.getByRole("button",{name:"Back to home",exact:true});
+ const backBounds=await backHome.boundingBox();
+ const titleBounds=await page.getByRole("heading",{name:"Admin profile",exact:true}).boundingBox();
+ expect(backBounds.x+backBounds.width).toBeLessThanOrEqual(titleBounds.x);
+
  const options=page.getByRole("button",{name:"Profile options",exact:true});
  await options.click();
  await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeVisible();
@@ -452,7 +457,8 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await search.fill("no-match"); await expect(page.getByRole("status")).toHaveText("0 matching users.");
  await search.fill(""); await expect(page.locator('.registered-user:visible')).toHaveCount(4);
  await noOverflow(page);
- await page.getByRole("button",{name:"Home",exact:true}).click();
+ await backHome.click();
+ await expect(page.getByRole("heading",{name:"WELCOME, ADMIN!",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Search",exact:true}).click();
  await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button",{name:"Register admin",exact:true}).click();
