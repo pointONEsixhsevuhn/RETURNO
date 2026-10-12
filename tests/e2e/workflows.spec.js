@@ -462,7 +462,7 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await page.screenshot({path:test.info().outputPath("admin-profile-menu.png")});
  await page.keyboard.press("Escape");await expect(options).toBeFocused();
  await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeHidden();
- await options.click();await page.getByRole("heading",{name:"Registered users",exact:true}).click();
+ await options.click();await page.getByRole("heading",{name:"Registered users",exact:true}).click({position:{x:5,y:5}});
  await expect(page.getByRole("button",{name:"Register admin",exact:true})).toBeHidden();
  await options.click();await page.getByRole("button",{name:"Register admin",exact:true}).click();
  await expect(page.getByRole("dialog")).toBeVisible();
@@ -576,7 +576,7 @@ test("About page is public, responsive and available to both roles", async ({pag
  await expect(page.getByRole("dialog")).toBeVisible();
  await page.getByRole("button",{name:"Cancel",exact:true}).click();
  await page.getByRole("button",{name:"Back",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Admin profile",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Registered users",exact:true})).toBeVisible();
  await noOverflow(page);
 });
 
