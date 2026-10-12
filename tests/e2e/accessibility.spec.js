@@ -51,6 +51,9 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
     page.getByLabel("Confirm password", { exact: true }),
     pass,
   );
+  await page.getByRole("checkbox").focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("checkbox")).toBeChecked();
   await fits(page);
   await activate(
     page,

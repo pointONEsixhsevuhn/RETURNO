@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect, verificationCodes } from "./fixtures.js";
 
 const password = "BrowserStudent123!";
-async function register(page) {
+async function register(page, checkInvalidCode = false) {
   const email = `student-${randomUUID()}@e2e.example`;
   await page.goto("/#role");
   await page.getByRole("button", { name: "Student", exact: true }).click();
@@ -13,12 +13,14 @@ async function register(page) {
     .fill("Browser Test Student");
   await page.getByLabel("Set password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password", { exact: true }).fill(password);
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Confirm your email" }),
   ).toBeVisible();
   expect((await page.request.get("/api/me")).status()).toBe(401);
   await expect(page.getByRole("button", {name:"Back to registration",exact:true})).toBeVisible();
+  if (checkInvalidCode) {
   await page.getByLabel("Verification code").fill("000000");
   await page
     .getByRole("button", { name: "Confirm email", exact: true })
@@ -26,6 +28,7 @@ async function register(page) {
   await expect(page.getByRole("alert")).toHaveText(
     "Incorrect verification code.",
   );
+  }
   await page.getByLabel("Verification code").fill(verificationCodes.get(email));
   await page
     .getByRole("button", { name: "Confirm email", exact: true })
@@ -64,7 +67,7 @@ async function noOverflow(page) {
 test("student report lifecycle and administrator review, edit, return and delete", async ({
   page,
 }) => {
-  const email = await register(page);
+  const email = await register(page, true);
   let studentSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
   await noOverflow(page);
   await page.getByRole("button",{name:"Profile options",exact:true}).click();
@@ -640,4 +643,32 @@ test("back arrows return from authentication, recovery, search and own posts", a
  await expect(back).toHaveCSS("width","40px");
  await expect(back).toHaveText("");
  await back.click(); await expect(page).toHaveURL(/#feed$/);
+});
+
+test("policy documents are public, readable and registration requires acknowledgment", async ({ page, context }) => {
+ await page.goto('/#register');
+ const checkbox=page.getByRole('checkbox');
+ await expect(checkbox).not.toBeChecked();
+ await expect(checkbox).toHaveAttribute('required','');
+ await page.getByLabel('Enter gmail').fill('policy-check@e2e.example');
+ await page.getByLabel('Full name',{exact:true}).fill('Policy Check');
+ await page.getByLabel('Set password',{exact:true}).fill(password);
+ await page.getByLabel('Confirm password',{exact:true}).fill(password);
+ await page.getByRole('button',{name:'Register',exact:true}).click();
+ await expect(page).toHaveURL(/#register$/);
+ expect(await checkbox.evaluate(el=>el.validity.valueMissing)).toBe(true);
+ const popupPromise=context.waitForEvent('page');
+ await page.locator('.policy-agreement').getByRole('link',{name:'Privacy Policy',exact:true}).click();
+ const policy=await popupPromise;
+ await expect(policy.getByRole('heading',{name:'Privacy Policy',exact:true})).toBeVisible();
+ await expect(policy.getByText('Last updated: October 12, 2026')).toBeVisible();
+ await expect(policy.getByRole('heading',{name:'11. Contact Us',exact:true})).toBeVisible();
+ await expect(policy.getByText(/javellellantada01@gmail.com/)).toBeVisible();
+ await policy.getByRole('link',{name:'Terms & Conditions',exact:true}).click();
+ await expect(policy.getByRole('heading',{name:'9. Contact Us',exact:true})).toBeVisible();
+ expect(await policy.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await policy.close();
+ await expect(page.getByLabel('Full name',{exact:true})).toHaveValue('Policy Check');
+ await checkbox.check();
+ await page.screenshot({path:test.info().outputPath('policy-registration.png'),fullPage:true});
 });

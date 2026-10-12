@@ -1632,3 +1632,13 @@ dialog:has(.detail-layout) h2 { color: #382a1b; font-size: clamp(20px, 3vw, 26px
 .detail-contact { background: #f8f3eb; border: 1px solid #eee3d4; border-top: 2px solid #d9cbb6; border-radius: 10px; padding: 14px; color: #57412a; }
 .admin-row { border-color: #dfd3c2; background: linear-gradient(180deg, #fffdf9, #fff); box-shadow: 0 3px 12px #51381e0a; }
 .admin-row .row-image { background: radial-gradient(ellipse at center, #fff, #f4ecdf); border-color: #eee3d3; }
+.policy-page { max-width: 850px; margin: 0 auto; padding: 28px 20px; line-height: 1.7; overflow-wrap: anywhere; }
+.policy-page nav { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 32px; }
+.policy-page h1 { font-size: clamp(26px, 5vw, 36px); }
+.policy-page h2 { font-size: 21px; margin-top: 30px; }
+.policy-page p { margin: 12px 0; }
+.policy-page a, .legal a, .policy-agreement a { color: #594126; text-decoration: underline; }
+.policy-agreement { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.5; }
+.policy-agreement input { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0; }
+.profile-options a { display: block; padding: 10px 14px; color: inherit; font-size: 14px; }
+.policy-agreement input { width: 24px; height: 24px; font-size: 16px; }
