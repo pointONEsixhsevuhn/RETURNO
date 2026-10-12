@@ -664,11 +664,47 @@ test("policy documents are public, readable and registration requires acknowledg
  await expect(policy.getByText('Last updated: October 12, 2026')).toBeVisible();
  await expect(policy.getByRole('heading',{name:'11. Contact Us',exact:true})).toBeVisible();
  await expect(policy.getByText(/javellellantada01@gmail.com/)).toBeVisible();
- await policy.getByRole('link',{name:'Terms & Conditions',exact:true}).click();
+ await policy.locator('.policy-tabs').getByRole('link',{name:'Terms and Conditions',exact:true}).click();
  await expect(policy.getByRole('heading',{name:'9. Contact Us',exact:true})).toBeVisible();
  expect(await policy.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await expect(policy.locator('.policy-tabs a[aria-current]')).toHaveText('Terms and Conditions');
+ await expect(policy.getByRole('link',{name:'Back',exact:true})).toHaveAttribute('href','/#login');
+ await policy.screenshot({path:test.info().outputPath('themed-terms.png'),fullPage:true});
+ await policy.getByRole('link',{name:'Back',exact:true}).click();
+ await expect(policy).toHaveURL(/#login$/);
+ await expect(policy.getByRole('button',{name:'Log In',exact:true})).toBeVisible();
  await policy.close();
  await expect(page.getByLabel('Full name',{exact:true})).toHaveValue('Policy Check');
  await checkbox.check();
  await page.screenshot({path:test.info().outputPath('policy-registration.png'),fullPage:true});
+});
+
+
+test("policy links stay in the bottom-right themed box and public Back returns safely", async ({ page, context }) => {
+ for (const route of ['role','login','register','about']) {
+  await page.goto('/#'+route);
+  const footer=page.locator('footer.legal');
+  await expect(footer).toBeVisible();
+  await expect(footer.getByRole('link')).toHaveCount(2);
+  await expect(footer).toContainText(/Privacy Policy\s*\|\s*Terms and Conditions/);
+  await expect(footer).toHaveCSS('position','fixed');
+  const box=await footer.boundingBox(); const viewport=page.viewportSize();
+  expect(Math.abs(viewport.width-box.x-box.width-12)).toBeLessThan(2);
+  expect(Math.abs(viewport.height-box.y-box.height-12)).toBeLessThan(2);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+  const after=await footer.boundingBox();expect(after.y).toBeCloseTo(box.y,0);
+ }
+ await page.goto('/#role');
+ const popupPromise=context.waitForEvent('page');
+ await page.locator('footer.legal').getByRole('link',{name:'Privacy Policy',exact:true}).click();
+ const policy=await popupPromise;
+ await expect(policy.locator('.policy-tabs a[aria-current]')).toHaveText('Privacy Policy');
+ await expect(policy.getByRole('link',{name:'Back',exact:true})).toHaveAttribute('href','/#role');
+ await policy.screenshot({path:test.info().outputPath('themed-privacy.png'),fullPage:true});
+ await policy.getByRole('link',{name:'Back',exact:true}).click();
+ await expect(policy.getByRole('button',{name:'Student',exact:true})).toBeVisible();
+ await policy.close();
+ await page.goto('/terms.html?return=https://example.com');
+ await expect(page.getByRole('link',{name:'Back',exact:true})).toHaveAttribute('href','/#role');
 });
