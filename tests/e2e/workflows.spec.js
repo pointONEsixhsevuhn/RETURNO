@@ -436,8 +436,11 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await expect(page.getByRole("button",{name:"Search",exact:true})).toHaveCount(0);
  const backHome=page.getByRole("button",{name:"Back to home",exact:true});
  const backBounds=await backHome.boundingBox();
- const titleBounds=await page.getByRole("heading",{name:"Admin profile",exact:true}).boundingBox();
- expect(backBounds.x+backBounds.width).toBeLessThanOrEqual(titleBounds.x);
+ const welcomeBounds=await page.getByRole("heading",{name:"WELCOME, ADMIN!",exact:true}).boundingBox();
+ expect(backBounds.y).toBeGreaterThanOrEqual(welcomeBounds.y+welcomeBounds.height);
+ expect(backBounds.width).toBe(40);
+ await expect(backHome).toHaveText("");
+ await expect(backHome).toHaveCSS("border-top-style","solid");
 
  const options=page.getByRole("button",{name:"Profile options",exact:true});
  await options.click();
