@@ -1524,7 +1524,6 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .auth-page { padding-top: 64px; }
 .auth-back { position: absolute; top: 12px; left: 16px; margin: 0; }
 .auth-page > .auth-back { margin: 0; }
-.editor-back { margin: 0 0 12px; }
 
 .login:has(.auth-switcher), .registration:has(.auth-switcher) { padding-top: 64px; }
 

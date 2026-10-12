@@ -598,8 +598,9 @@ test("back arrows return from authentication, recovery, search and own posts", a
  await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button",{name:"Your posts",exact:true}).click();
  await page.getByRole("button",{name:"Add post",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Back",exact:true})).toHaveCount(0);
  await page.getByLabel("Item name:",{exact:true}).fill("Discarded draft");
- await page.getByRole("button",{name:"Back",exact:true}).click();
+ await page.getByRole("button",{name:"Cancel",exact:true}).click();
  await expect(page).toHaveURL(/#mine$/);
  await page.getByRole("button",{name:"Back to home",exact:true}).click();
  await expect(page).toHaveURL(/#feed$/);
