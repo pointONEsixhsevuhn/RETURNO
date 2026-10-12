@@ -1615,6 +1615,8 @@ dialog:has(.detail-layout) h2 { text-align: left; }
   margin-top: 8px;
 }
 .contact-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; }
+.contact-heading { display: block; margin-bottom: 4px; color: #57412a; font-size: 12px; font-weight: 650; }
+.detail-contact-value { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
 .own .add-card { aspect-ratio: auto; height: 310px; }
 @media (max-width: 600px) { .card:has(.card-contact), .own .add-card { height: 300px; } }
 /* The same warm visual treatment in the complete post view for both roles. */

@@ -130,6 +130,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(card).toBeVisible();
   await expect(card.locator("img")).toBeVisible();
   await expect(card.locator(".card-contact")).toBeVisible();
+  await expect(card.locator(".contact-heading")).toHaveText("Contact me");
   await expect(card.locator(".card-contact")).toContainText("contact.test@gmail.com");
   await noOverflow(page);
   await expect(page.getByRole("button", { name: "Post options" })).toHaveCount(
@@ -153,6 +154,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog")).toContainText("Facebook: Returno Test");
   await expect(page.getByRole("dialog")).toContainText("contact.test@gmail.com");
   await expect(page.getByRole("dialog")).toContainText("09123456789");
+  await expect(page.locator("dialog .contact-heading")).toHaveText("Contact me");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -178,6 +180,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await noOverflow(page);
   await row.locator("[data-detail]").click();
   await expect(page.getByRole("dialog")).toContainText(item);
+  await expect(page.locator("dialog .contact-heading")).toHaveText("Contact me");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Close", exact: true })
