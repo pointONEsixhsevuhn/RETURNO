@@ -525,17 +525,60 @@ function editor() {
       }),
   );
   const contactRows = document.querySelector("#contact-rows");
+  let contactIndex = 0;
+  const navigationClick = app.onclick;
+  app.onclick = event => {
+    navigationClick?.(event);
+    contactRows.querySelectorAll(".contact-picker").forEach(picker => {
+      if (!picker.contains(event.target)) {
+        picker.querySelector(".contact-options").hidden = true;
+        picker.querySelector(".contact-trigger").setAttribute("aria-expanded", "false");
+      }
+    });
+  };
   function addContact(method = "Facebook", value = "") {
     const row = document.createElement("div");
     row.className = "contact-method-row";
-    row.innerHTML = '<select aria-label="Contact method" class="pill">' + ["Facebook", "Contact number", "Gmail", "Other"].map(name => '<option>' + name + '</option>').join("") + '</select><input aria-label="How to contact you (optional):" maxlength="500"><button type="button" class="pill" aria-label="Remove contact method">Remove</button>';
+    const methods = ["Facebook", "Contact number", "Gmail", "Other"];
+    const optionsId = "contact-options-" + ++contactIndex;
+    row.innerHTML = '<select hidden aria-hidden="true" tabindex="-1">' + methods.map(name => '<option>' + name + '</option>').join("") + '</select><div class="contact-picker"><button type="button" class="pill status-trigger contact-trigger" aria-label="Contact method" aria-expanded="false" aria-controls="' + optionsId + '"><span class="contact-choice">' + esc(method) + '</span><span class="triangle" aria-hidden="true"></span></button><div class="status-options contact-options" id="' + optionsId + '" hidden>' + methods.map(name => '<button type="button" data-contact-choice="' + name + '">' + name + '</button>').join("") + '</div></div><input aria-label="How to contact you (optional):" maxlength="500"><button type="button" class="pill" data-remove-contact aria-label="Remove contact method">Remove</button>';
     const select = row.querySelector("select"), input = row.querySelector("input");
     select.value = method;
     input.value = value;
     const updateHint = () => { input.placeholder = "Type here"; };
     select.onchange = updateHint;
     updateHint();
-    row.querySelector("button").onclick = () => row.remove();
+    const picker = row.querySelector(".contact-picker"), trigger = row.querySelector(".contact-trigger"), options = row.querySelector(".contact-options");
+    const choices = Array.from(row.querySelectorAll("[data-contact-choice]"));
+    const close = () => { options.hidden = true; trigger.setAttribute("aria-expanded", "false"); };
+    const open = () => {
+      contactRows.querySelectorAll(".contact-trigger").forEach(other => {
+        if (other !== trigger) {
+          other.setAttribute("aria-expanded", "false");
+          other.parentElement.querySelector(".contact-options").hidden = true;
+        }
+      });
+      options.hidden = false; trigger.setAttribute("aria-expanded", "true");
+      (choices.find(choice => choice.dataset.contactChoice === select.value) || choices[0])?.focus();
+    };
+    trigger.onclick = () => options.hidden ? open() : close();
+    choices.forEach(choice => choice.onclick = () => {
+      select.value = choice.dataset.contactChoice;
+      row.querySelector(".contact-choice").textContent = select.value;
+      updateHint(); close(); trigger.focus();
+    });
+    picker.onkeydown = event => {
+      if (event.key === "Escape") { close(); trigger.focus(); event.preventDefault(); }
+      else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        if (options.hidden) return open();
+        const index = choices.indexOf(document.activeElement);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? choices.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + choices.length) % choices.length;
+        choices[next]?.focus();
+      }
+    };
+    picker.onfocusout = () => setTimeout(() => { if (!picker.contains(document.activeElement)) close(); }, 0);
+    row.querySelector("[data-remove-contact]").onclick = () => row.remove();
     contactRows.append(row);
   }
   const savedContact = post?.contact_details || [post?.contact_email, post?.contact_phone].filter(Boolean).join(" / ");
@@ -547,7 +590,7 @@ function editor() {
   } else addContact();
   document.querySelector("#add-contact").onclick = () => {
     addContact();
-    contactRows.lastElementChild.querySelector("select").focus();
+    contactRows.lastElementChild.querySelector(".contact-trigger").focus();
   };
   document.querySelector("#image-input").onchange = async (event) => {
     const file = event.target.files[0];

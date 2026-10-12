@@ -21,9 +21,11 @@ test("all page layouts fit six widths and short landscape screens", async ({page
  async function inspect(label,w,h) {
   if (label.endsWith("-post") || label === "admin-editor") {
    const select=page.getByLabel("Contact method",{exact:true}).first();
-   await select.selectOption("Contact number");
+   await select.click();
+   await inspect("contact-options",w,h);
+   await page.locator(".contact-options:visible").getByRole("button",{name:"Contact number",exact:true}).click();
    const row=page.locator(".contact-method-row").first();
-   const dropdown=await select.boundingBox();const input=await row.locator("input").boundingBox();const remove=await row.locator("button").boundingBox();
+   const dropdown=await select.boundingBox();const input=await row.locator("input").boundingBox();const remove=await row.locator("[data-remove-contact]").boundingBox();
    if(w<=600) {
     expect(input.y).toBeGreaterThanOrEqual(dropdown.y+dropdown.height);
     expect(input.width).toBeGreaterThan(dropdown.width);

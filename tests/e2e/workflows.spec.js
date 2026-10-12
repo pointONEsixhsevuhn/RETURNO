@@ -88,10 +88,12 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.getByRole("button", { name: "Lost", exact: true }).click();
   await page.getByLabel("How to contact you (optional):", {exact:true}).fill("Returno Test");
   await page.getByRole("button", {name:"Add contact method", exact:true}).click();
-  await page.getByLabel("Contact method", {exact:true}).nth(1).selectOption("Gmail");
+  await page.getByRole("button", {name:"Contact method",exact:true}).nth(1).click();
+  await page.locator(".contact-options:visible").getByRole("button",{name:"Gmail",exact:true}).click();
   await page.getByLabel("How to contact you (optional):", {exact:true}).nth(1).fill("contact.test@gmail.com");
   await page.getByRole("button", {name:"Add contact method", exact:true}).click();
-  await page.getByLabel("Contact method", {exact:true}).nth(2).selectOption("Contact number");
+  await page.getByRole("button", {name:"Contact method",exact:true}).nth(2).click();
+  await page.locator(".contact-options:visible").getByRole("button",{name:"Contact number",exact:true}).click();
   await page.getByLabel("How to contact you (optional):", {exact:true}).nth(2).fill("09123456789");
   await page.getByRole("button", {name:"Add contact method", exact:true}).click();
   await page.getByRole("button", {name:"Remove contact method", exact:true}).last().click();

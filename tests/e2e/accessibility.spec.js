@@ -91,6 +91,20 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
     "aria-expanded",
     "false",
   );
+  const contactMethod=page.getByRole("button",{name:"Contact method",exact:true});
+  await activate(page,contactMethod);
+  await expect(contactMethod).toHaveAttribute("aria-expanded","true");
+  await expect(page.locator('.contact-options:visible').getByRole('button',{name:'Facebook',exact:true})).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator('.contact-options:visible').getByRole('button',{name:'Contact number',exact:true})).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(contactMethod).toHaveText("Contact number");
+  await expect(contactMethod).toHaveAttribute("aria-expanded","false");
+  await expect(contactMethod).toBeFocused();
+  await page.keyboard.press("ArrowDown");await page.keyboard.press("End");
+  await expect(page.locator('.contact-options:visible').getByRole('button',{name:'Other',exact:true})).toBeFocused();
+  await page.keyboard.press("Escape");await expect(contactMethod).toBeFocused();
+  await expect(contactMethod).toHaveAttribute("aria-expanded","false");
   await typeInto(
     page,
     page.getByLabel("Item name:", { exact: true }),
