@@ -1382,6 +1382,7 @@ dialog select:focus {
   input, textarea, select, .search-box, .contact-box { transition: border-color 180ms ease, box-shadow 180ms ease; }
 }
 /* One field treatment across login, registration and all text-entry forms. */
+.contact-method-row select,
 .status-trigger,
 .contact-box,
 .auth-field input,
@@ -1544,4 +1545,16 @@ dialog:has(.detail-layout) h2 { text-align: left; }
   .contact-method-row select { grid-column: 1; grid-row: 1; font-size: 14px; padding: 6px; }
   .contact-method-row button { grid-column: 2; grid-row: 1; padding: 6px; }
   .contact-method-row input { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Contact methods use the same outlined dropdown surface and triangle as Status. */
+.contact-method-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  padding: 8px 36px 8px 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath fill='%23191919' d='M0 0h16L8 10z'/%3E%3C/svg%3E"), linear-gradient(160deg, #fffdf9 0%, #f3ede3 100%);
+  background-repeat: no-repeat;
+  background-position: right 12px center, center;
+  background-size: 16px 10px, auto;
 }
