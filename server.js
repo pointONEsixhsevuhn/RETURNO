@@ -558,6 +558,7 @@ export const server = http.createServer(async (req, res) => {
       ".css": "text/css; charset=utf-8",
       ".js": "text/javascript; charset=utf-8",
       ".png": "image/png",
+      ".svg": "image/svg+xml",
     };
     if (!types[path.extname(file)]) fail(404, "Not found.");
     let bytes;

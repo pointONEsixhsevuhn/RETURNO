@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>RETURNO</title>
+  <defs><linearGradient id="gold" x1="0" x2="1"><stop stop-color="#b88200"/><stop offset="1" stop-color="#dfa900"/></linearGradient></defs>
+  <path d="m43 44 16 16" fill="none" stroke="#080806" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="27" cy="27" r="23" fill="#fff" stroke="#080806" stroke-width="4"/>
+  <ellipse cx="27" cy="27" rx="17" ry="18" fill="url(#gold)"/>
+  <ellipse cx="27" cy="27" rx="5" ry="7" fill="#fff"/>
+</svg>

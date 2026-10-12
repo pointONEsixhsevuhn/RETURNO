@@ -500,6 +500,13 @@ test("post pages navigate without losing filters and details", async ({page}) =>
 test("About page is public, responsive and available to both roles", async ({page}) => {
  await page.goto("/#role");
  await expect(page.getByRole("button",{name:"Profile options",exact:true})).toHaveCount(0);
+ const favicon=page.locator('link[rel="icon"]');
+ await expect(favicon).toHaveAttribute("href","assets/favicon.svg");
+ const icon=await page.request.get("/assets/favicon.svg");
+ expect(icon.status()).toBe(200);expect(icon.headers()["content-type"]).toBe("image/svg+xml");
+ await expect.poll(()=>page.evaluate(()=>new Promise(resolve=>{
+  const img=new Image();img.onload=()=>resolve(img.naturalWidth>0);img.onerror=()=>resolve(false);img.src=document.querySelector('link[rel="icon"]').href;
+ }))).toBe(true);
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
  await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
  await expect(page.locator(".about-steps > li")).toHaveCount(3);
