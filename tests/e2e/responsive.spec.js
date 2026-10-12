@@ -19,6 +19,17 @@ test("all page layouts fit six widths and short landscape screens", async ({page
  const sizes=[[320,640],[393,851],[768,1024],[1024,768],[1280,720],[1536,864],[667,375]];
  const failures=[];
  async function inspect(label,w,h) {
+  if (label.endsWith("-post") || label === "admin-editor") {
+   const select=page.getByLabel("Contact method",{exact:true}).first();
+   await select.selectOption("Contact number");
+   const row=page.locator(".contact-method-row").first();
+   const dropdown=await select.boundingBox();const input=await row.locator("input").boundingBox();const remove=await row.locator("button").boundingBox();
+   if(w<=600) {
+    expect(input.y).toBeGreaterThanOrEqual(dropdown.y+dropdown.height);
+    expect(input.width).toBeGreaterThan(dropdown.width);
+    expect(remove.x).toBeGreaterThanOrEqual(dropdown.x+dropdown.width);
+   } else expect(input.x).toBeGreaterThanOrEqual(dropdown.x+dropdown.width);
+  }
   await page.evaluate(()=>document.fonts.ready);
   const issues=await page.evaluate(()=>{
    const bad=[];

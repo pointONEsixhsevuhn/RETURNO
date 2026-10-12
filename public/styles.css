@@ -1537,3 +1537,11 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .post-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; margin-bottom: 12px; }
 .post-toolbar .filters { min-width: 0; margin: 0; padding-top: 7px; }
 .post-toolbar .home-search { width: 40px; height: 44px; padding: 6px; justify-self: end; }
+
+/* Give contact labels room and keep typing separate on narrow editors. */
+@media (max-width: 600px) {
+  .contact-method-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .contact-method-row select { grid-column: 1; grid-row: 1; font-size: 14px; padding: 6px; }
+  .contact-method-row button { grid-column: 2; grid-row: 1; padding: 6px; }
+  .contact-method-row input { grid-column: 1 / -1; grid-row: 2; }
+}
