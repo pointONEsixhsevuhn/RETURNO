@@ -1483,7 +1483,7 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .history-remove { background: transparent; color: #44321d; flex-shrink: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
 .search-history[hidden], #clear-history[hidden] { display: none; }
 
-/* Compact administrator account options. */
+/* Compact student and administrator account options. */
 .profile-dropdown { position: relative; }
 .header-actions .profile-trigger { display: flex; align-items: center; justify-content: center; gap: 5px; width: 48px; height: 44px; padding: 6px; border-radius: 12px; background: var(--pill); cursor: pointer; list-style: none; }
 .profile-trigger::-webkit-details-marker { display: none; }

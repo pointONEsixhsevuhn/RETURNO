@@ -72,6 +72,7 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
   await expect(
     page.getByRole("heading", { name: "Welcome, Keyboard Test Student With A Long Display Name!" }),
   ).toBeVisible();
+  await activate(page,page.getByRole("button",{name:"Profile options",exact:true}));
   await activate(
     page,
     page.getByRole("button", { name: "Your posts", exact: true }),
@@ -157,6 +158,7 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
   await page.keyboard.press("Enter");
   await expect(card).toBeVisible();
   await fits(page);
+  await activate(page,page.getByRole("button",{name:"Profile options",exact:true}));
   await activate(
     page,
     page.getByRole("button", { name: "Log out", exact: true }),

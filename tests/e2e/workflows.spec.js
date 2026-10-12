@@ -36,6 +36,7 @@ async function register(page) {
 }
 async function login(page, role, email, pass) {
   await page.getByRole("button", { name: role, exact: true }).click();
+  await expect(page.getByRole("button",{name:"Profile options",exact:true})).toHaveCount(0);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(pass);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
@@ -64,6 +65,7 @@ test("student report lifecycle and administrator review, edit, return and delete
 }) => {
   const email = await register(page);
   await noOverflow(page);
+  await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button", { name: "Your posts", exact: true }).click();
   await page.getByRole("button", { name: "Add post", exact: true }).click();
   await page.getByLabel("Item name:", {exact:true}).fill("Unsaved draft");
@@ -77,6 +79,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   }
   await page.goBack();
   await expect(page).toHaveURL(/#feed$/);
+  await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button", {name:"Your posts",exact:true}).click();
   await page.getByRole("button", {name:"Add post",exact:true}).click();
   await expect(page.getByLabel("Item name:", {exact:true})).toHaveValue("");
@@ -475,6 +478,7 @@ test("post pages navigate without losing filters and details", async ({page}) =>
  const ids=Array.from({length:30},()=>randomUUID());
  try {
   ids.forEach((id,i)=>db.prepare("INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description) VALUES(?,?,?,?,?,?,?,?)").run(id,owner.id,"Found","Found","Paged fixture "+i,"2026-10-10T09:00","Test","Page details"));
+  await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button",{name:"Your posts",exact:true}).click();
   const nav=page.getByRole("navigation",{name:"Post pages"});
   await expect(page.locator('.own .card[data-detail]')).toHaveCount(28);
@@ -495,6 +499,7 @@ test("post pages navigate without losing filters and details", async ({page}) =>
 
 test("About page is public, responsive and available to both roles", async ({page}) => {
  await page.goto("/#role");
+ await expect(page.getByRole("button",{name:"Profile options",exact:true})).toHaveCount(0);
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
  await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
  await expect(page.locator(".about-steps > li")).toHaveCount(3);
@@ -504,6 +509,19 @@ test("About page is public, responsive and available to both roles", async ({pag
  await page.getByRole("button",{name:"Back",exact:true}).click();
  await expect(page.getByRole("button",{name:"Student",exact:true})).toBeVisible();
  await register(page);
+ const options=page.getByRole("button",{name:"Profile options",exact:true});
+ await options.click();
+ await expect(page.getByRole("button",{name:"Log out",exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Register admin",exact:true})).toHaveCount(0);
+ await page.getByRole("button",{name:"Your posts",exact:true}).click();
+ await expect(options).toBeVisible();
+ await page.getByRole("button",{name:"Home",exact:true}).click();
+ await page.getByRole("button",{name:"Search",exact:true}).click();
+ await options.click();await expect(page.getByRole("button",{name:"Your posts",exact:true})).toBeVisible();
+ await page.keyboard.press("Escape");await expect(options).toBeFocused();
+ await expect(page.getByRole("button",{name:"Your posts",exact:true})).toBeHidden();
+ await noOverflow(page);
+ await page.getByRole("button",{name:"Home",exact:true}).click();
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
  await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Register admin",exact:true})).toHaveCount(0);
