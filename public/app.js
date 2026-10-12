@@ -11,6 +11,7 @@ const state = {
   posts: [],
   edit: null,
   back: "mine",
+  aboutBack: "",
 };
 let renderVersion = 0;
 const esc = (value) =>
@@ -61,8 +62,10 @@ function clearSession() {
   state.posts = [];
   state.edit = null;
   state.back = "mine";
+  state.aboutBack = "";
 }
 function go(route, { replace = false } = {}) {
+  if (route === "about" && location.hash !== "#about") state.aboutBack = location.hash.slice(1) || "role";
   const target = "#" + route;
   if (location.hash === target) {
     render();
@@ -82,7 +85,7 @@ function header(search = true, welcome = true) {
   const admin = state.user.role === "admin";
   if (admin && location.hash === "#admin-profile") search = false;
   const profile = admin ? '<details class="profile-dropdown"><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options"><button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-logout>Log out</button></div></details>' : '<button class="icon" data-go="mine" aria-label="Your posts">' + profileIcon + '</button>';
-  return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">${state.user.role === "student" ? `Welcome, ${esc(state.user.fullName || "Student")}!` : "WELCOME, ADMIN!"}</h1>` : ""}<div class="header-actions">${admin ? "" : '<button type="button" class="pill logout-button" data-logout>Log out</button>'}<div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
+  return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">${state.user.role === "student" ? `Welcome, ${esc(state.user.fullName || "Student")}!` : "WELCOME, ADMIN!"}</h1>` : ""}<div class="header-actions">${admin ? "" : '<button type="button" class="pill logout-button" data-logout>Log out</button>'}<div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div>${location.hash !== "#about" ? '<button type="button" class="about-link" data-go="about">About RETURNO</button>' : ""}</header>`;
 }
 function bindNavigation() {
   app
@@ -851,6 +854,12 @@ function searchPage() {
       }),
   );
 }
+function aboutPage() {
+  const fallback = state.user ? (state.user.role === "admin" ? "admin" : "feed") : "role";
+  const back = ["role", "feed", "mine", "search", "admin", "admin-profile"].includes(state.aboutBack) ? state.aboutBack : fallback;
+  app.innerHTML = `<section class="screen page about-page">${state.user ? header(false, false) : `<header class="page-header"><button class="home-logo" data-go="role" aria-label="Home">${logo}</button></header>`}<div class="about-content"><div class="about-intro"><p class="about-eyebrow">Lost &amp; Found System</p><h1>About RETURNO</h1><p>Helping the NVSU community reconnect with lost belongings.</p></div><section class="about-section"><h2>Our purpose</h2><p>RETURNO brings lost and found reports into one place, making it easier to search for an item, share useful details and contact the person who posted it.</p></section><section class="about-section"><h2>How it works</h2><ol class="about-steps"><li><h3>Report an item</h3><p>Create a Lost or Found post with an item name, photo, description, location and date. Add the contact methods you want to share.</p></li><li><h3>Find a match</h3><p>Search or browse posts, then open an item to see its full details and contact information.</p></li><li><h3>Coordinate the return</h3><p>Use the contact information on the post to get in touch. Administrators manage claim and return processing and update report statuses.</p></li></ol></section><div class="about-columns"><section class="about-section"><h2>Students and administrators</h2><p>Students create and view posts. Administrators manage reports and registered accounts, and register additional administrators.</p></section><section class="about-section"><h2>Share thoughtfully</h2><p>Only share contact details you are comfortable displaying on your post. Never include passwords or email verification codes.</p></section></div><button type="button" class="pill about-back" data-go="${esc(back)}">Back</button></div></section>`;
+  bindNavigation();
+}
 async function render() {
   const version = ++renderVersion;
   const route = location.hash.slice(1) || "splash";
@@ -865,6 +874,7 @@ async function render() {
       go("login");
       return;
     }
+    if (route === "about") return aboutPage();
     if (route === "splash") {
       app.innerHTML =
         '<section class="screen"><button class="splash" aria-label="Continue"><img src="assets/splash-logo.png" alt="NVSU RETURNO LOST & FOUND SYSTEM"></button></section>';
@@ -877,7 +887,8 @@ async function render() {
     }
     if (route === "role") {
       app.innerHTML =
-        '<section class="screen role-screen"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><button class="pill role-button student-button" data-role="student">Student</button><button class="pill role-button admin-button" data-role="admin">Admin</button></section>';
+        '<section class="screen role-screen"><img class="auth-logo" src="assets/logo.png" alt="RETURNO"><button class="pill role-button student-button" data-role="student">Student</button><button class="pill role-button admin-button" data-role="admin">Admin</button><button type="button" class="about-link" data-go="about">About RETURNO</button></section>';
+      bindNavigation();
       app.querySelectorAll("[data-role]").forEach(
         (el) =>
           (el.onclick = () => {

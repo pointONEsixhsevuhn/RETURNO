@@ -485,3 +485,31 @@ test("post pages navigate without losing filters and details", async ({page}) =>
   await noOverflow(page);
  } finally {ids.forEach(id=>db.prepare("DELETE FROM posts WHERE id=?").run(id));}
 });
+
+
+test("About page is public, responsive and available to both roles", async ({page}) => {
+ await page.goto("/#role");
+ await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
+ await expect(page.locator(".about-steps > li")).toHaveCount(3);
+ await expect(page.locator(".about-page")).toHaveCSS("background-color","rgb(255, 255, 255)");
+ await noOverflow(page);
+ await page.screenshot({path:test.info().outputPath("about-page.png"),fullPage:true});
+ await page.getByRole("button",{name:"Back",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Student",exact:true})).toBeVisible();
+ await register(page);
+ await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Register admin",exact:true})).toHaveCount(0);
+ await page.getByRole("button",{name:"Back",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Welcome, Browser Test Student!",exact:true})).toBeVisible();
+ await logout(page);await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
+ await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
+ await page.getByRole("button",{name:"Profile options",exact:true}).click();
+ await page.getByRole("button",{name:"Register admin",exact:true}).click();
+ await expect(page.getByRole("dialog")).toBeVisible();
+ await page.getByRole("button",{name:"Cancel",exact:true}).click();
+ await page.getByRole("button",{name:"Back",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"WELCOME, ADMIN!",exact:true})).toBeVisible();
+ await noOverflow(page);
+});
