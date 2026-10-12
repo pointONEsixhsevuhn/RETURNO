@@ -65,6 +65,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   page,
 }) => {
   const email = await register(page);
+  let studentSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
   await noOverflow(page);
   await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button", { name: "Your posts", exact: true }).click();
@@ -165,8 +166,11 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(
     page.getByRole("button", { name: `View details for ${item}`, exact: true }),
   ).toBeVisible();
-  await logout(page);
+  studentSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
+  await page.context().clearCookies();
+  await page.goto("/#role");
   await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
+  const adminSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
   const row = page
     .locator(".admin-row")
     .filter({ has: page.locator(`[data-detail="${id}"]`) });
@@ -205,6 +209,22 @@ test("student report lifecycle and administrator review, edit, return and delete
   const stored = await (await page.request.get(`/api/posts/${id}`)).json();
   expect(stored.post.status).toBe("Returned");
   expect(stored.post.description).toBe("Reviewed by administrator");
+  await page.context().addCookies([studentSession]);
+  await page.goto("/#feed");
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => state.user?.role)).toBe("student");
+  await expect(page.locator(`[data-detail="${id}"]`)).toBeVisible();
+  for (const kind of ["Lost", "Found"]) {
+    await page.locator(`[data-filter="${kind}"]`).click();
+    await expect(page.locator(`[data-detail="${id}"]`)).toHaveCount(0);
+  }
+  await page.locator('[data-filter="All"]').click();
+  await expect(page.locator(`[data-detail="${id}"]`)).toBeVisible();
+  await page.context().addCookies([adminSession]);
+  await page.goto("/#admin");
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => state.user?.role)).toBe("admin");
+  await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("Delete post");

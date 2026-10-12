@@ -436,8 +436,8 @@ export const server = http.createServer(async (req, res) => {
           params = [...scope.params];
         const kind = url.searchParams.get("kind");
         if (kind && ["Lost", "Found"].includes(kind)) {
-          where.push("p.kind=?");
-          params.push(kind);
+          where.push("p.kind=? AND p.status=?");
+          params.push(kind, kind);
         }
         const status = url.searchParams.get("status");
         if (status && statuses.includes(status)) {
