@@ -93,6 +93,7 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     const columns=await page.locator('.cards').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(w>=1500?7:w>=1200?6:w>=900?5:w>=700?4:2);
     const card=page.locator(`[data-detail="${id}"]`);const bounds=await card.boundingBox();const badge=await card.locator('.status').boundingBox();
+    expect(bounds.height).toBeLessThanOrEqual(310);
     expect(badge.x+badge.width).toBeLessThanOrEqual(bounds.x+bounds.width);expect(badge.y).toBeLessThan(bounds.y+60);
    }
    if(route==='mine') {

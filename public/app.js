@@ -316,7 +316,7 @@ function menu(post) {
 }
 function card(post, own = false) {
   const manage = own && state.user?.role === "admin";
-  return `<article class="card" data-detail="${esc(post.id)}" role="${manage ? "group" : "button"}" tabindex="0" aria-label="View details for ${esc(post.item_name)}"><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact">Contact: ${esc(postContact(post))}</p>${manage ? menu(post) : ""}</article>`;
+  return `<article class="card" data-detail="${esc(post.id)}" role="${manage ? "group" : "button"}" tabindex="0" aria-label="View details for ${esc(post.item_name)}"><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact"><span class="contact-preview">Contact: ${esc(postContact(post))}</span></p>${manage ? menu(post) : ""}</article>`;
 }
 function adminPostRow(p) {
   return `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`;
@@ -340,9 +340,11 @@ function errorDialog(error) {
 function showDetails(id) {
   const post = state.posts.find((p) => p.id === id);
   if (!post) return;
-  dialog.innerHTML = `<h2>${esc(post.item_name || "Item name")}</h2><div class="detail-layout">${post.image ? `<div class="detail-media"><img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}"></div>` : ""}<div class="detail-column"><div class="detail-data"><p>Posted by: ${esc(post.author)}</p><p>Status: <span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></p><p>Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div><p class="detail-contact">Contact: ${esc(postContact(post))}</p></div></div><div class="dialog-actions"><button data-close>Close</button></div>`;
+  dialog.innerHTML = `<h2 tabindex="-1">${esc(post.item_name || "Item name")}</h2><div class="detail-layout">${post.image ? `<div class="detail-media"><img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}"></div>` : ""}<div class="detail-column"><div class="detail-data"><p><span class="detail-label">Posted by:</span> ${esc(post.author)}</p><p><span class="detail-label">Status:</span> <span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></p><p><span class="detail-label">Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}:</span> ${esc(dateText(post.event_at))}</p><p><span class="detail-label">Location/Address:</span> ${esc(post.location)}</p><p><span class="detail-label">Description:</span> ${esc(post.description)}</p></div><p class="detail-contact">Contact: ${esc(postContact(post))}</p></div></div><div class="dialog-actions"><button data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = () => dialog.close();
   openDialog(post.item_name || "Item details");
+  dialog.querySelector("h2").focus?.({ preventScroll: true });
+  dialog.scrollTop = 0;
 }
 function bindPostActions() {
   app.querySelectorAll("[data-detail]").forEach((card) => {

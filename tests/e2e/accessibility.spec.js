@@ -145,7 +145,9 @@ test("keyboard-only registration, report controls, card dialogs, search and logo
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAccessibleName(item);
+  await expect(dialog.getByRole("heading", { name: item, exact: true })).toBeFocused();
   const close = dialog.getByRole("button", { name: "Close", exact: true });
+  await page.keyboard.press("Tab");
   await expect(close).toBeFocused();
   await page.keyboard.press("Tab");
   // Native dialogs permit tabbing to browser chrome; Shift+Tab must return inside.

@@ -1595,3 +1595,35 @@ dialog:has(.detail-layout) h2 { text-align: left; }
   .card-item strong { font-size: 14px; }
   .card .card-contact { padding: 8px; font-size: 12px; }
 }
+
+/* Compact previews; open the post for the complete description and contacts. */
+.cards:has(.card-contact) { grid-auto-rows: auto; }
+.card:has(.card-contact) { height: 310px; min-height: 0; aspect-ratio: auto; }
+.card > .card-head { min-height: 36px; padding-bottom: 8px; }
+:is(.student-home, .own) .card > .card-head { min-height: 36px; }
+:is(.student-home, .own) .card .item-image { height: 76px; }
+.card:has(.card-contact) .card-data { flex: 1 1 auto; min-height: 0; margin-top: 8px; }
+.card-data p { margin-bottom: 4px; }
+.card-data .card-item { padding-bottom: 5px; margin-bottom: 5px; }
+.card-item .card-label { display: inline; margin-bottom: 0; }
+.card .card-contact {
+  display: block;
+  overflow: hidden;
+  max-height: none;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  margin-top: 8px;
+}
+.contact-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; }
+.own .add-card { aspect-ratio: auto; height: 310px; }
+@media (max-width: 600px) { .card:has(.card-contact), .own .add-card { height: 300px; } }
+/* The same warm visual treatment in the complete post view for both roles. */
+dialog:has(.detail-layout) { background: #fff; border-color: #dfd3c2; padding: clamp(16px, 3vw, 28px); }
+dialog:has(.detail-layout) h2 { color: #382a1b; font-size: clamp(20px, 3vw, 26px); border-bottom: 1px solid #eee6db; padding-bottom: 14px; overflow-wrap: anywhere; }
+.detail-media { background: radial-gradient(ellipse at center, #ffffff 0%, #f4ecdf 100%); border-color: #eee3d3; padding: 16px; }
+.detail-media .detail-image { background: transparent; }
+.detail-data { line-height: 1.6; color: #514638; }
+.detail-label { color: #84715b; font-size: 0.94em; font-weight: 400; }
+.detail-contact { background: #f8f3eb; border: 1px solid #eee3d4; border-top: 2px solid #d9cbb6; border-radius: 10px; padding: 14px; color: #57412a; }
+.admin-row { border-color: #dfd3c2; background: linear-gradient(180deg, #fffdf9, #fff); box-shadow: 0 3px 12px #51381e0a; }
+.admin-row .row-image { background: radial-gradient(ellipse at center, #fff, #f4ecdf); border-color: #eee3d3; }
