@@ -1497,7 +1497,6 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 
 /* Public About page and shared entry points. */
 .about-link { color: #735733; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
-.page-header > .about-link { grid-column: 1 / -1; justify-self: end; min-height: 32px; margin-top: 4px; }
 .about-content { width: min(900px, 100%); margin: 0 auto; padding-bottom: 24px; }
 .about-intro { padding: clamp(20px, 4vw, 40px) 0; border-bottom: 1px solid var(--edge); margin-bottom: 24px; }
 .about-eyebrow { color: #735733; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }

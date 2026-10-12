@@ -529,12 +529,17 @@ test("About page is public, responsive and available to both roles", async ({pag
  await expect(page.getByRole("button",{name:"Your posts",exact:true})).toBeHidden();
  await noOverflow(page);
  await page.getByRole("button",{name:"Home",exact:true}).click();
+ await options.click();
+ await expect(page.locator('.profile-options [data-go="about"]')).toBeVisible();
+ await expect(page.locator('.page-header > [data-go="about"]')).toHaveCount(0);
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
  await expect(page.getByRole("heading",{name:"About RETURNO",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Register admin",exact:true})).toHaveCount(0);
  await page.getByRole("button",{name:"Back",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Welcome, Browser Test Student!",exact:true})).toBeVisible();
  await logout(page);await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
+ await options.click();
+ await expect(page.locator('.profile-options [data-go="about"]')).toBeVisible();
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
  await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button",{name:"Register admin",exact:true}).click();
