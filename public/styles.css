@@ -1382,6 +1382,8 @@ dialog select:focus {
   input, textarea, select, .search-box, .contact-box { transition: border-color 180ms ease, box-shadow 180ms ease; }
 }
 /* One field treatment across login, registration and all text-entry forms. */
+.status-trigger,
+.contact-box,
 .auth-field input,
 .auth-page input,
 .search-box,
