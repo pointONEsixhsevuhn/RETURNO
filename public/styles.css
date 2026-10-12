@@ -1660,3 +1660,6 @@ body { padding-bottom: 78px; }
 .policy-card { padding: clamp(18px, 4vw, 32px); border: 1px solid #dfd3c2; border-radius: 18px; background: #fffdf9; box-shadow: 0 4px 18px #51381e0a; }
 .policy-card h1 { margin-top: 0; }
 .policy-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 20px; padding: 10px 28px; border: 1px solid #c5ad8d; color: #44321d; text-decoration: none; }
+
+body.policy-document { padding-bottom: 0; }
+.policy-card p { text-align: justify; text-align-last: left; hyphens: auto; }
