@@ -1556,3 +1556,42 @@ dialog:has(.detail-layout) h2 { text-align: left; }
   .contact-picker { grid-column: 1; grid-row: 1; }
   .contact-method-row > [data-remove-contact] { grid-column: 2; grid-row: 1; }
 }
+
+/* Warm, structured previews for home, Your posts and student search. */
+.card {
+  border-color: #dfd3c2;
+  background: linear-gradient(180deg, #fffdf9 0%, #ffffff 42%);
+  box-shadow: 0 3px 12px #51381e0a, 0 12px 24px #51381e08;
+}
+.card > .card-head { padding-bottom: 10px; }
+.card-head .author { color: #88765e; }
+.card-head .author strong { font-weight: 600; }
+.card .item-image {
+  background: radial-gradient(ellipse at center, #ffffff 0%, #f4ecdf 100%);
+  border: 1px solid #eee3d3;
+  border-radius: 12px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+:is(.student-home, .own) .card .item-image {
+  height: clamp(88px, 9vw, 116px);
+}
+.card .card-data { margin-top: 12px; line-height: 1.5; color: #514638; }
+.card-data .card-label { color: #84715b; font-size: 0.92em; }
+.card-data .card-item { padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid #eee6db; }
+.card-item .card-label { display: block; font-size: 11px; margin-bottom: 2px; }
+.card-item strong { font-size: 16px; font-weight: 650; color: #382a1b; }
+.card .card-contact {
+  padding: 10px;
+  margin-top: 12px;
+  border: 1px solid #eee3d4;
+  border-radius: 10px;
+  background: #f8f3eb;
+  color: #57412a;
+  line-height: 1.45;
+}
+@media (max-width: 600px) {
+  :is(.student-home, .own) .card { padding: 9px; }
+  .card-item strong { font-size: 14px; }
+  .card .card-contact { padding: 8px; font-size: 12px; }
+}

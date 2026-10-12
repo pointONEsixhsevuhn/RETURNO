@@ -308,7 +308,7 @@ function postContact(post) {
   return post.contact_details || [post.contact_email, post.contact_phone].filter(Boolean).join(" / ") || "Not provided";
 }
 function fields(post, own = false) {
-  return `<div class="card-data"><p>Item name: ${esc(post.item_name)}</p><p>Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}: ${esc(dateText(post.event_at))}</p><p>Location/Address: ${esc(post.location)}</p><p>Description: ${esc(post.description)}</p></div>`;
+  return `<div class="card-data"><p class="card-item"><span class="card-label">Item name:</span> <strong>${esc(post.item_name)}</strong></p><p><span class="card-label">Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}:</span> ${esc(dateText(post.event_at))}</p><p><span class="card-label">Location/Address:</span> ${esc(post.location)}</p><p><span class="card-label">Description:</span> ${esc(post.description)}</p></div>`;
 }
 function menu(post) {
   if (state.user?.role !== "admin") return "";
