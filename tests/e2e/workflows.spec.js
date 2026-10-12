@@ -550,10 +550,12 @@ test("About page is public, responsive and available to both roles", async ({pag
  await expect(page.getByRole("heading",{name:"Welcome, Browser Test Student!",exact:true})).toBeVisible();
  await logout(page);await login(page,"Admin","admin@e2e.example","BrowserAdmin123!");
  await options.click();await page.getByRole("button",{name:"Admin profile",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Back to home",exact:true})).toBeVisible();
  const dashboardBackBox=await page.getByRole("button",{name:"Back to home",exact:true}).boundingBox();
  await options.click();
  await expect(page.locator('.profile-options [data-go="about"]')).toBeVisible();
  await page.getByRole("button",{name:"About RETURNO",exact:true}).click();
+ await expect(backButton).toBeVisible();
  const aboutBackBox=await backButton.boundingBox();
  expect(aboutBackBox.x).toBe(dashboardBackBox.x);expect(aboutBackBox.y).toBe(dashboardBackBox.y);
  await page.getByRole("button",{name:"Profile options",exact:true}).click();
