@@ -115,6 +115,13 @@ test("all page layouts fit six widths and short landscape screens", async ({page
    else if(route==='admin-profile') await expect(page.getByRole('heading',{name:'Registered users',exact:true})).toBeVisible();
    else await expect(page.locator('.page-header')).toBeVisible();
    await inspect(route,w,h);
+   if(route==='search') {
+    await page.getByRole('searchbox',{name:'Search posts'}).fill('Layout item');
+    await expect(page.locator('.search-results .admin-row [data-detail="'+id+'"]')).toBeVisible();
+    await page.locator('[data-more="'+id+'"]').click();
+    await expect(page.locator('[data-menu="'+id+'"]')).toBeVisible();
+    await inspect('admin-search-menu',w,h);
+   }
    if(route==='admin-profile') {
     await page.getByRole('button',{name:'Delete account for '+studentEmail,exact:true}).click();await inspect('delete-dialog',w,h);await page.keyboard.press('Escape');
    }

@@ -159,6 +159,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(
     page.getByRole("button", { name: `View details for ${item}`, exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Post options" })).toHaveCount(0);
   await logout(page);
   await login(page, "Student", email, password);
   await expect(
@@ -177,12 +178,18 @@ test("student report lifecycle and administrator review, edit, return and delete
     .getByRole("dialog")
     .getByRole("button", { name: "Close", exact: true })
     .click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Search posts" }).fill(item);
+  await expect(row).toBeVisible();
+  await expect(page.locator(".search-results.admin-list")).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Edit", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Description:", exact: true })
     .fill("Reviewed by administrator");
   await page.getByRole("button", { name: "Update", exact: true }).click();
+  await expect(page).toHaveURL(/#search$/);
+  await expect(page.getByRole("searchbox", { name: "Search posts" })).toHaveValue(item);
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Update", exact: true }).click();

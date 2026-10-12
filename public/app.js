@@ -318,6 +318,9 @@ function card(post, own = false) {
   const manage = own && state.user?.role === "admin";
   return `<article class="card" data-detail="${esc(post.id)}" role="${manage ? "group" : "button"}" tabindex="0" aria-label="View details for ${esc(post.item_name)}"><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact">Contact: ${esc(postContact(post))}</p>${manage ? menu(post) : ""}</article>`;
 }
+function adminPostRow(p) {
+  return `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`;
+}
 function postToolbar(filtersMarkup) {
   return `<div class="post-toolbar">${filtersMarkup}<button type="button" class="icon home-search" data-go="search" aria-label="Search">${searchIcon}</button></div>`;
 }
@@ -659,7 +662,7 @@ function editor() {
       state.notice = post ? "Post updated successfully." : "Post published successfully.";
       state.edit = null;
       state.filter = "All";
-      state.query = "";
+      if (!(state.user.role === "admin" && state.back === "search")) state.query = "";
       go(state.user.role === "admin" ? state.back : "feed", { replace: true });
     } catch (e) {
       if (pageVersion !== renderVersion) return;
@@ -711,7 +714,7 @@ async function admin(version, status = "", page = 1) {
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map((p) => `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`).join("")}</div>${pagination(result.pagination)}</section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
   bindPagination(next => admin(++renderVersion, status, next));
   state.notice = "";
   bindNavigation();
@@ -855,7 +858,7 @@ function searchPage() {
       historyPanel.hidden = true;
       state.posts = posts;
       content.setAttribute("aria-busy", "false");
-      content.innerHTML = `<div class="cards search-results">${posts.map((p) => card(p)).join("")}</div>${pagination(meta)}${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
+      content.innerHTML = `<div class="${state.user.role === "admin" ? "admin-list" : "cards"} search-results">${posts.map((p) => state.user.role === "admin" ? adminPostRow(p) : card(p)).join("")}</div>${pagination(meta)}${posts.length ? "" : '<p class="empty">No posts found.</p>'}`;
       bindPostActions();
       bindPagination(next => run(value, next));
     } catch (e) {
@@ -905,6 +908,7 @@ function searchPage() {
         run(input.value, 1, true);
       }),
   );
+  if (state.user.role === "admin" && state.query.trim()) run(state.query);
 }
 function aboutPage() {
   const fallback = state.user ? (state.user.role === "admin" ? "admin" : "feed") : "role";
