@@ -88,6 +88,10 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     expect(searchBox.x).toBeGreaterThanOrEqual(filtersBox.x+filtersBox.width);
     const firstFilter=await tools.locator('.filters button').first().boundingBox();
     expect(Math.abs(searchBox.y+searchBox.height/2-firstFilter.y-firstFilter.height/2)).toBeLessThan(2);
+    const filterRows=await tools.locator('.admin-status-filters button').evaluateAll(buttons=>buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
+    expect(new Set(filterRows).size).toBe(1);
+    const filterStrip=await tools.locator('.admin-status-filters').evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
+    expect(filterStrip.scrollWidth).toBeGreaterThanOrEqual(filterStrip.width);
    }
    if(route==='feed'||route==='mine') {
     const columns=await page.locator('.cards').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
