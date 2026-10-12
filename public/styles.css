@@ -1525,8 +1525,8 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 
 .login:has(.auth-switcher), .registration:has(.auth-switcher) { padding-top: 64px; }
 
-/* Keep the Add post tile within its column when a neighbouring post is tall. */
-.own .add-card { width: 100%; min-width: 0; min-height: 0; align-self: start; }
+/* Match the neighbouring post height without expanding the grid column. */
+.own .add-card { width: 100%; height: 100%; min-width: 0; min-height: 0; align-self: stretch; }
 
 /* Registered names and email addresses can wrap on the admin profile. */
 .admin-profile > p { overflow-wrap: anywhere; }

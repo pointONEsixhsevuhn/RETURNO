@@ -82,6 +82,10 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     const card=page.locator(`[data-detail="${id}"]`);const bounds=await card.boundingBox();const badge=await card.locator('.status').boundingBox();
     expect(badge.x+badge.width).toBeLessThanOrEqual(bounds.x+bounds.width);expect(badge.y).toBeLessThan(bounds.y+60);
    }
+   if(route==='mine') {
+    const postBox=await page.locator(`[data-detail="${id}"]`).boundingBox();const addBox=await page.getByRole('button',{name:'Add post',exact:true}).boundingBox();
+    expect(Math.abs(addBox.width-postBox.width)).toBeLessThan(1);expect(Math.abs(addBox.height-postBox.height)).toBeLessThan(1);
+   }
    if(route==='feed') {await page.locator(`[data-detail="${id}"]`).click();await expect(page.getByRole('dialog')).toBeVisible();await inspect('details',w,h);await page.keyboard.press('Escape');}
    if(route==='search') {await page.getByRole('button',{name:'Profile options',exact:true}).click();await inspect('student-menu',w,h);}
   }

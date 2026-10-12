@@ -18,7 +18,7 @@ The audit checks horizontal overflow, dialog overflow, editable input text of at
 
 Fixed two issues:
 
-- A tall post with long contact text could expand the adjacent Add post tile beyond its phone grid column. The tile now stays within its column and keeps its square shape.
+- A tall post with long contact text could expand the adjacent Add post tile beyond its phone grid column. The tile now stays within its column. A follow-up on 2026-10-12 makes it stretch to match the neighbouring content card height; matching width and height are checked at every audit size.
 - A long unbroken administrator name could overflow the admin profile identity line. Names and email addresses now wrap.
 
 Run the audit with `npm.cmd run test:e2e -- tests/e2e/responsive.spec.js --project=desktop-chromium`. Screenshots and `layout-audit.json` are generated in ignored `test-results/`. All records are temporary fixture data and are cleaned up.
