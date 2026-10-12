@@ -689,7 +689,7 @@ test("policy documents are public, readable and registration requires acknowledg
 });
 
 
-test("policy links stay in the bottom-right themed box and public Back returns safely", async ({ page, context }) => {
+test("plain policy links stay at the bottom-right and opened policies retain themed panels", async ({ page, context }) => {
  for (const route of ['role','login','register','about']) {
   await page.goto('/#'+route);
   const footer=page.locator('footer.legal');
@@ -697,6 +697,10 @@ test("policy links stay in the bottom-right themed box and public Back returns s
   await expect(footer.getByRole('link')).toHaveCount(2);
   await expect(footer).toContainText(/Privacy Policy\s*\|\s*Terms and Conditions/);
   await expect(footer).toHaveCSS('position','fixed');
+  await expect(footer).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await expect(footer).toHaveCSS('background-image','none');
+  await expect(footer).toHaveCSS('border-top-width','0px');
+  await expect(footer).toHaveCSS('box-shadow','none');
   const box=await footer.boundingBox(); const viewport=page.viewportSize();
   expect(Math.abs(viewport.width-box.x-box.width-12)).toBeLessThan(2);
   expect(Math.abs(viewport.height-box.y-box.height-12)).toBeLessThan(2);
@@ -709,6 +713,8 @@ test("policy links stay in the bottom-right themed box and public Back returns s
  await page.locator('footer.legal').getByRole('link',{name:'Privacy Policy',exact:true}).click();
  const policy=await popupPromise;
  await expect(policy.locator('.policy-tabs a[aria-current]')).toHaveText('Privacy Policy');
+ await expect(policy.locator('.policy-tabs')).not.toHaveCSS('background-image','none');
+ await expect(policy.locator('.policy-card')).toHaveCSS('border-top-width','1px');
  await expect(policy.getByRole('link',{name:'Back',exact:true})).toHaveAttribute('href','/#role');
  await policy.screenshot({path:test.info().outputPath('themed-privacy.png'),fullPage:true});
  await policy.getByRole('link',{name:'Back',exact:true}).click();

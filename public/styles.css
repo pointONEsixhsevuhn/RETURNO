@@ -1642,14 +1642,14 @@ dialog:has(.detail-layout) h2 { color: #382a1b; font-size: clamp(20px, 3vw, 26px
 .policy-agreement input { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0; }
 .profile-options a { display: block; padding: 10px 14px; color: inherit; font-size: 14px; }
 .policy-agreement input { width: 24px; height: 24px; font-size: 16px; }
-/* Persistent policy links share RETURNO's warm control palette. */
+/* Plain policy links stay at the bottom-right; opened policies use themed panels. */
 body { padding-bottom: 78px; }
 .legal, .login .legal {
   position: fixed; z-index: 25; right: max(12px, env(safe-area-inset-right));
   bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center;
-  gap: 7px; max-width: calc(100vw - 24px); margin: 0; padding: 6px 10px;
-  border: 1px solid #c5ad8d; border-radius: 12px; background: var(--pill);
-  box-shadow: 0 3px 12px #51381e16; font-size: 12px; letter-spacing: normal;
+  gap: 7px; max-width: calc(100vw - 24px); margin: 0; padding: 0;
+  border: 0; border-radius: 0; background: transparent;
+  box-shadow: none; font-size: 12px; letter-spacing: normal;
 }
 .legal a { display: inline-flex; align-items: center; min-height: 32px; text-decoration: none; white-space: nowrap; color: #44321d; }
 .legal a:hover { text-decoration: underline; }
