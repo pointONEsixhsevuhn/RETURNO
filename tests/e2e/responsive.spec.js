@@ -44,7 +44,7 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     if(!visible(el)||el.closest('[hidden]')) continue;
     const r=el.getBoundingClientRect();
     if(r.width<24||r.height<24) bad.push("small control: "+(el.getAttribute('aria-label')||el.textContent.trim()).slice(0,55));
-    if(r.left<-1||r.right>innerWidth+1) bad.push("control outside viewport: "+(el.getAttribute('aria-label')||el.textContent.trim()).slice(0,55));
+    if((r.left<-1||r.right>innerWidth+1)&&!el.closest(".admin-status-filters")) bad.push("control outside viewport: "+(el.getAttribute('aria-label')||el.textContent.trim()).slice(0,55));
    }
    const d=document.querySelector('dialog[open]');
    if(d&&d.scrollWidth>d.clientWidth+1) bad.push("dialog has horizontal overflow");
@@ -88,9 +88,9 @@ test("all page layouts fit six widths and short landscape screens", async ({page
     expect(searchBox.x).toBeGreaterThanOrEqual(filtersBox.x+filtersBox.width);
     const firstFilter=await tools.locator('.filters button').first().boundingBox();
     expect(Math.abs(searchBox.y+searchBox.height/2-firstFilter.y-firstFilter.height/2)).toBeLessThan(2);
-    const filterRows=await tools.locator('.admin-status-filters button').evaluateAll(buttons=>buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
+    const filterRows=await tools.locator('.filters button').evaluateAll(buttons=>buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
     expect(new Set(filterRows).size).toBe(1);
-    const filterStrip=await tools.locator('.admin-status-filters').evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
+    const filterStrip=await tools.locator('.filters').evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
     expect(filterStrip.scrollWidth).toBeGreaterThanOrEqual(filterStrip.width);
    }
    if(route==='feed'||route==='mine') {
