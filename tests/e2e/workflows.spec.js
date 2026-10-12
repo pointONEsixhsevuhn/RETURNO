@@ -41,7 +41,7 @@ async function login(page, role, email, pass) {
   await page.getByLabel("Password", { exact: true }).fill(pass);
   await page.getByRole("button", { name: "Log In", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: role === "Student" ? "Welcome, Browser Test Student!" : "WELCOME, ADMIN!" }),
+    page.getByRole("heading", { name: role === "Student" ? "Welcome, Browser Test Student!" : "Welcome, Browser Test Admin!" }),
   ).toBeVisible();
 }
 async function logout(page) {
@@ -436,7 +436,7 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await expect(page.getByRole("button",{name:"Search",exact:true})).toHaveCount(0);
  const backHome=page.getByRole("button",{name:"Back to home",exact:true});
  const backBounds=await backHome.boundingBox();
- const welcomeBounds=await page.getByRole("heading",{name:"WELCOME, ADMIN!",exact:true}).boundingBox();
+ const welcomeBounds=await page.getByRole("heading",{name:"Welcome, Browser Test Admin!",exact:true}).boundingBox();
  expect(backBounds.y).toBeGreaterThanOrEqual(welcomeBounds.y+welcomeBounds.height);
  expect(backBounds.width).toBe(40);
  await expect(backHome).toHaveText("");
@@ -464,7 +464,7 @@ test("admin directory sorts names and filters by name or email", async ({page}) 
  await search.fill(""); await expect(page.locator('.registered-user:visible')).toHaveCount(4);
  await noOverflow(page);
  await backHome.click();
- await expect(page.getByRole("heading",{name:"WELCOME, ADMIN!",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Welcome, Browser Test Admin!",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Search",exact:true}).click();
  await page.getByRole("button",{name:"Profile options",exact:true}).click();
  await page.getByRole("button",{name:"Register admin",exact:true}).click();
