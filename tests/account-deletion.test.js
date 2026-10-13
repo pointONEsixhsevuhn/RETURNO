@@ -35,6 +35,25 @@ test("admins cannot delete themselves and must confirm the exact target email",a
  assert.ok(db.prepare("SELECT id FROM users WHERE id=?").get(adminId));
  assert.ok(db.prepare("SELECT id FROM users WHERE id=?").get(studentId));
 });
+test("students can request and cancel their own account deletion while admins can review the request",async()=>{
+ assert.equal((await request("/api/account-deletion-request","GET",undefined,studentCookie)).status,200);
+ assert.equal((await request("/api/account-deletion-request","GET",undefined,adminCookie)).status,403);
+ assert.equal((await request("/api/account-deletion-request","POST",{},adminCookie)).status,403);
+ const submitted=await request("/api/account-deletion-request","POST",{},studentCookie);
+ assert.equal(submitted.status,201);
+ assert.ok(submitted.data.request.requestedAt);
+ const duplicate=await request("/api/account-deletion-request","POST",{},studentCookie);
+ assert.equal(duplicate.status,200);
+ assert.equal(duplicate.data.request.requestedAt,submitted.data.request.requestedAt);
+ const users=await request("/api/users","GET",undefined,adminCookie);
+ assert.equal(users.status,200);
+ assert.ok(users.data.users.find(user=>user.id===studentId).deletion_requested_at);
+ assert.equal((await request(`/api/users/${studentId}`,"DELETE",{confirmEmail:"actor-student@delete.example"},studentCookie)).status,403);
+ assert.equal((await request("/api/account-deletion-request","DELETE",undefined,adminCookie)).status,403);
+ assert.equal((await request("/api/account-deletion-request","DELETE",undefined,studentCookie)).status,200);
+ assert.equal((await request("/api/account-deletion-request","GET",undefined,studentCookie)).data.request,null);
+ assert.equal((await request("/api/account-deletion-request","DELETE",undefined,studentCookie)).status,404);
+});
 test("deleting a student atomically removes all reports and sessions but preserves other accounts",async()=>{
  const targetId=createUser("target@delete.example","Target Student","TargetStudent123!");
  const login=await request("/api/login","POST",{email:"target@delete.example",password:"TargetStudent123!",role:"student"});
@@ -42,10 +61,12 @@ test("deleting a student atomically removes all reports and sessions but preserv
  const post=await request("/api/posts","POST",{kind:"Lost",item_name:"Delete test report",event_at:"2026-10-08T12:00",location:"Library",description:"Target report"},login.cookie);
  assert.equal(post.status,201);
  assert.equal(db.prepare("SELECT count(*) n FROM sessions WHERE user_id=?").get(targetId).n,2);
+ assert.equal((await request("/api/account-deletion-request","POST",{},login.cookie)).status,201);
  assert.equal((await request("/api/users/"+targetId,"DELETE",{confirmEmail:"TARGET@DELETE.EXAMPLE"},adminCookie)).status,200);
  assert.equal(db.prepare("SELECT id FROM users WHERE id=?").get(targetId),undefined);
  assert.equal(db.prepare("SELECT count(*) n FROM posts WHERE user_id=?").get(targetId).n,0);
  assert.equal(db.prepare("SELECT count(*) n FROM sessions WHERE user_id=?").get(targetId).n,0);
+ assert.equal(db.prepare("SELECT count(*) n FROM account_deletion_requests WHERE user_id=?").get(targetId).n,0);
  assert.equal((await request("/api/me","GET",undefined,login.cookie)).status,401);
  assert.equal((await request("/api/login","POST",{email:"target@delete.example",password:"TargetStudent123!",role:"student"})).status,401);
  assert.equal((await request("/api/me","GET",undefined,studentCookie)).status,200);

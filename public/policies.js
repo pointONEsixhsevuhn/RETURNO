@@ -3,18 +3,19 @@
 (() => {
   const routes = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile", "about"]);
   const params = new URLSearchParams(location.search);
-  const policyPage = Boolean(document.querySelector(".policy-page"));
+  const policyPage = Boolean(document.querySelector(".policy-card")) || Boolean(document.querySelector(".policy-page"));
+  const aboutPage = Boolean(document.querySelector(".about-page"));
   const returnRoute = routes.has(params.get("return")) ? params.get("return") : "role";
   const role = params.get("role") === "admin" ? "admin" : "student";
   const back = document.querySelector("[data-policy-back]");
-  if (back) {
-    back.href = "/#" + returnRoute;
-    back.addEventListener("click", () => {
-      try { sessionStorage.setItem("retorno-role", role); } catch {}
-    });
-  }
+  if (back) back.href = policyPage ? "/#" + returnRoute : "/#role";
+  back?.addEventListener("click", event => {
+    event.preventDefault();
+    try { sessionStorage.setItem("retorno-role", role); } catch {}
+    location.assign(back.getAttribute("href"));
+  });
   document.addEventListener("click", event => {
-    const link = event.target.closest("[data-policy-link]");
+    const link = event.target.closest("[data-policy-link], [data-about-link], .policy-agreement a");
     if (!link) return;
     let destination = returnRoute;
     let selectedRole = role;
@@ -23,9 +24,17 @@
       destination = routes.has(route) ? route : ["register", "forgot-password", "reset-password"].includes(route) ? "login" : "role";
       try { selectedRole = sessionStorage.getItem("retorno-role") === "admin" ? "admin" : "student"; } catch {}
     }
-    const url = new URL(link.getAttribute("href"), location.href);
+    const name = document.querySelector(".welcome")?.textContent.replace(/^Welcome,\s*|!$/g, "").trim();
+    const url = link.matches("[data-policy-back]")
+      ? new URL(link.getAttribute("href"), location.href)
+      : new URL(link.getAttribute("href"), location.href);
     url.searchParams.set("return", destination);
     url.searchParams.set("role", selectedRole);
-    link.href = url.pathname + url.search;
+    if (name) url.searchParams.set("name", name);
+    link.href = url.pathname + url.search + url.hash;
+    if (link.matches("[data-about-link], .policy-agreement a, [data-policy-back]")) {
+      event.preventDefault();
+      location.assign(link.href);
+    }
   });
 })();

@@ -267,7 +267,7 @@ test("only admins can view registered users and password hashes are never return
   for (const user of adminResult.data.users)
     assert.deepEqual(
       Object.keys(user).sort(),
-      ["created_at", "email", "full_name", "id", "role"].sort(),
+      ["created_at", "deletion_requested_at", "email", "full_name", "id", "role"].sort(),
     );
   assert.equal(
     (await send("/api/users", "GET", undefined, studentCookie)).status,

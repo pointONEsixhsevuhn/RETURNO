@@ -385,6 +385,23 @@ export const server = http.createServer(async (req, res) => {
       }
       if (route === "/api/me" && req.method === "GET")
         return json(res, 200, { user: publicUser(user) });
+      if (route === "/api/account-deletion-request" && req.method === "GET") {
+        const request = db.prepare(`SELECT user_id,requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
+        return json(res, 200, { request: request ? { requestedAt: request.requested_at } : null });
+      }
+      if (route === "/api/account-deletion-request" && req.method === "POST") {
+        const data = await authorizedBody(req, "account-deletion.request", user.id);
+        if (Object.keys(data).length) fail(400, "This request does not accept additional details.");
+        const created = db.prepare(`INSERT OR IGNORE INTO account_deletion_requests(user_id) SELECT ? WHERE ${studentRowScope}`).run(user.id, user.id);
+        const request = db.prepare(`SELECT requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
+        if (!request) fail(403, "Student access is required.");
+        return json(res, created.changes ? 201 : 200, { request: { requestedAt: request.requested_at } });
+      }
+      if (route === "/api/account-deletion-request" && req.method === "DELETE") {
+        const cancelled = db.prepare(`DELETE FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).run(user.id, user.id);
+        if (!cancelled.changes) fail(404, "No pending account deletion request.");
+        return json(res, 200, { ok: true });
+      }
       if (route === "/api/logout" && req.method === "POST") {
         const token = (req.headers.cookie || "").match(
           /(?:^|;\s*)retorno_session=([^;]+)/,
@@ -425,7 +442,7 @@ export const server = http.createServer(async (req, res) => {
         if (user.role !== "admin") fail(403, "Administrator access required.");
         const users = db
           .prepare(
-            `SELECT id,email,full_name,role,created_at FROM users WHERE ${adminRowScope} ORDER BY created_at DESC,email COLLATE NOCASE`,
+            `SELECT u.id,u.email,u.full_name,u.role,u.created_at,r.requested_at AS deletion_requested_at FROM users u LEFT JOIN account_deletion_requests r ON r.user_id=u.id WHERE ${adminRowScope} ORDER BY u.created_at DESC,u.email COLLATE NOCASE`,
           )
           .all(user.id);
         return json(res, 200, { users });

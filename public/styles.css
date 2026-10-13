@@ -139,14 +139,6 @@ img {
   padding: 0 10px;
   line-height: 1.4;
 }
-.legal {
-  align-self: flex-start;
-  margin-top: auto;
-  padding-top: 18px;
-  font-size: 13px;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-}
 .role-screen {
   justify-content: center;
   gap: 16px;
@@ -176,14 +168,6 @@ img {
 .login {
   position: relative;
   justify-content: center;
-}
-.login .legal {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  text-align: right;
-  margin: 0;
-  padding-top: 0;
 }
 .password-entry {
   position: relative;
@@ -662,6 +646,13 @@ img {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.deletion-request-status {
+  display: block;
+  margin-top: 4px;
+  color: #75541f;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .registered-user-role {
   font-size: 13px;
   text-align: center;
@@ -1010,9 +1001,6 @@ dialog select {
   .role-screen .auth-logo {
     margin-bottom: 6px;
   }
-  .legal {
-    padding-top: 12px;
-  }
 }
 @media (prefers-reduced-motion: no-preference) {
   button {
@@ -1118,12 +1106,6 @@ dialog input {
 .registration:has(.auth-switcher) {
   justify-content: flex-start;
   padding-top: clamp(20px, 4vh, 36px);
-}
-
-/* Keep registration legal text below the form, including on short screens. */
-.registration .legal {
-  align-self: flex-end;
-  text-align: right;
 }
 
 #verification-code { min-height: 44px; padding: 8px 16px; background: transparent; border: 1px solid #000; border-radius: 999px; }
@@ -1290,7 +1272,7 @@ body { line-height: 1.45; }
 }
 .auth-field label { color: #655a4c; }
 .login-button, .role-button { border-radius: 14px; font-weight: 650; }
-.legal, .contact-note { color: #6b6053; }
+.contact-note { color: #6b6053; }
 .card, .admin-row, .category, .registered-users, .editor-panel {
   background: #fff; border: 1px solid var(--edge); box-shadow: var(--surface-shadow);
 }
@@ -1495,8 +1477,16 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 .profile-dropdown[open] .profile-chevron { transform: rotate(225deg); }
 .profile-options { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 180px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--edge); border-radius: 14px; background: #fff; box-shadow: 0 8px 28px #302a2326; }
 .profile-options button { display: block; width: 100%; min-height: 42px; padding: 9px 12px; border-radius: 9px; background: transparent; color: #44321d; text-align: left; font-size: 14px; }
-.profile-options button:hover, .profile-options button:focus-visible { background: #f2e7d7; }
+.profile-options button:hover, .profile-options button:focus-visible, .profile-options a:hover, .profile-options a:focus-visible { background: #f2e7d7; }
 .profile-options [data-logout] { border-top: 1px solid var(--edge); margin-top: 4px; }
+.profile-about { border-top: 1px solid var(--edge); margin-top: 4px; padding-top: 4px; }
+.profile-about > summary { display: flex; align-items: center; min-height: 42px; padding: 9px 12px; border-radius: 9px; color: #44321d; cursor: pointer; list-style: none; font-size: 14px; }
+.profile-about > summary::-webkit-details-marker { display: none; }
+.profile-about > summary::after { content: "+"; margin-left: auto; font-size: 18px; line-height: 1; }
+.profile-about[open] > summary::after { content: "−"; }
+.profile-about > button { font-size: 13px; }
+.profile-about > a { min-height: 38px; font-size: 13px; }
+.profile-about > summary:hover, .profile-about > summary:focus-visible { background: #f2e7d7; }
 
 /* Public About page and shared entry points. */
 .about-link { color: #735733; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
@@ -1637,29 +1627,21 @@ dialog:has(.detail-layout) h2 { color: #382a1b; font-size: clamp(20px, 3vw, 26px
 .policy-page h1 { font-size: clamp(26px, 5vw, 36px); }
 .policy-page h2 { font-size: 21px; margin-top: 30px; }
 .policy-page p { margin: 12px 0; }
-.policy-page a, .legal a, .policy-agreement a { color: #594126; text-decoration: underline; }
+.policy-page a, .policy-agreement a { color: #594126; text-decoration: underline; }
 .policy-agreement { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.5; }
 .policy-agreement input { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0; }
-.profile-options a { display: block; padding: 10px 14px; color: inherit; font-size: 14px; }
+.profile-options a { display: flex; align-items: center; min-height: 42px; padding: 9px 12px; border-radius: 9px; color: inherit; font-size: 14px; text-decoration: none; }
 .policy-agreement input { width: 24px; height: 24px; font-size: 16px; }
-/* Plain policy links stay at the bottom-right; opened policies use themed panels. */
-body { padding-bottom: 78px; }
-.legal, .login .legal {
-  position: fixed; z-index: 25; right: max(12px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center;
-  gap: 7px; max-width: calc(100vw - 24px); margin: 0; padding: 0;
-  border: 0; border-radius: 0; background: transparent;
-  box-shadow: none; font-size: 12px; letter-spacing: normal;
-}
-.legal a { display: inline-flex; align-items: center; min-height: 32px; text-decoration: none; white-space: nowrap; color: #44321d; }
-.legal a:hover { text-decoration: underline; }
+/* Standalone policy documents retain the shared document typography. */
 .policy-page { max-width: 900px; padding: clamp(16px, 4vw, 36px); }
-.policy-page .policy-tabs { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 20px; padding: 8px 12px; background: var(--pill); border: 1px solid #c5ad8d; border-radius: 16px; }
-.policy-tabs a { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.4; color: #44321d; text-decoration: none; }
-.policy-tabs a[aria-current] { font-weight: 700; text-decoration: underline; text-underline-offset: 5px; }
 .policy-card { padding: clamp(18px, 4vw, 32px); border: 1px solid #dfd3c2; border-radius: 18px; background: #fffdf9; box-shadow: 0 4px 18px #51381e0a; }
 .policy-card h1 { margin-top: 0; }
 .policy-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 20px; padding: 10px 28px; border: 1px solid #c5ad8d; color: #44321d; text-decoration: none; }
 
 body.policy-document { padding-bottom: 0; }
 .policy-card p { text-align: justify; text-align-last: left; hyphens: auto; }
+.policy-document .policy-card { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.policy-document .policy-card > h1:first-child { margin-top: 0; }
+.policy-shell .page-header { grid-template-columns: minmax(0, 1fr) auto; }
+.policy-shell .about-content { padding-bottom: 36px; }
+.policy-shell [data-policy-welcome][hidden] { display: none; }

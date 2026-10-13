@@ -88,13 +88,23 @@ function header(search = true, welcome = true, backControl = "") {
   if (!backControl && ["mine", "search"].includes(location.hash.slice(1))) backControl = backButton(state.user.role === "admin" ? "admin" : "feed", "Back to home");
   const admin = state.user.role === "admin";
   if (["#feed", "#admin"].includes(location.hash) || (admin && location.hash === "#admin-profile")) search = false;
-  const profile = '<details class="profile-dropdown"><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button>' : '<button type="button" data-go="mine">Your posts</button>') + '<button type="button" data-go="about">About RETURNO</button><button type="button" data-logout>Log out</button></div></details>';
+  const policyContext = `?return=${encodeURIComponent(location.hash.slice(1) || (admin ? "admin" : "feed"))}&role=${admin ? "admin" : "student"}&name=${encodeURIComponent(state.user.fullName || (admin ? "Admin" : "Student"))}`;
+  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
 function bindNavigation() {
   app
     .querySelectorAll("[data-go]")
     .forEach((el) => (el.onclick = () => go(el.dataset.go, { replace: el.hasAttribute("data-return") })));
+  app.querySelectorAll("[data-account-deletion-menu]").forEach(button => button.onclick = () => {
+    const menu = app.querySelector(".profile-dropdown");
+    if (menu) menu.open = false;
+    const pageVersion = renderVersion;
+    api("/account-deletion-request").then(({ request }) => {
+      if (pageVersion !== renderVersion) return;
+      showAccountDeletionDialog(request, pageVersion);
+    }).catch(errorDialog);
+  });
   app
     .querySelectorAll("[data-logout]")
     .forEach((button) => (button.onclick = () => logout(button)));
@@ -159,7 +169,7 @@ function authField(
 function authScreen(register = false) {
   register = register && state.role === "student";
   const switcher = state.role === "student" ? `<nav class="auth-switcher pill" role="tablist" aria-label="Student account"><button type="button" role="tab" id="login-tab" aria-selected="${!register}" aria-controls="auth-form" data-go="login">Log in</button><span aria-hidden="true">|</span><button type="button" role="tab" id="register-tab" aria-selected="${register}" aria-controls="auth-form" data-go="register">Register</button></nav>` : "";
-  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}">${backButton("role", "Back to role selection", "auth-back")}<img class="auth-logo" src="assets/logo.png" alt="RETURNO">${switcher}<form id="auth-form" ${state.role === "student" ? `role="tabpanel" aria-labelledby="${register ? "register-tab" : "login-tab"}"` : ""}>${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password", true) + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password", true) + '<label class="policy-agreement"><input type="checkbox" name="policyAgreement" required> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener" data-policy-link>Terms &amp; Conditions</a> and acknowledge the <a href="privacy.html" target="_blank" rel="noopener" data-policy-link>Privacy Policy</a>.</span></label><button class="pill login-button" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="forgot-password-link" type="button" data-go="forgot-password">Forgot password?</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form></section>`;
+  app.innerHTML = `<section class="screen ${register ? "registration" : "login"}">${backButton("role", "Back to role selection", "auth-back")}<img class="auth-logo" src="assets/logo.png" alt="RETURNO">${switcher}<form id="auth-form" ${state.role === "student" ? `role="tabpanel" aria-labelledby="${register ? "register-tab" : "login-tab"}"` : ""}>${register ? authField("email", "Enter gmail", "email", "field-0", "email") + authField("fullName", "Full name", "text", "field-1", "name") + authField("password", "Set password", "password", "field-2", "new-password", true) + authField("confirmPassword", "Confirm password", "password", "field-3", "new-password", true) + '<label class="policy-agreement"><input type="checkbox" name="policyAgreement" required> <span>I agree to the <a href="terms.html" data-policy-link>Terms &amp; Conditions</a> and acknowledge the <a href="privacy.html" data-policy-link>Privacy Policy</a>.</span></label><button class="pill login-button" type="submit">Register</button>' : authField("email", "Email", "email", "email-field", "email") + authField("password", "Password", "password", "password-field", "current-password", true) + '<button class="pill login-button" type="submit">Log In</button>' + (state.role === "student" ? '<button class="forgot-password-link" type="button" data-go="forgot-password">Forgot password?</button>' : "")}<p class="error auth-error" id="auth-error" role="alert"></p></form></section>`;
   bindNavigation();
   if (state.role === "student") {
     const tabs = app.querySelector(".auth-switcher");
@@ -459,6 +469,29 @@ function pagination(meta) {
 function bindPagination(load) {
   app.querySelectorAll("[data-page]").forEach(button => button.onclick = () => load(Number(button.dataset.page)));
 }
+function showAccountDeletionDialog(request, pageVersion) {
+  const cancelling = Boolean(request);
+  dialog.innerHTML = `<form id="account-deletion-request-form"><h2>${cancelling ? "Cancel deletion request?" : "Request account deletion?"}</h2><p>${cancelling ? `Your request, submitted ${esc(request.requestedAt)}, is pending administrator review. You can cancel it here.` : "This sends a request to an administrator; it does not delete your account now. If an administrator approves it, all your posts and sessions will be deleted with your account."}</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Keep account</button><button type="submit">${cancelling ? "Cancel request" : "Send request"}</button></div></form>`;
+  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("form").onsubmit = async event => {
+    event.preventDefault();
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    const output = dialog.querySelector('[role="alert"]');
+    submit.disabled = true;
+    try {
+      await api("/account-deletion-request", { method: cancelling ? "DELETE" : "POST", ...(cancelling ? {} : { body: JSON.stringify({}) }) });
+      if (pageVersion !== renderVersion) return;
+      dialog.close();
+      const menu = app.querySelector(".profile-dropdown");
+      if (menu) menu.open = false;
+    } catch (error) {
+      if (pageVersion !== renderVersion || !dialog.open) return;
+      errorAt(output, error);
+      submit.disabled = false;
+    }
+  };
+  openDialog(cancelling ? "Cancel deletion request" : "Request account deletion");
+}
 async function feed(own, version, page = 1) {
   const params = new URLSearchParams({page: String(page), pageSize: "28"});
   if (own) params.set("mine", "1");
@@ -716,7 +749,7 @@ async function admin(version, status = "", page = 1) {
   }
   if (version !== renderVersion) return;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters admin-status-filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span></button>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters admin-status-filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
   bindPagination(next => admin(++renderVersion, status, next));
   state.notice = "";
   bindNavigation();
@@ -744,7 +777,7 @@ async function adminProfile(version) {
   if (version !== renderVersion) return;
   const group = (role, title) => {
     const users = result.users.filter((user) => user.role === role).sort((a, b) => a.full_name.localeCompare(b.full_name, undefined, {sensitivity:"base"}) || a.email.localeCompare(b.email));
-    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user" data-user-search="${esc(user.full_name + " " + user.email)}"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}</span><div class="registered-user-actions"><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</div></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
+    return `<section class="registered-users" aria-label="${title}"><div class="registered-users-head"><h3>${title}</h3><span>${users.length}</span></div><div class="registered-user-list">${users.map((user) => `<article class="registered-user" data-user-search="${esc(user.full_name + " " + user.email)}"><strong>${esc(user.full_name)}</strong><span class="registered-user-email">${esc(user.email)}${user.deletion_requested_at ? `<small class="deletion-request-status">Account deletion requested · ${esc(user.deletion_requested_at)}</small>` : ""}</span><div class="registered-user-actions"><span class="registered-user-role">${role === "admin" ? "Admin" : "Student"}</span>${user.id !== state.user.id ? `<button type="button" class="pill delete-account" data-delete-account="${esc(user.id)}" aria-label="Delete account for ${esc(user.email)}">Delete account</button>` : ""}</div></article>`).join("") || '<p class="empty">No registered users yet.</p>'}</div></section>`;
   };
   app.innerHTML = `<section class="screen page admin-profile">${header(false)}<h2>Registered users</h2><label class="user-search">Search registered users<input type="search" id="user-search" placeholder="Search by name or email" maxlength="254"></label><p id="user-filter-status" role="status" aria-live="polite"></p><div class="user-groups">${group("admin", "Admin users")}${group("student", "Student users")}</div></section>`;
   document.querySelector("#user-search").oninput = event => {
@@ -912,11 +945,15 @@ function searchPage() {
   );
   if (state.user.role === "admin" && state.query.trim()) run(state.query);
 }
+function aboutContent() {
+  return `<div class="about-content"><div class="about-intro"><p class="about-eyebrow">Lost &amp; Found System</p><h1>About RETURNO</h1><p>Helping the NVSU community reconnect with lost belongings.</p></div><section class="about-section"><h2>Our purpose</h2><p>RETURNO brings lost and found reports into one place, making it easier to search for an item, share useful details and contact the person who posted it.</p></section><section class="about-section"><h2>How it works</h2><ol class="about-steps"><li><h3>Report an item</h3><p>Create a Lost or Found post with an item name, photo, description, location and date. Add the contact methods you want to share.</p></li><li><h3>Find a match</h3><p>Search or browse posts, then open an item to see its full details and contact information.</p></li><li><h3>Coordinate the return</h3><p>Use the contact information on the post to get in touch. Administrators manage claim and return processing and update report statuses.</p></li></ol></section><div class="about-columns"><section class="about-section"><h2>Students and administrators</h2><p>Students create and view posts. Administrators manage reports and registered accounts, and register additional administrators.</p></section><section class="about-section"><h2>Share thoughtfully</h2><p>Only share contact details you are comfortable displaying on your post. Never include passwords or email verification codes.</p></section></div></div>`;
+}
 function aboutPage() {
   const fallback = state.user ? (state.user.role === "admin" ? "admin" : "feed") : "role";
-  const back = ["role", "feed", "mine", "search", "admin", "admin-profile"].includes(state.aboutBack) ? state.aboutBack : fallback;
+  const requestedBack = state.aboutBack || new URLSearchParams(location.search).get("return");
+  const back = ["role", "feed", "mine", "search", "admin", "admin-profile"].includes(requestedBack) ? requestedBack : fallback;
   const backControl = `<button type="button" class="profile-back-home about-back" data-go="${esc(back)}" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>`;
-  app.innerHTML = `<section class="screen page about-page">${state.user ? header(false, true, backControl) : `<header class="page-header"><button class="home-logo" data-go="role" aria-label="Home">${logo}</button>${backControl}</header>`}<div class="about-content"><div class="about-intro"><p class="about-eyebrow">Lost &amp; Found System</p><h1>About RETURNO</h1><p>Helping the NVSU community reconnect with lost belongings.</p></div><section class="about-section"><h2>Our purpose</h2><p>RETURNO brings lost and found reports into one place, making it easier to search for an item, share useful details and contact the person who posted it.</p></section><section class="about-section"><h2>How it works</h2><ol class="about-steps"><li><h3>Report an item</h3><p>Create a Lost or Found post with an item name, photo, description, location and date. Add the contact methods you want to share.</p></li><li><h3>Find a match</h3><p>Search or browse posts, then open an item to see its full details and contact information.</p></li><li><h3>Coordinate the return</h3><p>Use the contact information on the post to get in touch. Administrators manage claim and return processing and update report statuses.</p></li></ol></section><div class="about-columns"><section class="about-section"><h2>Students and administrators</h2><p>Students create and view posts. Administrators manage reports and registered accounts, and register additional administrators.</p></section><section class="about-section"><h2>Share thoughtfully</h2><p>Only share contact details you are comfortable displaying on your post. Never include passwords or email verification codes.</p></section></div></div></section>`;
+  app.innerHTML = `<section class="screen page about-page">${state.user ? header(false, true, backControl) : `<header class="page-header"><button class="home-logo" data-go="role" aria-label="Home">${logo}</button>${backControl}</header>`}${aboutContent()}</section>`;
   bindNavigation();
 }
 async function render() {

@@ -7,6 +7,9 @@ const permissions = new Map([
   ["posts.manage", ["admin"]],
   ["users.list", ["admin"]],
   ["users.delete", ["admin"]],
+  ["account-deletion.read", ["student"]],
+  ["account-deletion.request", ["student"]],
+  ["account-deletion.cancel", ["student"]],
   ["stats.read", ["admin"]],
   ["admins.create", ["admin"]],
 ]);
@@ -26,6 +29,9 @@ export function requestPermission(route, method) {
     ["GET /api/posts", "posts.list"],
     ["POST /api/posts", "posts.create"],
     ["GET /api/users", "users.list"],
+    ["GET /api/account-deletion-request", "account-deletion.read"],
+    ["POST /api/account-deletion-request", "account-deletion.request"],
+    ["DELETE /api/account-deletion-request", "account-deletion.cancel"],
     ["GET /api/stats", "stats.read"],
     ["POST /api/admins", "admins.create"],
   ]);
