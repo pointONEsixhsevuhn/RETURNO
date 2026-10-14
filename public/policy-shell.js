@@ -1,9 +1,11 @@
 ﻿"use strict";
 (() => {
-  const routes = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile"]);
+  const routes = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile", "about"]);
+  const aboutReturns = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile"]);
   const params = new URLSearchParams(location.search);
   const fallback = params.get("role") === "admin" ? "admin" : "feed";
   const returnRoute = routes.has(params.get("return")) ? params.get("return") : fallback;
+  const aboutReturn = aboutReturns.has(params.get("aboutReturn")) ? params.get("aboutReturn") : params.get("role") === "admin" ? "admin" : "feed";
   const role = params.get("role") === "admin" ? "admin" : "student";
   document.querySelectorAll("[data-policy-role]").forEach(item => {
     item.hidden = item.dataset.policyRole !== role;
@@ -16,7 +18,7 @@
   }
 
   const back = document.querySelector("[data-policy-back]");
-  back.setAttribute("href", `/#${returnRoute}`);
+  back.setAttribute("href", returnRoute === "about" ? `/?return=${encodeURIComponent(aboutReturn)}#about` : `/#${returnRoute}`);
   document.querySelector("[data-policy-home]").setAttribute("href", `/#${role === "admin" ? "admin" : "feed"}`);
   back.addEventListener("click", () => {
     try { sessionStorage.setItem("retorno-role", role); } catch {}
@@ -27,7 +29,9 @@
     const nav = event.target.closest("[data-policy-nav]");
     if (nav) {
       const url = new URL(nav.dataset.policyNav, location.href);
-      url.searchParams.set("return", returnRoute);
+      const targetRoute = url.hash.slice(1);
+      url.searchParams.set("return", targetRoute === "about" ? aboutReturn : returnRoute);
+      if (targetRoute === "about" || returnRoute === "about") url.searchParams.set("aboutReturn", aboutReturn);
       url.searchParams.set("role", role);
       if (name) url.searchParams.set("name", name);
       location.assign(url.pathname + url.search + url.hash);

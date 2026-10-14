@@ -88,7 +88,18 @@ function header(search = true, welcome = true, backControl = "") {
   if (!backControl && ["mine", "search"].includes(location.hash.slice(1))) backControl = backButton(state.user.role === "admin" ? "admin" : "feed", "Back to home");
   const admin = state.user.role === "admin";
   if (["#feed", "#admin"].includes(location.hash) || (admin && location.hash === "#admin-profile")) search = false;
-  const policyContext = `?return=${encodeURIComponent(location.hash.slice(1) || (admin ? "admin" : "feed"))}&role=${admin ? "admin" : "student"}&name=${encodeURIComponent(state.user.fullName || (admin ? "Admin" : "Student"))}`;
+  const policyRoute = location.hash.slice(1) || (admin ? "admin" : "feed");
+  const policyParams = new URLSearchParams({
+    return: policyRoute,
+    role: admin ? "admin" : "student",
+    name: state.user.fullName || (admin ? "Admin" : "Student"),
+  });
+  if (policyRoute === "about") {
+    const aboutReturn = state.aboutBack || new URLSearchParams(location.search).get("return");
+    const allowedAboutReturns = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile"]);
+    policyParams.set("aboutReturn", allowedAboutReturns.has(aboutReturn) ? aboutReturn : admin ? "admin" : "feed");
+  }
+  const policyContext = `?${policyParams}`;
   const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }

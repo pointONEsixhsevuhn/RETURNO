@@ -8,7 +8,13 @@
   const returnRoute = routes.has(params.get("return")) ? params.get("return") : "role";
   const role = params.get("role") === "admin" ? "admin" : "student";
   const back = document.querySelector("[data-policy-back]");
-  if (back) back.href = policyPage ? "/#" + returnRoute : "/#role";
+  const aboutReturns = new Set(["role", "login", "feed", "mine", "search", "admin", "admin-profile"]);
+  const aboutReturn = aboutReturns.has(params.get("aboutReturn")) ? params.get("aboutReturn") : role === "admin" ? "admin" : "feed";
+  if (back) back.href = policyPage
+    ? returnRoute === "about"
+      ? `/?return=${encodeURIComponent(aboutReturn)}#about`
+      : "/#" + returnRoute
+    : "/#role";
   back?.addEventListener("click", event => {
     event.preventDefault();
     try { sessionStorage.setItem("retorno-role", role); } catch {}
@@ -29,6 +35,7 @@
       ? new URL(link.getAttribute("href"), location.href)
       : new URL(link.getAttribute("href"), location.href);
     url.searchParams.set("return", destination);
+    if (destination === "about") url.searchParams.set("aboutReturn", aboutReturn);
     url.searchParams.set("role", selectedRole);
     if (name) url.searchParams.set("name", name);
     link.href = url.pathname + url.search + url.hash;
