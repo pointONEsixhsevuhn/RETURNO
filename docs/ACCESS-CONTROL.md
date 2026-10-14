@@ -12,6 +12,8 @@ Implemented 2026-10-08. The trusted principal comes from a hashed, unexpired dat
 | Individual management read/edit/status/delete | Denied, including own reports | Any report |
 | Registered users and status totals | Denied | Read |
 | Register another administrator | Denied | Allowed |
+| Account deletion request | Create/cancel/read own request | Review requests; cannot read or cancel a student's request directly |
+| Delete an account | Denied | Delete another account after email confirmation; self-deletion denied |
 | Current account/logout | Own account/session | Own account/session |
 
 `access-control.js` defines a deny-by-default permission map and supported protected routes/methods. Unknown roles/actions are rejected. Route permission checks precede individual report lookup, so students cannot probe whether management IDs exist. User/session IDs always come from server authentication.
@@ -33,3 +35,5 @@ Isolated regression tests cover invalid principals/permissions, student denial f
 Design references: [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html), [OWASP SQL injection prevention](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html), and [SQLite's omitted SQL features](https://www.sqlite.org/omitted.html).
 
 Account deletion: `DELETE /api/users/:id` requires `users.delete` (admin only), rechecks the session after reading the confirmation body, and uses the stored-admin SQL scope. `confirmEmail` must match the target. Self-deletion is denied. Foreign-key cascades atomically remove target reports/sessions; this destructive behavior was explicitly requested by the user.
+
+Student deletion requests are separate from account deletion. A student can read, create, or cancel only their own request. The administrator user list exposes the request timestamp for review; the administrator then uses the confirmed account-deletion endpoint if appropriate.

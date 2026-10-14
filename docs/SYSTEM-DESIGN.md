@@ -1,190 +1,58 @@
-# RETURNO: verified requirements, workflow, architecture, and schema
+# RETURNO system design
 
-Version 1.3.0. Scope: the provided Lost & Found designs plus the requested removal of Organization, account-flow correction, responsive layouts, admin-only post management, and direct student return to the homepage. No messaging, notifications, additional campuses, or extra dashboards.
+Reviewed: 2026-10-14. For current priorities and verified test counts, use [PROJECT-ROADMAP.md](PROJECT-ROADMAP.md). This document describes the implemented architecture, not a production-readiness certification.
 
-## 1. Requirements and verification
+## Scope and roles
 
-| Requirement | Implemented behavior | Verification / evidence |
-| --- | --- | --- |
-| Remove Organization | Splash continues directly to Student / Admin. No Organization markup or styles remain. Old unknown routes fall back to role selection. | Source review of `public/app.js` and `public/styles.css`. |
-| Student registration | Email, full name, password and confirmation; creates a student and signs them in. | API test: creation, authenticated feed, logout, fresh login and user lookup. |
-| Fix account-fetch failure | One Node process serves UI and API. Startup verifies `/api/health`; wrong server, network failure and invalid responses are handled explicitly. Windows launcher starts the backend and opens its URL. | Client tests exercise wrong-server HTML, network failure and JSON error messages. The user's original machine error was not reproduced. |
-| No partial signup | Account and session inserts commit together or both roll back. | Test forces session insertion failure and verifies no orphan account remains. |
-| Student / Admin roles | Login checks selected role; admin login has no public registration link. Initial admin uses setup; authenticated admins can register additional admins. Student registration cannot elevate privileges. | Role-spoofing, wrong-role login and admin API tests. |
-| Persistent accounts / posts | SQLite on local disk, with parameterized queries. | Separate SQLite connection reads saved records; login after logout works. |
-| Search and suggestions | Search every post by item name, description, location, date, type, status, or poster. Show category suggestions while empty; hide them for a query and restore immediately when cleared. | Search UI state checks and source checks cover every query field. |
-| Student portal | Students can create and view details; their profile lists their posts. Administrators cannot create student posts. Students cannot use admin review or management actions. | Role and ownership authorization tests. |
-| Create / manage | Students can create posts. Only admins can review individual records, edit, update status, or delete. Students have no management menu. | API tests reject owner and non-owner student management requests; UI tests confirm absence of controls. |
-| Registered users | Admins can view registered users' names, email addresses, and roles. Password hashes and other private account fields are excluded; students cannot access the endpoint. | In-process API test verifies admin access, student denial, and response fields. |
-| Image uploads | PNG/JPEG/WebP, up to 2 MB; signature and size validation. Stored with post. | Valid image and rejected format/signature tests. |
-| Equal post cards | Student/feed post cards share a fixed responsive grid row. Admin list rows share a fixed height. Preview detail lines clip with ellipses; clicking a card opens full detail. | UI tests check fixed card/list heights, overflow style, and click/keyboard detail view. |
-| Admin management | Live status totals, post list, details, editing, status update, deletion. | Counts and administrator operation tests. |
-| Responsive design | Document-flow auth forms, bounded readable font sizes, wrapping content, fluid images. Post columns fill the available viewport width and wrap without enlarging controls. Search categories reflow from three to two. Stats wrap to fit, with two columns on phones. | CSS/source review. Browser/device verification remains pending. |
-| Schema integrity | Foreign keys enabled, role/type/status checks, unique email and primary keys. | SQLite integrity check, foreign-key check and rejected constraint violations. |
+RETURNO is a single-campus lost-and-found prototype. Students create reports and browse/search the shared authenticated feed. They can view their own reports but cannot edit, change status, or delete reports. Administrators manage reports and return statuses, register admins, review account-deletion requests, and delete other accounts after confirmation. Student claim submission, My claims, and proof-of-ownership APIs are excluded by product decision.
 
-**Acceptance boundary:** automated checks verify the API, data and client request handling. They do not prove pixel-identical rendering or behavior on every browser/device. The exact font is still unavailable; source logo/category images are retained.
-
-Browser verification update (2026-10-08): Playwright now exercises actual Chromium on desktop and Pixel 5 viewport configurations. Six local browser cases cover student account/report flows with image upload, administrator management, role enforcement, logout/session recovery and search retry/clearing. Browser page errors, horizontal overflow and card keyboard activation/Escape are checked. Each worker uses a new temporary database and port and cleans up only its own data. Physical devices, other browser engines, a full accessibility audit and pixel-identical rendering remain outside this evidence. CI runs the browser suite alongside the 49 API/client tests on Windows and Linux.
-
-## 2. User workflow
-
-Responsive/keyboard verification update (2026-10-08): the Chromium suite runs five scenarios on four desktop/phone/tablet viewports, including a 320px narrow phone. Keyboard-only tests cover registration, navigation, report controls, search/logout, login errors/password visibility and manual retry after loading failure. Native dialog close and Escape restore focus to the originating card. Item, status, deletion, admin-registration and error dialogs are explicitly named for assistive technology. Checks include horizontal overflow and visible card focus; this does not establish full screen-reader, contrast or cross-browser accessibility.
-
-Search responses are invalidated as soon as new input arrives. Search submissions and category choices cancel queued typing, and queued callbacks check the original page before running. Image reads check both selection and page versions before changing previews/errors or submission readiness. Post saves finishing after navigation may still persist on the backend, but do not redirect or change the newly opened page. These races have controlled automated coverage; real-browser verification remains pending.
-
-List requests show a loading status before results arrive. Empty feeds, own-post lists, search results and administrator report lists display explicit messages. List failures show an inline manual retry preserving the filter/query, while navigation and logout remain available. Expired-session responses still return to login. Version checks prevent old list failures from replacing a new screen; no mutation is automatically retried.
-
-Report `event_at` values are Philippine campus wall time (PHT, UTC+08:00, Asia/Manila), stored as `YYYY-MM-DDTHH:mm`. Explicit Gregorian calendar checks reject impossible dates, invalid leap days, and out-of-range hours/minutes. Years 0001 through 9999 are supported. API inputs containing seconds or timezone suffixes are rejected. Server/device timezone settings do not convert report values. Existing records are not rewritten; SQLite `created_at`/`updated_at` remain UTC database timestamps and are separate from report event time.
+## Runtime architecture
 
 ```mermaid
-flowchart TD
-  A["Splash"] --> B["Student / Admin"]
-  B --> C["Log in"]
-  C --> D["Student registration"]
-  D --> E["Authenticated feed"]
-  C --> E
-  E --> F["Search and filter"]
-  E --> G["Student: own posts"]
-  E --> H["Admin: manage posts"]
-  G --> I["Create post"]
-  I --> E
-  H --> J["Review / edit / update / delete"]
-  J --> E
+flowchart LR
+  Browser["Browser: index.html + app.js + styles.css"] -->|same-origin JSON and session cookie| HTTP["Node HTTP server: server.js"]
+  Browser -->|policy documents| Static["Static allowlisted public files"]
+  HTTP --> Access["access-control.js: role and row scopes"]
+  Access --> Data["db.js: prepared SQLite statements"]
+  Data --> SQLite["SQLite file and migrations"]
+  HTTP --> Mail["mail.js: SMTP verification/recovery"]
+  AdminCLI["Admin/recovery/demo scripts"] --> Data
 ```
 
-- Registration is always for students. It does not create administrators even when reached after choosing Admin.
-- Clicking the signed-in logo opens the feed. The profile icon opens Your post for students or management for administrators. The magnifier opens search. The profile icon opens the student profile or admin dashboard. Normal navigation adds screens to browser history, so Back returns to the prior screen. Home and Profile controls offer direct shortcuts.
-- A student opens +, selects Lost / Found, fills details, optionally uploads an image, then submits. Cancel exits the form without submitting and replaces the editor entry with the feed. Successful save returns directly to the homepage with the All filter. The editor history entry is replaced so Back cannot reopen a cancelled or submitted form. The editor has direct Home and Profile buttons. Ordinary in-app routes stack for browser Back. Choosing Home or Profile jumps directly to that destination.
-- Admin-only Edit reuses the existing form. Update changes status. Delete requires confirmation. Students cannot invoke these operations on their own posts or others’ posts, including direct API requests.
-- Administrators may edit/update/delete any post. Counts refresh from the same posts table used by the feed.
-- The admin dashboard includes a Registered users list showing each account's name, email, and role. The users endpoint requires an admin session and returns no password hashes.
-- Student and admin page headers provide Log out. Successful logout revokes the current session, clears private client state and the remembered role, and returns to role selection. An already-expired session also exits cleanly; network failures show an error and allow retry. Sessions otherwise expire in seven days.
+There is one Node process and one SQLite connection. The frontend has no compilation step. `public/app.js` owns hash-based views, events, forms, and in-memory UI state. `public/api.js` centralizes same-origin requests, JSON handling, and connection errors. `server.js` currently owns routing, request validation, authentication, SQL access, static serving, and response security headers. The single-file UI and HTTP handler are still small-project boundaries, but are large enough that future approved work should be split along view/route and domain responsibilities rather than added as unrelated code paths.
 
-## 3. Account request flow and failure handling
+## Navigation
 
-```mermaid
-sequenceDiagram
-  participant B as Browser
-  participant S as Node server
-  participant D as SQLite
-  B->>S: GET /api/health
-  S-->>B: service: retorno
-  B->>S: POST /api/register
-  S->>S: Validate email, name and matching passwords
-  S->>D: Begin transaction
-  S->>D: Insert student with password hash
-  S->>D: Insert hashed session token
-  alt Both inserts succeed
-    S->>D: Commit
-    S-->>B: 201 user + HttpOnly cookie
-    B->>S: GET /api/posts with cookie
-    S-->>B: Feed records
-  else Database operation fails
-    S->>D: Roll back
-    S-->>B: Error without a partial account
-  end
-```
+The app uses hash routes and the History API. Normal navigation pushes history; selected post-editor transitions replace their entry to avoid returning to a cancelled/submitted editor. Feed, own posts, search, admin dashboard/profile, login, registration, recovery, and About use the SPA. Terms and Privacy are separate public HTML documents; their query parameters preserve the role label, display name, and requested return route. The role query parameter changes only displayed links and never grants API access.
 
-The prior supplied API already passed registration tests. A fetch error can instead occur if the backend is stopped, Node cannot start, the page is opened as a file, or VS Code Live Server serves the frontend without an API. The original client assumed every response was JSON and did not clearly distinguish these conditions. Version 1.1 checks backend readiness before showing forms and provides specific connection/setup errors.
+One known navigation inconsistency is queued: the main policy-link handler permits `about` as a return route, while the separate policy shell's route allowlist omits it. Returning from a policy page opened from About may fall back to the feed/admin dashboard. Fix the allowlist and add student/admin browser regressions before treating navigation as settled.
 
-There is no cross-origin fallback sending passwords to another host and no automatic retry of registration. If a network timeout occurs after a commit, the client advises trying login first. HTTP cannot guarantee the browser received a response after the database committed.
+## Authentication and authorization
 
-**Run contract:** use Node.js 24+, start through `npm start` or Windows `start.cmd`, and open the printed HTTP URL. A standalone HTML file cannot supply a persistent backend. The launcher validates Node's major version and opens a browser only after the server is listening.
+- Passwords use salted Node `scrypt`; verification uses constant-time comparison.
+- Sessions use random bearer tokens. Only SHA-256 token hashes are stored in SQLite; the browser receives an `HttpOnly`, `SameSite=Strict` cookie with a seven-day expiry. `Secure` is enabled when `COOKIE_SECURE=true`.
+- Public student registration stores a pending verification record and does not create an account/session until the emailed six-digit code succeeds. Codes expire after ten minutes, allow five attempts, and are throttled. Admin-created accounts do not use this student signup verification flow.
+- Student recovery uses an emailed single-use code and revokes all sessions after a successful password change. Admin recovery is a local CLI operation.
+- Non-read API requests check request Origin and cross-site fetch metadata when present. Login/registration/recovery attempts are throttled per source IP in process memory.
+- `access-control.js` uses deny-by-default route permissions. `server.js` derives identity from the authenticated session, rechecks authorization after streamed request bodies, and applies SQL predicates for protected rows.
+- SQLite row controls are **application-enforced**, not native RLS. Filesystem/database access is outside the web permission boundary. Registration's Terms/Privacy checkbox is client-enforced and acceptance is not versioned in the database.
 
-## 4. Architecture
+## Data model and migrations
 
-```mermaid
-flowchart TD
-  UI["HTML + CSS + app.js"] --> API["api.js: same-origin requests"]
-  API --> HTTP["server.js: HTTP routes"]
-  HTTP --> AUTH["Validation and authorization"]
-  AUTH --> DATA["db.js: prepared statements and password hashing"]
-  DATA --> DB["SQLite: users, sessions, posts"]
-  HTTP --> ASSETS["public: static files only"]
-  CLI["Admin / optional demo commands"] --> DATA
-```
+`users`, `sessions`, and `posts` are the core tables. Foreign keys cascade account deletion to posts and sessions. Additional migrations hold pending signup challenges, password-reset challenges, public contact fields, account-deletion requests, and the retired student-claim records retained for migration compatibility. The retired claim table has no current student API/UI.
 
-| Layer | Files | Responsibility |
-| --- | --- | --- |
-| Structure and design | `public/index.html`, `public/styles.css`, `public/assets/` | Accessible HTML shell, responsive layout, supplied graphics. |
-| UI controller | `public/app.js` | Hash routes, forms, dialogs, role-specific views, safe text rendering. |
-| Transport | `public/api.js` | Same-origin cookies, JSON checks, request timeout and connection messages. |
-| HTTP application | `server.js` | Static allowlist, API routing, field/image validation, authentication, admin permission checks and response headers. |
-| Persistence | `db.js`, `migrations.js`, `migrations/` | SQLite setup, transactional versioned schema upgrades, hashing and user creation. `schema.sql` documents the original schema. |
-| Startup / setup | `scripts/start.js`, `start.cmd`, `scripts/admin.js` | Node version check, server startup and controlled admin creation. |
-| Demo fixture | `scripts/demo.js` | Explicit optional screenshot data on a fresh database. Never automatic. |
-| Verification | `tests/api.test.js`, `tests/client.test.js` | API integration, persistence, constraints, authorization and transport failures. |
+Migrations are numbered and immutable. Startup checks a checksum ledger and applies the next migration batch in one transaction with foreign keys enabled. A mismatch or newer database history prevents startup instead of silently rewriting data. `schema.sql` is a reference for the original schema; startup uses `migrations/`.
 
-A small single-process application fits this scope. UI data comes from the API, not localStorage. The only browser storage is the last selected role, which is non-authoritative and optional: blocked sessionStorage does not prevent use. No external service or build chain is needed. Account data, image data and session data never belong in `public/`.
+Post reads are paginated by the UI at 28 rows (API limit 100). Search/status/ownership filters share the count and row scopes. For compatibility, API requests without pagination parameters can still return all matching rows. Post JSON currently includes base64 image data. Admin user search loads all registered accounts and has no server pagination.
 
-## 5. Schema review
+## Security and operational boundaries
 
-```mermaid
-erDiagram
-  USERS ||--o{ SESSIONS : authenticates
-  USERS ||--o{ POSTS : owns
-  USERS {
-    TEXT id PK
-    TEXT email UK
-    TEXT full_name
-    TEXT password_hash
-    TEXT role
-    TEXT created_at
-  }
-  SESSIONS {
-    TEXT token_hash PK
-    TEXT user_id FK
-    INTEGER expires_at
-  }
-  POSTS {
-    TEXT id PK
-    TEXT user_id FK
-    TEXT kind
-    TEXT status
-    TEXT item_name
-    TEXT event_at
-    TEXT location
-    TEXT description
-    TEXT image
-    TEXT created_at
-    TEXT updated_at
-  }
-```
+Parameterized SQL is used for user-supplied values. Dynamic SQL fragments are fixed allowlisted clauses. API projections exclude password hashes and session tokens. Public static serving is allowlisted by file type and denies the local originals directory. Security headers include CSP, `X-Frame-Options: DENY`, `nosniff`, and same-origin referrer policy.
 
-| Table / field | Verified rule |
-| --- | --- |
-| users.id | UUID primary key. |
-| users.email | Case-insensitive uniqueness; input is trimmed/lowercased and email format checked by API. |
-| users.full_name | Required; API maximum 100 characters. |
-| users.password_hash | Salt plus scrypt hash; no raw passwords stored. API permits 8–128 characters. |
-| users.role | Database CHECK: student or admin. Public signup always inserts student; only an authenticated administrator may insert another admin. |
-| sessions.token_hash | SHA-256 hash of a random 32-byte token. Raw token exists only in the session cookie. |
-| sessions.user_id | Foreign key to users; ON DELETE CASCADE. Indexed. |
-| sessions.expires_at | Millisecond epoch; every authenticated request checks expiry. Expired rows are cleaned when a session is created. |
-| posts.user_id | Foreign key to owner; ON DELETE CASCADE. Indexed. |
-| posts.kind | Database CHECK: Lost or Found. Type remains available when status becomes Claimed / Returned. |
-| posts.status | Database CHECK: Lost, Found, Claimed or Returned. API keeps active Lost / Found status aligned with kind. |
-| posts.item_name | Required by API; maximum 200 characters. |
-| posts.event_at | Required local date/time, `YYYY-MM-DDTHH:mm`; API format/parse validation. Not converted to UTC. |
-| posts.location | Required by API; maximum 500 characters. |
-| posts.description | Required by API; maximum 3000 characters. |
-| posts.image | Optional validated raster data URL; maximum decoded size 2 MB. |
-| created_at / updated_at | SQLite timestamps; updates set updated_at. |
+Images accept PNG/JPEG/WebP with a 10 MB decoded-byte limit and magic-byte checks. Full image decoding and dimension/pixel limits are not implemented. Image bytes in paginated JSON can produce large responses; separate image delivery is a scaling task.
 
-**Normalization:** users are separate from posts. Author name is obtained by joining users rather than copying it into every post. Sessions are separate and can be revoked individually. Status counts are derived, not separately stored. Search categories are fixed pictured shortcuts, not stored tags or a new taxonomy. Organization is absent from both UI and schema because only one system is in scope.
+The API runs HTTP and expects HTTPS to be terminated by a hosting layer. The default host is loopback. `COOKIE_SECURE=true`, persistent SQLite storage, proxy-aware rate limiting, monitoring, backups, and restore procedures must be configured and verified before public hosting. The current in-memory per-process rate limiter does not replace an edge-level abuse control. SQLite calls and `scryptSync` execute synchronously, which can block the event loop under heavier workloads. No restore test, load test, or production deployment check is claimed.
 
-**Status policy:** terminal statuses preserve kind. Updating to an active Lost or Found status also aligns kind. Direct edit requests with contradictory active type/status are rejected. The references do not define a formal claims-verification process; administrators select statuses themselves. No proof-of-ownership workflow was invented.
+## Verification
 
-**Database/API boundary:** SQL handles relational and enumerated-value integrity; API handles text lengths, nonblank required values, dates, password rules and images. Optional screenshot fixtures intentionally contain blank item details, so nonblank text checks are not imposed on the table. This is explicit demo behavior rather than accepting blank real posts.
-
-**Existing data:** version 1 enrolls the existing schema using additive table/index creation and adds a migration ledger without rewriting accounts, sessions or reports. Startup validates recorded migration names/checksums and applies pending versions transactionally, checking foreign keys before commit. Preserve the existing `data/` folder when replacing source files. Earlier records with inconsistent type/status are not silently rewritten; editing/updating them applies the current rule. Future changes require a new immutable migration and a verified backup before production deployment. See [migration procedure](DATABASE-MIGRATIONS.md).
-
-## 6. Verification and remaining boundaries
-
-Run `npm test`. Tests use disposable directories and never change the user's database. The suite verifies registration/login, session use and revocation, rollback, role boundaries for both owned and other posts, CRUD, filters/search, images, admin counts, active status consistency, SQLite integrity and transport errors.
-
-The 65-test suite includes eight real CLI subprocess checks and eight migration checks. These verify administrator setup, recovery validation/rollback and selective session revocation, demo creation/refusal, startup errors, process-restart persistence, legacy migration preservation, rollback/retry, history/integrity validation and line-ending compatibility. Data is isolated in disposable directories. The unsupported-Node startup guard is simulated; power-loss recovery and backup restoration remain unverified.
-
-Playwright additionally verifies 20 Chromium cases across desktop, Pixel 5, 320px phone and 768px tablet viewports, including keyboard navigation and dialog focus. Physical devices, landscape, 200% zoom, phone keyboards, other browser engines and a complete accessibility audit remain pending. See the roadmap for hosted CI evidence.
-
-Known scope limits: a single Node process with local SQLite is appropriate for this delivered setup; it is not a configured multi-server service. Local rate limiting is per process. Database backups and HTTPS are deployment responsibilities. Administrator password recovery is available through the local CLI; student recovery and email delivery/verification remain absent. Privacy and terms labels remain as supplied; no legal text was invented.
+The automated suite uses isolated temporary databases and covers HTTP/API flows, role boundaries, SQL injection attempts, migrations, account deletion, verification/recovery, CLI setup, client state, and navigation. Playwright uses isolated servers/databases across desktop, mobile, narrow-phone, and tablet Chromium projects. The seven-size responsive audit runs once in the desktop project; the three other project copies are intentionally skipped. Current results and known test limits are recorded in the roadmap. Physical-device, Safari/WebKit, full accessibility, live SMTP, load, backup restoration, and production checks remain outstanding.
