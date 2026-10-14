@@ -1,3 +1,4 @@
+import "./test-env.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -23,6 +24,7 @@ function environment(directory, extra = {}) {
     HOST: "127.0.0.1",
     PORT: "0",
     OPEN_BROWSER: "false",
+    RETURNO_CODE_PEPPER: "a".repeat(64),
     ...extra,
   };
 }
@@ -475,4 +477,15 @@ test("startup fails clearly for occupied ports, unusable data paths and unsuppor
     });
     assert.equal(unsupported.code, 1);
     assert.match(unsupported.stderr, /requires Node.js 24 or newer/);
+  }));
+
+test("startup refuses a missing or weak verification-code pepper", async () =>
+  isolated(async (directory) => {
+    for (const value of ["", "too-short"]) {
+      const result = await command(directory, "start.js", {
+        env: { RETURNO_CODE_PEPPER: value },
+      });
+      assert.equal(result.code, 1);
+      assert.match(result.stderr, /RETURNO_CODE_PEPPER must be a 64-character hex string/);
+    }
   }));

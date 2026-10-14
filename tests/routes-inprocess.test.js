@@ -1,3 +1,4 @@
+import "./test-env.js";
 import { setMailTransport } from "../mail.js";
 let verificationCode;
 setMailTransport({

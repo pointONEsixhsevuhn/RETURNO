@@ -1,8 +1,10 @@
+import "./test-env.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { setMailTransport } from "../mail.js";
 let server, db, base, directory;
 const codes = new Map();
@@ -77,6 +79,19 @@ test("pending signup has no account/session; only a valid single-use code create
     (await request("login", { ...account(email), role: "student" })).status,
     200,
   );
+});
+test("legacy unkeyed signup codes are discarded and can be reissued", async () => {
+  const email = "legacy-code@gmail.com";
+  await request("register", account(email));
+  const legacyCode = codes.get(email);
+  db.prepare("UPDATE pending_registrations SET code_hash=? WHERE email=?")
+    .run(createHash("sha256").update(legacyCode).digest("hex"), email);
+  const rejected = await verify(email, legacyCode);
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.data.error, /no longer valid/i);
+  assert.equal(db.prepare("SELECT * FROM pending_registrations WHERE email=?").get(email), undefined);
+  assert.equal((await request("register", account(email))).status, 202);
+  assert.equal((await verify(email)).status, 201);
 });
 test("expiry, five-attempt lockout and resend cooldown are enforced", async () => {
   const email = "expiry@gmail.com";

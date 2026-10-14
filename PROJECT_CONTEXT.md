@@ -24,7 +24,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 - Student/admin separation and the exclusion of student claims are product constraints. Do not broaden permissions without an explicit product decision.
 - Student signup and password recovery use emailed codes. Signup email confirmation is not a second authentication factor. Admin recovery is a local CLI workflow.
 - Post contact information is displayed with the report. Report event time is campus wall time (PHT, UTC+08:00).
-- Secrets: `.env`, SMTP credentials, session tokens, passwords, and verification/reset codes. Do not print or commit them.
+- Secrets: `.env`, SMTP credentials, `RETURNO_CODE_PEPPER`, session tokens, passwords, and verification/reset codes. Do not print or commit them; keep the code pepper outside SQLite and its backups.
 - Personal data: SQLite records include account emails/names, reports, and contact information. Use isolated temporary databases and synthetic records in tests.
 - The user is the product decision owner. Preserve existing scope; seek a decision when an unresolved product or destructive-data choice is required. Follow `AGENTS.md` for commit/push authorization and workflow.
 

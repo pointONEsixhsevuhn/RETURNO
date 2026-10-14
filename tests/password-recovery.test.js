@@ -1,8 +1,10 @@
+import "./test-env.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { setMailTransport } from "../mail.js";
 let server,db,createUser,base,directory;
 const messages=[];
@@ -73,4 +75,16 @@ test("a reset code cannot survive a password or role change, or account deletion
  assert.equal((await reset(email)).status,400);
  db.prepare("DELETE FROM users WHERE id=?").run(id);
  assert.equal(db.prepare("SELECT * FROM password_resets WHERE user_id=?").get(id),undefined);
+});
+
+test("legacy unkeyed reset codes are discarded and can be reissued", async () => {
+ const email="legacy-reset@gmail.com",id=createUser(email,"Legacy reset",oldPassword);
+ await forgot(email);
+ const oldCode=code(email);
+ db.prepare("UPDATE password_resets SET code_hash=? WHERE user_id=?")
+   .run(createHash("sha256").update(oldCode).digest("hex"),id);
+ assert.equal((await reset(email,oldCode)).status,400);
+ assert.equal(db.prepare("SELECT * FROM password_resets WHERE user_id=?").get(id),undefined);
+ await forgot(email);
+ assert.equal((await reset(email)).status,200);
 });

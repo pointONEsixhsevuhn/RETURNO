@@ -5,6 +5,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+// Isolated browser tests use a fixed test-only key; never use it in a deployment.
+process.env.RETURNO_CODE_PEPPER = "b".repeat(64);
+
 export const test = base.extend({
   testServer: [
     async ({}, use) => {

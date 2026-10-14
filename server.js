@@ -12,6 +12,11 @@ import {
 } from "./access-control.js";
 
 import { sendVerification, sendPasswordReset, sendPasswordChanged } from "./mail.js";
+import {
+  digestVerificationCode,
+  isCurrentVerificationCodeDigest,
+  verifyVerificationCode,
+} from "./verification-codes.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -258,7 +263,7 @@ export const server = http.createServer(async (req, res) => {
           VALUES(?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
           password_hash=excluded.password_hash,code_hash=excluded.code_hash,
           expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`,
-        ).run(email, fullName, passwordHash, hash(code), now + 10 * 60000, now);
+        ).run(email, fullName, passwordHash, digestVerificationCode("signup", code), now + 10 * 60000, now);
         return json(res, 202, { verificationRequired: true, email });
       }
       if (route === "/api/verify-email" && req.method === "POST") {
@@ -278,10 +283,14 @@ export const server = http.createServer(async (req, res) => {
             400,
             "Code expired or unavailable. Register again to request a new code.",
           );
+        if (!isCurrentVerificationCodeDigest(pending.code_hash)) {
+          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
+          fail(400, "This verification code is no longer valid. Register again to request a new code.");
+        }
         db.prepare(
           "UPDATE pending_registrations SET attempts=attempts+1 WHERE email=?",
         ).run(email);
-        if (!/^\d{6}$/.test(code) || hash(code) !== pending.code_hash)
+        if (!/^\d{6}$/.test(code) || !verifyVerificationCode("signup", code, pending.code_hash))
           fail(400, "Incorrect verification code.");
         let user, token;
         db.exec("BEGIN IMMEDIATE");
@@ -314,7 +323,7 @@ export const server = http.createServer(async (req, res) => {
         const pending = target && db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
         if (target && (!pending || now - pending.sent_at >= 60000)) {
           const code = String(randomInt(100000, 1000000));
-          const codeHash = hash(code);
+          const codeHash = digestVerificationCode("password-reset", code);
           db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
             VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,
             password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`)
@@ -337,8 +346,12 @@ export const server = http.createServer(async (req, res) => {
           FROM users u JOIN password_resets r ON r.user_id=u.id WHERE u.email=? AND u.role='student'`).get(email);
         const invalid = "Invalid or expired reset code. Request a new code.";
         if (!target || target.expires_at<=Date.now() || target.attempts>=5 || target.password_hash!==target.password_version) fail(400,invalid);
+        if (!isCurrentVerificationCodeDigest(target.code_hash)) {
+          db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
+          fail(400, invalid);
+        }
         db.prepare("UPDATE password_resets SET attempts=attempts+1 WHERE user_id=?").run(target.id);
-        if (!/^\d{6}$/.test(code) || hash(code)!==target.code_hash) fail(400,invalid);
+        if (!/^\d{6}$/.test(code) || !verifyVerificationCode("password-reset", code, target.code_hash)) fail(400,invalid);
         const passwordHash = hashPassword(password);
         db.exec("BEGIN IMMEDIATE");
         try {

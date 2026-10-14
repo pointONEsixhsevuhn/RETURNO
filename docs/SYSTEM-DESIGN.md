@@ -29,7 +29,7 @@ The app uses hash routes and the History API. Normal navigation pushes history; 
 
 - Passwords use salted Node `scrypt`; verification uses constant-time comparison.
 - Sessions use random bearer tokens. Only SHA-256 token hashes are stored in SQLite; the browser receives an `HttpOnly`, `SameSite=Strict` cookie with a seven-day expiry. `Secure` is enabled when `COOKIE_SECURE=true`.
-- Public student registration stores a pending verification record and does not create an account/session until the emailed six-digit code succeeds. Codes expire after ten minutes, allow five attempts, and are throttled. Admin-created accounts do not use this student signup verification flow.
+- Public student registration stores a pending verification record and does not create an account/session until the emailed six-digit code succeeds. Codes expire after ten minutes, allow five attempts, and are throttled. Stored code digests use purpose-separated HMAC-SHA-256 with the external 32-byte `RETURNO_CODE_PEPPER`; startup fails closed if it is missing or malformed. Pepper rotation invalidates active codes. Admin-created accounts do not use this student signup verification flow.
 - Student recovery uses an emailed single-use code and revokes all sessions after a successful password change. Admin recovery is a local CLI operation.
 - Non-read API requests check request Origin and cross-site fetch metadata when present. Login/registration/recovery attempts are throttled per source IP in process memory.
 - `access-control.js` uses deny-by-default route permissions. `server.js` derives identity from the authenticated session, rechecks authorization after streamed request bodies, and applies SQL predicates for protected rows.

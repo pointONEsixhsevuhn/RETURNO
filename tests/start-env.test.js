@@ -1,3 +1,4 @@
+import "./test-env.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
@@ -12,9 +13,10 @@ test("direct startup loads the project .env regardless of working directory and 
   await mkdir(path.join(directory, "scripts"));
   await writeFile(path.join(directory, "package.json"), '{"type":"module"}');
   await writeFile(path.join(directory, "scripts/start.js"), await readFile(new URL("../scripts/start.js", import.meta.url)));
+  await writeFile(path.join(directory, "verification-codes.js"), await readFile(new URL("../verification-codes.js", import.meta.url)));
   await writeFile(path.join(directory, ".env"), "RETORNO_TEST_SETTING=from-local-file\n");
   await writeFile(path.join(directory, "server.js"), 'console.log("SETTING=" + process.env.RETORNO_TEST_SETTING); export const server = {};');
-  const env = { ...process.env, OPEN_BROWSER: "false" };
+  const env = { ...process.env, OPEN_BROWSER: "false", RETURNO_CODE_PEPPER: "a".repeat(64) };
   delete env.RETORNO_TEST_SETTING;
   const start = () => run(process.execPath, [path.join(directory, "scripts/start.js")], { cwd: tmpdir(), env, windowsHide: true });
   assert.match((await start()).stdout, /SETTING=from-local-file/);

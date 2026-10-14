@@ -13,7 +13,7 @@ The project is on track for its agreed scope. Students create and view reports. 
 
 ## Verified baseline
 
-- `npm.cmd test`: **103 passed, 0 failed**.
+- `npm.cmd test`: **110 passed, 0 failed** after adding keyed verification-code storage.
 - `npm.cmd run test:e2e -- --trace off`: **61 passed, 3 intentional skips, 0 failed** across desktop, mobile, narrow-phone, and tablet Chromium projects. The seven-size responsive audit runs only in the desktop project. Includes the policy/About Back-navigation regression for both student and admin paths.
 - Test fixtures use temporary databases and servers. These checks do not verify real Gmail delivery, physical devices, legal compliance, backup restoration, production hosting, or load capacity.
 - GitHub Actions is configured for Node 24 on Windows and Linux. This review did not inspect a new hosted Actions run.
@@ -42,7 +42,8 @@ Agent workflow policy is canonical in the repository-root [AGENTS.md](../AGENTS.
 - Students can search and browse the authenticated shared report feed. Contact details entered on a post are visible with that post.
 - Active `Lost`/`Found` status matches report kind. `Claimed` and `Returned` retain the original kind. Administrators manage these outcomes; there is no student claim workflow.
 - Public student registration requires a six-digit emailed verification code. This confirms signup email ownership; it is not a second factor at each login. Admin-created accounts are not email-verified by that flow.
-- Student password recovery uses a separate emailed code. Admin password recovery remains a local CLI operation.
+- Signup and reset codes are stored as purpose-separated HMAC-SHA-256 digests using external `RETURNO_CODE_PEPPER`; startup rejects missing or malformed values. Pepper rotation invalidates active codes. Student password recovery uses a separate emailed code; admin password recovery remains a local CLI operation.
+- **Completed 2026-10-14:** six-digit signup and reset codes now use purpose-separated, versioned HMAC digests with constant-time verification. Legacy unkeyed records are discarded on attempted use and users can request fresh codes. No schema migration was needed because the digest column already stores text.
 - Registration policy acknowledgment is enforced by the browser UI only; server-side versioned consent records are not implemented.
 - Report event time is entered and stored as campus wall time, PHT (UTC+08:00). Database timestamps are separate UTC values.
 - Images accept PNG/JPEG/WebP and are capped at **10 MB**. Validation checks size and file signature, not a full image decode or dimension limit.

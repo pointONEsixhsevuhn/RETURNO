@@ -11,6 +11,8 @@ if (Number(process.versions.node.split(".")[0]) < 24) {
     const { fileURLToPath } = await import("node:url");
     try { loadEnvFile(fileURLToPath(new URL("../.env", import.meta.url))); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
+    const { assertCodePepper } = await import("../verification-codes.js");
+    assertCodePepper();
     const { server } = await import("../server.js");
     if (process.env.OPEN_BROWSER === "true") {
       const open = async () => {
