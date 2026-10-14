@@ -57,8 +57,17 @@ Stop the server before manually copying the database folder. A verified SQLite b
 | `scripts/` | Startup, admin setup/recovery, optional demo data |
 | `tests/` | Isolated API, security, CLI, client, navigation, and browser tests |
 | `docs/` | Architecture, current roadmap, policy decisions, and security details |
+| `AGENTS.md`, `PROJECT_CONTEXT.md`, `docs/agent-workflow/` | Canonical agent policy, confirmed project facts, and supporting workflow guidance |
 
 ## Checks
+
+Check that the agent-workflow handoff documents are present and the project context has no unresolved template fields:
+
+```sh
+npm run verify:workflow
+```
+
+This is a structural documentation check, not an application or security test.
 
 Run the complete isolated API/client/security/CLI suite:
 

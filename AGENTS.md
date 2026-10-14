@@ -2,6 +2,16 @@
 
 The user requests continued guidance and a separate Git commit and GitHub push for every completed feature or independently useful fix.
 
+## Agent workflow
+
+- Before project work, read `PROJECT_CONTEXT.md`, `docs/PROJECT-ROADMAP.md`, and the task-relevant source, tests, and documentation. Confirm referenced commands and tools exist before relying on them.
+- Frame one task at a time. State its expected behavior and acceptance checks before implementation. Use existing product decisions to resolve routine choices; ask only when a missing decision materially changes scope, permissions, sensitive-data handling, or destructive behavior.
+- Map the affected user journey, including loading, empty, success, error, validation, permission, and return paths where relevant. Make the smallest complete change that fits the current architecture and preserve recoverable user input.
+- Keep assumptions separate from confirmed facts. Do not invent tool capabilities, policy enforcement, test results, or successful deployment checks.
+- For interface changes, use existing brand and design patterns; verify the main interaction, keyboard behavior, focus, and responsive layout at representative narrow and wide sizes when tooling permits.
+- Read `docs/agent-workflow/OWNERSHIP_AND_SECURITY.md` before changing authentication, permissions, database access, migrations, uploads, logging, CI, or deployment.
+- Do not add dependencies, skills, hooks, services, or workflows without verifying their source, compatibility, and need. Keep `AGENTS.md` as the single canonical agent policy; supporting guides must not contradict or duplicate its project rules.
+
 - Review `docs/PROJECT-ROADMAP.md` before starting project work. Keep its status and test evidence current.
 - Work on one agreed feature at a time. Define its behavior and acceptance checks before implementing it.
 - Preserve student/admin separation. Students currently create and view posts; admins manage posts and register additional admins. Do not broaden permissions without an explicit product decision.
@@ -16,5 +26,7 @@ The user requests continued guidance and a separate Git commit and GitHub push f
 - Keep passwords, tokens, local databases, and personal records out of Git. Test with isolated temporary databases rather than existing user data.
 - Keep posted status badges at the upper-right corner of post cards on all screen sizes, including home, own posts and search results.
 - Recommendations are a roadmap, not authorization to implement every future phase at once. Continue with the task the user chooses.
+
+Supporting workflow, verification, UI/UX, ownership, and skills guidance lives in `docs/agent-workflow/`. `PROJECT_CONTEXT.md` records confirmed repository facts and verification commands; update it when those facts change.
 
 Repository: https://github.com/pointONEsixhsevuhn/RETURNO

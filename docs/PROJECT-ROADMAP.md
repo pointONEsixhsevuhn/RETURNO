@@ -2,7 +2,7 @@
 
 Reviewed: 2026-10-14
 
-Baseline commit: `1b929cc`
+Review baseline commit: `acae536`
 Runtime checked: Node.js 24.21.0 on Windows
 
 ## Current assessment
@@ -31,6 +31,8 @@ The project is on track for its agreed scope. Students create and view reports. 
 | Verification | `tests/`, `playwright.config.js` | Isolated unit/API/security/CLI and Chromium coverage. |
 
 The frontend and API share one origin. Student/admin data access is enforced by server authorization and SQL scopes, not by menu visibility. See [ACCESS-CONTROL.md](ACCESS-CONTROL.md). SQLite row controls are application-enforced; this is not native database RLS.
+
+Agent workflow policy is canonical in the repository-root [AGENTS.md](../AGENTS.md). Confirmed project facts and verification commands are indexed in [PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md); supporting workflow guidance lives in [docs/agent-workflow/](agent-workflow/).
 
 ## Product and data rules
 

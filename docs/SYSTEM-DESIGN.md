@@ -23,9 +23,7 @@ There is one Node process and one SQLite connection. The frontend has no compila
 
 ## Navigation
 
-The app uses hash routes and the History API. Normal navigation pushes history; selected post-editor transitions replace their entry to avoid returning to a cancelled/submitted editor. Feed, own posts, search, admin dashboard/profile, login, registration, recovery, and About use the SPA. Terms and Privacy are separate public HTML documents; their query parameters preserve the role label, display name, and requested return route. The role query parameter changes only displayed links and never grants API access.
-
-One known navigation inconsistency is queued: the main policy-link handler permits `about` as a return route, while the separate policy shell's route allowlist omits it. Returning from a policy page opened from About may fall back to the feed/admin dashboard. Fix the allowlist and add student/admin browser regressions before treating navigation as settled.
+The app uses hash routes and the History API. Normal navigation pushes history; selected post-editor transitions replace their entry to avoid returning to a cancelled/submitted editor. Feed, own posts, search, admin dashboard/profile, login, registration, recovery, and About use the SPA. Terms and Privacy are separate public HTML documents; their query parameters preserve the role label, display name, and requested return route. The role query parameter changes only displayed links and never grants API access. The policy Back path preserves About and the original dashboard destination for both roles; the student/admin round trip is covered by Playwright.
 
 ## Authentication and authorization
 
