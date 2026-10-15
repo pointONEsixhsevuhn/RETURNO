@@ -42,7 +42,20 @@ By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` director
 
 Supported environment settings include `PORT`, `HOST`, `DATA_DIR`, and `COOKIE_SECURE=true` when HTTPS is provided by the hosting layer. The default host is `127.0.0.1`, suitable for local use. Public hosting still needs a persistent data volume, HTTPS, secure-cookie configuration, proxy-aware abuse controls, monitoring, and a tested recovery plan.
 
-Stop the server before manually copying the database folder. A verified SQLite backup-and-restore procedure is still open work. See [database migrations](docs/DATABASE-MIGRATIONS.md) before changing the schema.
+Use the SQLite-aware backup commands below; they include committed WAL data and validate the backup against SQLite integrity, foreign keys, and this app's migration history. Keep backups in a private, access-controlled location because they contain student names, emails, posts, and contact details. The `backups/` folder is ignored by Git.
+
+```powershell
+# Create a new backup. Existing backup files are never overwritten.
+npm.cmd run db:backup -- "C:\RETURNO-backups\retorno-2026-10-15.sqlite"
+
+# Verify a backup before relying on it.
+npm.cmd run db:verify -- "C:\RETURNO-backups\retorno-2026-10-15.sqlite"
+
+# Stop RETURNO, make a fresh backup of the current database, then explicitly restore.
+npm.cmd run db:restore -- "C:\RETURNO-backups\retorno-2026-10-15.sqlite" --confirm
+```
+
+Restore refuses to run without `--confirm`, rejects invalid or incompatible backups, and validates a staged copy before replacing the configured database file. Stop the server first, retain a separate pre-restore backup, then restart and inspect the restored data. Keep the `RETURNO_CODE_PEPPER` secret available after restore and store it separately from database backups. See [database migrations](docs/DATABASE-MIGRATIONS.md) before changing the schema.
 
 ## Project map
 
@@ -54,7 +67,7 @@ Stop the server before manually copying the database folder. A verified SQLite b
 | `server.js`, `access-control.js` | HTTP API, validation, authentication, authorization |
 | `db.js`, `migrations.js`, `migrations/` | SQLite connection, password hashing, versioned schema |
 | `mail.js` | SMTP verification and password emails |
-| `scripts/` | Startup, admin setup/recovery, optional demo data |
+| `scripts/` | Startup, admin setup/recovery, SQLite backup/verify/restore, optional demo data |
 | `tests/` | Isolated API, security, CLI, client, navigation, and browser tests |
 | `docs/` | Architecture, current roadmap, policy decisions, and security details |
 | `AGENTS.md`, `PROJECT_CONTEXT.md`, `docs/agent-workflow/` | Canonical agent policy, confirmed project facts, and supporting workflow guidance |

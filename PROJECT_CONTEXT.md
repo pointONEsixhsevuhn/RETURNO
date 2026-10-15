@@ -18,6 +18,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 - **Architecture:** Same-origin browser and API, one Node process and local SQLite database. Authorization and row scoping are enforced in application code; SQLite native RLS is not used. See [system design](docs/SYSTEM-DESIGN.md) and [access control](docs/ACCESS-CONTROL.md).
 - **Brand and UI:** `public/styles.css`, `public/assets/`, brown/white RETURNO theme; keep status badges at the upper-right of post cards.
 - **Data migrations:** Numbered, immutable SQL migrations in `migrations/`; read [migration procedure](docs/DATABASE-MIGRATIONS.md) before schema work.
+- **Database recovery:** `npm run db:backup`, `npm run db:verify`, and `npm run db:restore` use SQLite's online backup API and validate integrity, foreign keys, and migration history. Stop the server before restore; backups contain personal data and must be stored privately outside the repo.
 
 ## Constraints, sensitive data, and ownership
 
@@ -33,14 +34,14 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 | Check | Command | Purpose and scope |
 | --- | --- | --- |
 | Workflow scaffolding | `npm.cmd run verify:workflow` | Required handoff docs exist and context has no template markers; structural check only. |
-| Unit/API/security/CLI | `npm.cmd test` | Isolated temporary databases; no live account data. |
+| Unit/API/security/CLI/database backup | `npm.cmd test` | Isolated temporary databases; no live account data. |
 | Browser flows | `npm.cmd run test:e2e -- --trace off` | Isolated server/database; desktop, mobile, 320px phone, and tablet Chromium projects. |
 | Dependency advisory check | `npm.cmd audit --omit=dev` | Reads npm advisory service; requires network and can change over time. |
 | Diff whitespace | `git diff --check` | Check current unstaged/staged changes for whitespace errors. |
 
 - **Runtime:** Node.js 24+; tested locally on Node.js 24.21.0 Windows (see current roadmap for latest evidence).
 - **CI:** `.github/workflows/tests.yml`, Node 24 on Windows and Linux. Verify the hosted Actions run separately; local tests do not prove CI passed.
-- **Known limits:** No verified public deployment, physical-device run, live SMTP inbox test, complete accessibility audit, load test, or SQLite restore test.
+- **Known limits:** No verified public deployment, physical-device run, live SMTP inbox test, complete accessibility audit, load test, or operational restore rehearsal with a separately stored backup.
 
 ## Agent environment
 
