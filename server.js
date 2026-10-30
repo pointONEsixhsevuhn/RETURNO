@@ -447,8 +447,10 @@ export const server = http.createServer(async (req, res) => {
         if (Object.keys(data).length !== 1 || !["Claimed", "Returned"].includes(data.outcome))
           fail(400, "Choose whether the item was Claimed or Returned.");
         const postId = studentOutcomeMatch[1];
-        const post = db.prepare(`SELECT p.id,p.status FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
+        const post = db.prepare(`SELECT p.id,p.status,p.kind FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
         if (!post) fail(404, "Active post not found.");
+        const expectedOutcome = post.kind === "Lost" ? "Claimed" : "Returned";
+        if (data.outcome !== expectedOutcome) fail(400, "Choose the outcome that matches this post type.");
         const pending = db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
         if (pending) fail(409, "An administrator has already been notified about this post.");
         const id = randomUUID();
@@ -466,9 +468,11 @@ export const server = http.createServer(async (req, res) => {
         const notificationId = reviewOutcomeMatch[1];
         db.exec("BEGIN IMMEDIATE");
         try {
-          const notification = db.prepare(`SELECT n.id,n.post_id FROM item_outcome_notifications n
+          const notification = db.prepare(`SELECT n.id,n.post_id,n.outcome FROM item_outcome_notifications n
             WHERE n.id=? AND n.reviewed_at IS NULL AND ${adminRowScope}`).get(notificationId, user.id);
           if (!notification) fail(404, "Pending notification not found.");
+          if (data.status !== "Dismissed" && data.status !== notification.outcome)
+            fail(400, `This notification can only set the status to ${notification.outcome}.`);
           if (data.status !== "Dismissed") {
             const changedPost = db.prepare(`UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP
               WHERE id=? AND status IN ('Lost','Found') AND ${adminRowScope}`).run(data.status, notification.post_id, user.id);

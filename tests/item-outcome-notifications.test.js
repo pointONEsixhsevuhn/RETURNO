@@ -56,38 +56,40 @@ after(async () => {
 });
 
 test("students notify admins without changing status; admins set status or dismiss safely", async () => {
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Returned", extra: "no" }, student)).status, 400);
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Returned" }, otherStudent)).status, 404);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed", extra: "no" }, student)).status, 400);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed" }, otherStudent)).status, 404);
   assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Lost" }, student)).status, 400);
-  const notified = await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Returned" }, student);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Returned" }, student)).status, 400);
+  const notified = await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed" }, student);
   assert.equal(notified.status, 201);
   assert.equal((await request(`/api/posts/${postId}`, "PATCH", { status: "Returned" }, student)).status, 403);
 
   const ownPosts = await request("/api/posts?mine=1", "GET", undefined, student);
   assert.equal(ownPosts.data.posts[0].status, "Lost");
-  assert.equal(ownPosts.data.posts[0].pending_outcome, "Returned");
+  assert.equal(ownPosts.data.posts[0].pending_outcome, "Claimed");
   assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed" }, student)).status, 409);
   assert.equal((await request("/api/item-outcome-notifications", "GET", undefined, student)).status, 403);
   assert.equal((await request("/api/item-outcome-notifications", "GET", undefined, admin)).status, 200);
   const inbox = await request("/api/item-outcome-notifications", "GET", undefined, admin);
   const notification = inbox.data.notifications[0];
-  assert.equal(notification.outcome, "Returned");
+  assert.equal(notification.outcome, "Claimed");
   assert.equal(notification.student_name, "owner");
   assert.equal("contact_details" in notification, false);
   assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Returned" }, student)).status, 403);
   assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Lost" }, admin)).status, 400);
+  assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Returned" }, admin)).status, 400);
 
   db.exec(`CREATE TRIGGER fail_outcome_review BEFORE UPDATE OF reviewed_at ON item_outcome_notifications
     BEGIN SELECT RAISE(ABORT,'synthetic review failure'); END`);
-  assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Returned" }, admin)).status, 500);
+  assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Claimed" }, admin)).status, 500);
   assert.equal((await request(`/api/posts/${postId}`, "GET", undefined, admin)).data.post.status, "Lost");
-  assert.equal((await request("/api/posts?mine=1", "GET", undefined, student)).data.posts[0].pending_outcome, "Returned");
+  assert.equal((await request("/api/posts?mine=1", "GET", undefined, student)).data.posts[0].pending_outcome, "Claimed");
   db.exec("DROP TRIGGER fail_outcome_review");
 
-  const reviewed = await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Returned" }, admin);
+  const reviewed = await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Claimed" }, admin);
   assert.equal(reviewed.status, 200);
   const saved = await request(`/api/posts/${postId}`, "GET", undefined, admin);
-  assert.equal(saved.data.post.status, "Returned");
+  assert.equal(saved.data.post.status, "Claimed");
   assert.equal((await request("/api/posts?mine=1", "GET", undefined, student)).data.posts[0].pending_outcome, null);
   assert.equal((await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", { status: "Claimed" }, admin)).status, 404);
 });
@@ -98,7 +100,8 @@ test("administrators can dismiss without changing a report and pending entries c
     location: "Hall", description: "Synthetic test keys",
   }, student);
   const id = created.data.post.id;
-  const submitted = await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Claimed" }, student);
+  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Claimed" }, student)).status, 400);
+  const submitted = await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Returned" }, student);
   assert.equal(submitted.status, 201);
   const entry = (await request("/api/item-outcome-notifications", "GET", undefined, admin)).data.notifications.find((item) => item.post_id === id);
   assert.ok(entry);
@@ -115,7 +118,7 @@ test("the existing administrator status control also resolves a pending notifica
     location: "Gym", description: "Synthetic test jacket",
   }, student);
   const id = created.data.post.id;
-  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Returned" }, student)).status, 201);
+  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Claimed" }, student)).status, 201);
   assert.equal((await request(`/api/posts/${id}`, "PATCH", { status: "Returned" }, admin)).status, 200);
   const ownPosts = await request("/api/posts?mine=1", "GET", undefined, student);
   assert.equal(ownPosts.data.posts.find((post) => post.id === id).status, "Returned");

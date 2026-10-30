@@ -346,16 +346,20 @@ function card(post, own = false) {
   const manage = own && state.user?.role === "admin";
   const studentOwn = own && state.user?.role === "student";
   const active = ["Lost", "Found"].includes(post.status);
+  const outcomePhrase = post.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
   const studentActions = studentOwn
-    ? `<div class="own-post-actions"><button type="button" class="pill" data-view-details="${esc(post.id)}">View details</button>${active ? (post.pending_outcome ? `<span class="outcome-pending" role="status">Admin notified: ${esc(post.pending_outcome)} · awaiting review</span>` : `<button type="button" class="pill" data-notify-outcome="${esc(post.id)}">Notify admin</button>`) : ""}</div>`
+    ? `<div class="own-post-actions">${active ? (post.pending_outcome ? `<span class="outcome-pending" role="status">Admin notified: ${esc(outcomePhrase)} · awaiting review</span>` : `<button type="button" class="pill" data-notify-outcome="${esc(post.id)}">Notify admin: ${esc(outcomePhrase)}</button>`) : ""}</div>`
     : "";
-  return `<article class="card" data-detail="${esc(post.id)}" role="${manage || studentOwn ? "group" : "button"}" tabindex="${studentOwn ? "-1" : "0"}" aria-label="${studentOwn ? `Your post: ${esc(post.item_name)}` : `View details for ${esc(post.item_name)}`} "><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact"><span class="contact-heading">Contact me</span><span class="contact-preview">${esc(postContact(post))}</span></p>${studentActions}${manage ? menu(post) : ""}</article>`;
+  return `<article class="card" data-detail="${esc(post.id)}" role="${manage || studentOwn ? "group" : "button"}" tabindex="0" aria-label="${studentOwn ? `Your post: ${esc(post.item_name)}` : `View details for ${esc(post.item_name)}`} "><div class="card-head">${manage ? `<button class="more" data-more="${post.id}" aria-label="Post options" aria-expanded="false">•••</button>` : `<div class="author">Posted by:<strong>${esc(post.author)}</strong></div>`}<span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></div>${itemImage(post)}${fields(post, own)}<p class="card-contact"><span class="contact-heading">Contact me</span><span class="contact-preview">${esc(postContact(post))}</span></p>${studentActions}${manage ? menu(post) : ""}</article>`;
 }
 function adminPostRow(p) {
   return `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`;
 }
 function outcomeNotificationPanel(notifications) {
-  return `<section class="outcome-notifications" aria-labelledby="outcome-notifications-title"><div class="outcome-notifications-head"><h2 id="outcome-notifications-title">Student outcome notifications</h2><div class="outcome-notifications-tools"><span>${notifications.length}</span><button type="button" class="pill" data-refresh-outcome-notifications>Refresh</button></div></div>${notifications.length ? notifications.map((item) => `<article class="outcome-notification" data-outcome-notification="${esc(item.id)}"><div><h3>${esc(item.item_name)}</h3><p><strong>${esc(item.student_name)}</strong> reported this ${esc(item.kind.toLowerCase())} item as <strong>${esc(item.outcome)}</strong>.</p><p class="outcome-notification-location">Location: ${esc(item.location)}</p><p>Current post status: ${esc(item.current_status)}</p><p class="error" role="alert"></p></div><div class="outcome-notification-actions"><button type="button" class="pill" data-review-status="Claimed" aria-label="Set Claimed for ${esc(item.item_name)}">Set Claimed</button><button type="button" class="pill" data-review-status="Returned" aria-label="Set Returned for ${esc(item.item_name)}">Set Returned</button><button type="button" class="pill" data-review-status="Dismissed">Dismiss</button></div></article>`).join("") : '<p class="empty">No pending student notifications.</p>'}</section>`;
+  return `<section class="outcome-notifications" aria-labelledby="outcome-notifications-title"><div class="outcome-notifications-head"><h2 id="outcome-notifications-title">Student outcome notifications</h2><div class="outcome-notifications-tools"><span>${notifications.length}</span><button type="button" class="pill" data-refresh-outcome-notifications>Refresh</button></div></div>${notifications.length ? notifications.map((item) => {
+    const outcomePhrase = item.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
+    return `<article class="outcome-notification" data-outcome-notification="${esc(item.id)}"><div><h3>${esc(item.item_name)}</h3><p><strong>${esc(item.student_name)}</strong> reported this ${esc(item.kind.toLowerCase())} item as <strong>${esc(outcomePhrase)}</strong>.</p><p class="outcome-notification-location">Location: ${esc(item.location)}</p><p>Current post status: ${esc(item.current_status)}</p><p class="error" role="alert"></p></div><div class="outcome-notification-actions"><button type="button" class="pill" data-review-status="${esc(item.outcome)}" aria-label="Set ${esc(item.outcome)} for ${esc(item.item_name)}">Set ${esc(item.outcome)}</button><button type="button" class="pill" data-review-status="Dismissed">Dismiss</button></div></article>`;
+  }).join("") : '<p class="empty">No pending student notifications.</p>'}</section>`;
 }
 function bindOutcomeNotifications() {
   app.querySelector("[data-refresh-outcome-notifications]").onclick = () => {
@@ -430,17 +434,14 @@ function showDetails(id) {
 }
 function showOutcomeNotificationDialog(post) {
   const pageVersion = renderVersion;
-  dialog.innerHTML = `<form id="outcome-notification-form"><h2>Notify administrator</h2><p>Tell an administrator whether <strong>${esc(post.item_name)}</strong> has been claimed or returned. This will not change the post status. An administrator will review it and set the final status.</p><label for="outcome-notification-value">Outcome:</label><select id="outcome-notification-value" name="outcome" required><option value="">Choose an outcome</option><option value="Claimed">Claimed by its owner</option><option value="Returned">Returned to its owner</option></select><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Send notification</button></div></form>`;
+  const outcome = post.kind === "Lost" ? "Claimed" : "Returned";
+  const outcomePhrase = post.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
+  dialog.innerHTML = `<form id="outcome-notification-form"><h2>Notify administrator</h2><p>Tell an administrator that <strong>${esc(post.item_name)}</strong> was ${esc(outcomePhrase)}. This will not change the post status. An administrator will review it and set the final status.</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Send notification</button></div></form>`;
   dialog.querySelector("[data-close]").onclick = dismissDialog;
   dialog.querySelector("form").onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const submit = form.querySelector('[type="submit"]');
-    const outcome = form.elements.outcome.value;
-    if (!["Claimed", "Returned"].includes(outcome)) {
-      errorAt(form.querySelector("[role=alert]"), new Error("Choose Claimed or Returned."));
-      return;
-    }
     submit.disabled = true;
     try {
       await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications`, {
@@ -458,7 +459,7 @@ function showOutcomeNotificationDialog(post) {
     }
   };
   openDialog("Notify administrator about item outcome");
-  dialog.querySelector("#outcome-notification-value").focus();
+  dialog.querySelector('[type="submit"]').focus();
 }
 function bindPostActions() {
   app.querySelectorAll("[data-detail]").forEach((card) => {
@@ -479,9 +480,6 @@ function bindPostActions() {
         showDetails(card.dataset.detail);
       }
     };
-  });
-  app.querySelectorAll("[data-view-details]").forEach((button) => {
-    button.onclick = () => showDetails(button.dataset.viewDetails);
   });
   app.querySelectorAll("[data-notify-outcome]").forEach((button) => {
     button.onclick = () => {
