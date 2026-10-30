@@ -12,8 +12,13 @@ const state = {
   edit: null,
   back: "mine",
   aboutBack: "",
+  minePage: 1,
+  searchPage: 1,
+  adminStatus: "",
+  adminPage: 1,
 };
 let renderVersion = 0;
+let dialogHistoryEntry = false;
 const esc = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -64,15 +69,16 @@ function clearSession() {
   state.back = "mine";
   state.aboutBack = "";
 }
-function go(route, { replace = false } = {}) {
+function go(route, { replace = false, historyState = null } = {}) {
   if (route === "about" && location.hash !== "#about") state.aboutBack = location.hash.slice(1) || "role";
   const target = "#" + route;
   if (location.hash === target) {
     render();
     return;
   }
-  if (replace) history.replaceState(null, "", target);
-  else history.pushState(null, "", target);
+  if (dialogHistoryEntry) dialogHistoryEntry = false;
+  if (replace) history.replaceState(historyState, "", target);
+  else history.pushState(historyState, "", target);
   if (route !== "post") state.edit = null;
   window.scrollTo(0, 0);
   render();
@@ -351,19 +357,39 @@ function filters() {
 }
 function openDialog(label) {
   dialog.setAttribute("aria-label", label);
-  if (!dialog.open) dialog.showModal();
+  if (!dialog.open) {
+    history.pushState({ ...(history.state || {}), retornoDialog: true }, "", location.href);
+    dialogHistoryEntry = true;
+    dialog.showModal();
+  }
 }
+function dismissDialog() {
+  if (!dialog.open) return;
+  if (dialogHistoryEntry) {
+    history.back();
+    return;
+  }
+  dialog.close();
+}
+dialog.addEventListener("cancel", (event) => {
+  if (!dialogHistoryEntry) return;
+  event.preventDefault();
+  dismissDialog();
+});
+dialog.addEventListener("close", () => {
+  dialogHistoryEntry = false;
+});
 function errorDialog(error) {
   if (error.handled) return;
   dialog.innerHTML = `<p>${esc(error.message || error)}</p><div class="dialog-actions"><button data-close>Close</button></div>`;
-  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("[data-close]").onclick = dismissDialog;
   openDialog("Error");
 }
 function showDetails(id) {
   const post = state.posts.find((p) => p.id === id);
   if (!post) return;
   dialog.innerHTML = `<h2 tabindex="-1">${esc(post.item_name || "Item name")}</h2><div class="detail-layout">${post.image ? `<div class="detail-media"><img class="detail-image" src="${esc(post.image)}" alt="${esc(post.item_name)}"></div>` : ""}<div class="detail-column"><div class="detail-data"><p><span class="detail-label">Posted by:</span> ${esc(post.author)}</p><p><span class="detail-label">Status:</span> <span class="status" data-status="${esc(post.status)}">${esc(post.status)}</span></p><p><span class="detail-label">Date &amp; time ${post.kind === "Lost" ? "lost" : "found"}:</span> ${esc(dateText(post.event_at))}</p><p><span class="detail-label">Location/Address:</span> ${esc(post.location)}</p><p><span class="detail-label">Description:</span> ${esc(post.description)}</p></div><p class="detail-contact"><span class="contact-heading">Contact me</span><span class="detail-contact-value">${esc(postContact(post))}</span></p></div></div><div class="dialog-actions"><button data-close>Close</button></div>`;
-  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("[data-close]").onclick = dismissDialog;
   openDialog(post.item_name || "Item details");
   dialog.querySelector("h2").focus?.({ preventScroll: true });
   dialog.scrollTop = 0;
@@ -409,7 +435,7 @@ function bindPostActions() {
       (button.onclick = () => {
         state.edit = state.posts.find((p) => p.id === button.dataset.edit);
         state.back = location.hash.slice(1);
-        go("post");
+        go("post", { historyState: { retornoEditor: true } });
       }),
   );
   app.querySelectorAll("[data-update]").forEach(
@@ -417,7 +443,7 @@ function bindPostActions() {
       (button.onclick = () => {
         const post = state.posts.find((p) => p.id === button.dataset.update);
         dialog.innerHTML = `<form id="update-form"><h2>Update</h2><label for="update-status">Status:</label><select id="update-status" name="status">${["Lost", "Found", "Claimed", "Returned"].map((s) => `<option ${s === post.status ? "selected" : ""}>${s}</option>`).join("")}</select><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button>Update</button></div></form>`;
-        dialog.querySelector("[data-close]").onclick = () => dialog.close();
+        dialog.querySelector("[data-close]").onclick = dismissDialog;
         dialog.querySelector("form").onsubmit = async (event) => {
           event.preventDefault();
           const submit = event.submitter;
@@ -429,7 +455,7 @@ function bindPostActions() {
                 status: dialog.querySelector("select").value,
               }),
             });
-            dialog.close();
+            dismissDialog();
             await render();
           } catch (e) {
             errorAt(dialog.querySelector(".error"), e);
@@ -445,12 +471,12 @@ function bindPostActions() {
         const id = button.dataset.delete;
         dialog.innerHTML =
           '<h2>Delete post?</h2><p class="error" role="alert"></p><div class="dialog-actions"><button data-close>Cancel</button><button data-confirm>Delete</button></div>';
-        dialog.querySelector("[data-close]").onclick = () => dialog.close();
+        dialog.querySelector("[data-close]").onclick = dismissDialog;
         dialog.querySelector("[data-confirm]").onclick = async (event) => {
           event.currentTarget.disabled = true;
           try {
             await api("/posts/" + id, { method: "DELETE" });
-            dialog.close();
+            dismissDialog();
             await render();
           } catch (e) {
             errorAt(dialog.querySelector(".error"), e);
@@ -484,7 +510,7 @@ function bindPagination(load) {
 function showAccountDeletionDialog(request, pageVersion) {
   const cancelling = Boolean(request);
   dialog.innerHTML = `<form id="account-deletion-request-form"><h2>${cancelling ? "Cancel deletion request?" : "Request account deletion?"}</h2><p>${cancelling ? `Your request, submitted ${esc(request.requestedAt)}, is pending administrator review. You can cancel it here.` : "This sends a request to an administrator; it does not delete your account now. If an administrator approves it, all your posts and sessions will be deleted with your account."}</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Keep account</button><button type="submit">${cancelling ? "Cancel request" : "Send request"}</button></div></form>`;
-  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("[data-close]").onclick = dismissDialog;
   dialog.querySelector("form").onsubmit = async event => {
     event.preventDefault();
     const submit = event.currentTarget.querySelector('[type="submit"]');
@@ -493,7 +519,7 @@ function showAccountDeletionDialog(request, pageVersion) {
     try {
       await api("/account-deletion-request", { method: cancelling ? "DELETE" : "POST", ...(cancelling ? {} : { body: JSON.stringify({}) }) });
       if (pageVersion !== renderVersion) return;
-      dialog.close();
+      dismissDialog();
       const menu = app.querySelector(".profile-dropdown");
       if (menu) menu.open = false;
     } catch (error) {
@@ -504,7 +530,7 @@ function showAccountDeletionDialog(request, pageVersion) {
   };
   openDialog(cancelling ? "Cancel deletion request" : "Request account deletion");
 }
-async function feed(own, version, page = 1) {
+async function feed(own, version, page = own ? state.minePage : 1) {
   const params = new URLSearchParams({page: String(page), pageSize: "28"});
   if (own) params.set("mine", "1");
   else if (state.filter !== "All") params.set("kind", state.filter);
@@ -522,12 +548,15 @@ async function feed(own, version, page = 1) {
   state.notice = "";
   bindNavigation();
   bindPostActions();
-  bindPagination(next => feed(own, ++renderVersion, next));
+  bindPagination(next => {
+    if (own) state.minePage = next;
+    feed(own, ++renderVersion, next);
+  });
   if (own)
     document.querySelector("#add-post").onclick = () => {
       state.edit = null;
-      state.back = "mine";
-      go("post", { replace: true });
+      state.back = location.hash.slice(1) || "mine";
+      go("post", { historyState: { retornoEditor: true } });
     };
   app.querySelectorAll("[data-filter]").forEach(
     (el) =>
@@ -547,9 +576,14 @@ function editor() {
     saving = false;
   app.innerHTML = `<section class="screen editor"><form class="editor-panel" id="post-form"><div class="editor-head"><button type="button" class="editor-logo" data-go="${state.user.role === "admin" ? state.back : "feed"}" aria-label="Home">${logo}</button><div class="editor-actions"><button type="button" class="pill cancel-post-button" data-cancel-post>Cancel</button><button class="pill post-button" type="submit">${post ? "Update" : "Post"}</button></div></div><label class="upload-area" id="upload-area"><span id="upload-preview">${image ? `<img src="${esc(image)}" alt="Selected item">` : "Upload your image here"}</span><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" aria-label="Upload your image here"></label><div class="post-fields"><div class="post-field status-field"><span>Status:</span><button id="status-trigger" class="pill status-trigger" type="button" aria-expanded="false" aria-controls="status-options"><span id="chosen-kind">${kind}</span><span class="triangle"></span></button><div class="status-options" id="status-options" hidden><button type="button" data-kind="Lost">Lost</button><button type="button" data-kind="Found">Found</button></div></div><label class="post-field"><span>Item name:</span><input name="item_name" required maxlength="200" value="${esc(post?.item_name)}"></label><label class="post-field"><span id="event-time-label">${kind ? `Date time ${kind.toLowerCase()}:` : "Date time:"}</span><input name="event_at" type="datetime-local" required value="${esc(post?.event_at)}"></label><label class="post-field"><span>Location/Address :</span><input name="location" required maxlength="500" value="${esc(post?.location)}"></label><div class="contact-methods"><span>How to contact you (optional):</span><div class="contact-box"><div id="contact-rows"></div><button type="button" id="add-contact">Add contact method</button></div></div><p class="contact-note">What you enter here will appear on your home post.</p><label class="post-field"><span>Description:</span><textarea name="description" required maxlength="3000">${esc(post?.description)}</textarea></label></div><p id="post-status" role="status" aria-live="polite"></p><p id="post-error" class="error" role="alert"></p></form></section>`;
   bindNavigation();
-  const cancelPost = () => {
+  const leaveEditor = () => {
     state.edit = null;
-    go(state.user.role === "admin" ? "admin-profile" : "mine", { replace: true });
+    if (history.state?.retornoEditor) history.back();
+    else go(state.user.role === "admin" && state.back === "mine" ? "admin-profile" : state.back || "mine", { replace: true });
+  };
+  app.querySelector(".editor-logo").onclick = leaveEditor;
+  const cancelPost = () => {
+    leaveEditor();
   };
   document.querySelector("[data-cancel-post]").onclick = cancelPost;
   const options = document.querySelector("#status-options"),
@@ -708,9 +742,13 @@ function editor() {
       if (pageVersion !== renderVersion) return;
       state.notice = post ? "Post updated successfully." : "Post published successfully.";
       state.edit = null;
-      state.filter = "All";
-      if (!(state.user.role === "admin" && state.back === "search")) state.query = "";
-      go(state.user.role === "admin" ? state.back : "feed", { replace: true });
+      if (state.user.role === "admin" && history.state?.retornoEditor) {
+        history.back();
+      } else {
+        state.filter = "All";
+        if (!(state.user.role === "admin" && state.back === "search")) state.query = "";
+        go(state.user.role === "admin" ? state.back : "feed", { replace: true });
+      }
     } catch (e) {
       if (pageVersion !== renderVersion) return;
       errorAt(output, e);
@@ -724,7 +762,7 @@ function editor() {
 }
 function showAdminRegistration() {
   dialog.innerHTML = `<form id="admin-register-form"><h2>Register another admin</h2><label>Email<input name="email" type="email" required maxlength="254" autocomplete="email"></label><label>Full name<input name="fullName" required maxlength="100" autocomplete="name"></label><label>Password<input name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><label>Confirm password<input name="confirmPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Register admin</button></div></form>`;
-  dialog.querySelector("[data-close]").onclick = () => dialog.close();
+  dialog.querySelector("[data-close]").onclick = dismissDialog;
   dialog.querySelector("form").onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget,
@@ -739,7 +777,7 @@ function showAdminRegistration() {
     submit.disabled = true;
     try {
       await api("/admins", { method: "POST", body: JSON.stringify(data) });
-      dialog.close();
+      dismissDialog();
     } catch (error) {
       errorAt(output, error);
       submit.disabled = false;
@@ -747,7 +785,7 @@ function showAdminRegistration() {
   };
   openDialog("Register another admin");
 }
-async function admin(version, status = "", page = 1) {
+async function admin(version, status = state.adminStatus, page = state.adminPage) {
   listLoading("Loading dashboard...");
   let result, totals;
   try {
@@ -762,7 +800,10 @@ async function admin(version, status = "", page = 1) {
   if (version !== renderVersion) return;
   state.posts = result.posts;
   app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters admin-status-filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
-  bindPagination(next => admin(++renderVersion, status, next));
+  bindPagination(next => {
+    state.adminPage = next;
+    admin(++renderVersion, status, next);
+  });
   state.notice = "";
   bindNavigation();
   bindPostActions();
@@ -773,8 +814,11 @@ async function admin(version, status = "", page = 1) {
     .querySelectorAll("[data-admin-filter]")
     .forEach(
       (el) =>
-        (el.onclick = () =>
-          admin(++renderVersion, el.dataset.adminFilter).catch(errorDialog)),
+        (el.onclick = () => {
+          state.adminStatus = el.dataset.adminFilter;
+          state.adminPage = 1;
+          admin(++renderVersion, state.adminStatus, 1).catch(errorDialog);
+        }),
     );
 }
 async function adminProfile(version) {
@@ -812,7 +856,7 @@ async function adminProfile(version) {
     button.onclick = () => {
       const target = result.users.find(user => user.id === button.dataset.deleteAccount);
       dialog.innerHTML = `<h2>Delete account?</h2><p>Delete ${esc(target.full_name)} (${esc(target.email)})? All their reports will be permanently deleted, and they will be signed out everywhere.</p><form id="delete-account-form"><label for="delete-account-email">Type the account email to confirm</label><input id="delete-account-email" type="email" maxlength="254" required autocomplete="off" class="pill"><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Delete account</button></div></form>`;
-      dialog.querySelector("[data-close]").onclick = () => dialog.close();
+      dialog.querySelector("[data-close]").onclick = dismissDialog;
       dialog.querySelector("#delete-account-form").onsubmit = async event => {
         event.preventDefault();
         const submit = event.currentTarget.querySelector("[type=submit]");
@@ -822,7 +866,7 @@ async function adminProfile(version) {
         try {
           await api("/users/" + target.id, { method: "DELETE", body: JSON.stringify({ confirmEmail: dialog.querySelector("#delete-account-email").value }) });
           if (version !== renderVersion) return;
-          dialog.close();
+          dismissDialog();
           await render();
         } catch (error) {
           if (version !== renderVersion || !dialog.open) return;
@@ -889,6 +933,7 @@ function searchPage() {
       return;
     }
     const version = ++searchVersion;
+    state.searchPage = page;
     historyPanel.hidden = true;
     app.querySelector("[name=q]").value = value;
     clearSearch.hidden = false;
@@ -933,6 +978,7 @@ function searchPage() {
     clearTimeout(timer);
     ++searchVersion;
     state.query = input.value.trim();
+    state.searchPage = 1;
     state.posts = [];
     if (!input.value.trim()) showSuggestions();
     else {
@@ -955,7 +1001,7 @@ function searchPage() {
         run(input.value, 1, true);
       }),
   );
-  if (state.user.role === "admin" && state.query.trim()) run(state.query);
+  if (state.query.trim()) run(state.query, state.searchPage);
 }
 function aboutContent() {
   return `<div class="about-content"><div class="about-intro"><p class="about-eyebrow">Lost &amp; Found System</p><h1>About RETURNO</h1><p>Helping the NVSU community reconnect with lost belongings.</p></div><section class="about-section"><h2>Our purpose</h2><p>RETURNO brings lost and found reports into one place, making it easier to search for an item, share useful details and contact the person who posted it.</p></section><section class="about-section"><h2>How it works</h2><ol class="about-steps"><li><h3>Report an item</h3><p>Create a Lost or Found post with an item name, photo, description, location and date. Add the contact methods you want to share.</p></li><li><h3>Find a match</h3><p>Search or browse posts, then open an item to see its full details and contact information.</p></li><li><h3>Coordinate the return</h3><p>Use the contact information on the post to get in touch. Administrators manage claim and return processing and update report statuses.</p></li></ol></section><div class="about-columns"><section class="about-section"><h2>Students and administrators</h2><p>Students create and view posts. Administrators manage reports and registered accounts, and register additional administrators.</p></section><section class="about-section"><h2>Share thoughtfully</h2><p>Only share contact details you are comfortable displaying on your post. Never include passwords or email verification codes.</p></section></div></div>`;
@@ -971,7 +1017,10 @@ function aboutPage() {
 async function render() {
   const version = ++renderVersion;
   const route = location.hash.slice(1) || "splash";
-  if (dialog.open) dialog.close();
+  if (dialog.open) {
+    dialogHistoryEntry = false;
+    dialog.close();
+  }
   try {
     if (
       ["feed", "mine", "post", "admin", "admin-profile", "search"].includes(
@@ -1039,6 +1088,12 @@ async function render() {
   window.scrollTo(0, 0);
 }
 window.addEventListener("popstate", () => {
+  if (dialog.open) {
+    dialogHistoryEntry = false;
+    dialog.close();
+    return;
+  }
+  if (location.hash !== "#post") state.edit = null;
   window.scrollTo(0, 0);
   render();
 });

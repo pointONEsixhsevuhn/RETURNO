@@ -73,6 +73,9 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.getByRole("button",{name:"Profile options",exact:true}).click();
   await page.getByRole("button", { name: "Your posts", exact: true }).click();
   await page.getByRole("button", { name: "Add post", exact: true }).click();
+  await page.goBack();
+  await expect(page).toHaveURL(/#mine$/);
+  await page.getByRole("button", { name: "Add post", exact: true }).click();
   await page.getByLabel("Item name:", {exact:true}).fill("Unsaved draft");
   await page.getByRole("button", {name:"Cancel",exact:true}).click();
   await expect(page).toHaveURL(/#mine$/);
@@ -158,8 +161,9 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog")).toContainText("contact.test@gmail.com");
   await expect(page.getByRole("dialog")).toContainText("09123456789");
   await expect(page.locator("dialog .contact-heading")).toHaveText("Contact me");
-  await page.keyboard.press("Escape");
+  await page.goBack();
   await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page).toHaveURL(/#feed$/);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search posts" }).fill(item);
   await expect(
@@ -194,6 +198,17 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.locator(".search-results.admin-list")).toBeVisible();
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.goBack();
+  await expect(page.locator("#post-form")).toHaveCount(0);
+  await expect(page).toHaveURL(/#search$/);
+  await expect(page.getByRole("searchbox", { name: "Search posts" })).toHaveValue(item);
+  await row.getByRole("button", { name: "Post options" }).click();
+  await row.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page).toHaveURL(/#search$/);
+  await expect(page.getByRole("searchbox", { name: "Search posts" })).toHaveValue(item);
+  await row.getByRole("button", { name: "Post options" }).click();
+  await row.getByRole("button", { name: "Edit", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Description:", exact: true })
     .fill("Reviewed by administrator");
@@ -206,6 +221,11 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog")).toHaveAccessibleName(
     "Update post status",
   );
+  await page.goBack();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page).toHaveURL(/#search$/);
+  await row.getByRole("button", { name: "Update", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleName("Update post status");
   await page.getByLabel("Status:", { exact: true }).selectOption("Returned");
   await page
     .getByRole("dialog")
@@ -234,6 +254,10 @@ test("student report lifecycle and administrator review, edit, return and delete
   await row.getByRole("button", { name: "Post options" }).click();
   await row.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("Delete post");
+  await page.goBack();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page).toHaveURL(/#admin$/);
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Delete", exact: true })
@@ -352,6 +376,17 @@ test("admin confirms account deletion, removes its reports and invalidates the s
  await deletionMenuItem.click();
  const requestDialog = page.getByRole("dialog", { name: "Request account deletion", exact: true });
  await expect(requestDialog).toContainText("it does not delete your account now");
+ await page.goBack();
+ await expect(requestDialog).not.toBeVisible();
+ await expect(page).toHaveURL(/#feed$/);
+ await page.getByRole("button", { name: "Profile options", exact: true }).click();
+ await page.getByRole("button", { name: "Account deletion request", exact: true }).click();
+ await expect(page.getByRole("dialog", { name: "Request account deletion", exact: true })).toBeVisible();
+ await page.goBack();
+ await expect(page.getByRole("dialog")).not.toBeVisible();
+ await page.getByRole("button", { name: "Profile options", exact: true }).click();
+ await page.getByRole("button", { name: "Account deletion request", exact: true }).click();
+ await expect(page.getByRole("dialog", { name: "Request account deletion", exact: true })).toContainText("it does not delete your account now");
  await requestDialog.getByRole("button", { name: "Send request", exact: true }).click();
  await expect(page).toHaveURL(/#feed$/);
  await expect(page.locator("[data-account-deletion-status]")).toHaveCount(0);

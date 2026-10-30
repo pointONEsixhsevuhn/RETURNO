@@ -21,6 +21,8 @@ function harness({ role = "student", failure = false } = {}) {
         value: "",
         open: false,
         attributes: {},
+        listeners: {},
+        addEventListener(name, callback) { this.listeners[name] = callback; },
         setAttribute(name, value) { this.attributes[name] = value; },
         querySelector(selector) {
           return selector === "[data-close]"
@@ -32,6 +34,7 @@ function harness({ role = "student", failure = false } = {}) {
         },
         close() {
           this.open = false;
+          this.listeners.close?.();
         },
         querySelectorAll(selector) {
           return selector === "[data-kind]"
@@ -52,9 +55,10 @@ function harness({ role = "student", failure = false } = {}) {
     "ID",
     "Bracelet",
   ].map((category) => ({ dataset: { category }, onclick: null }));
-  const location = { hash: "#post" };
+  const location = { hash: "#post", href: "http://localhost/#post" };
   const entries = ["#post"];
   let historyIndex = 0;
+  let historyState = null;
   let renderCount = 0;
   const requests = [];
   const api = async (url, options) => {
@@ -86,20 +90,29 @@ function harness({ role = "student", failure = false } = {}) {
     },
     location,
     history: {
-      replaceState(_state, _title, hash) {
-        entries[historyIndex] = hash;
-        location.hash = hash;
+      get state() { return historyState; },
+      replaceState(nextState, _title, hash) {
+        const nextHash = new URL(hash, "http://localhost").hash || hash;
+        entries[historyIndex] = nextHash;
+        historyState = nextState;
+        location.hash = nextHash;
+        location.href = "http://localhost/" + nextHash;
       },
-      pushState(_state, _title, hash) {
+      pushState(nextState, _title, hash) {
+        const nextHash = new URL(hash, "http://localhost").hash || hash;
         entries.splice(historyIndex + 1);
-        entries.push(hash);
+        entries.push(nextHash);
         historyIndex = entries.length - 1;
-        location.hash = hash;
+        historyState = nextState;
+        location.hash = nextHash;
+        location.href = "http://localhost/" + nextHash;
       },
       back() {
         if (historyIndex > 0) {
           historyIndex--;
           location.hash = entries[historyIndex];
+          historyState = null;
+          location.href = "http://localhost/" + location.hash;
           return historyIndex;
         }
       },
