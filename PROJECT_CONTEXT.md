@@ -40,8 +40,9 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 | Diff whitespace | `git diff --check` | Check current unstaged/staged changes for whitespace errors. |
 
 - **Runtime:** Node.js 24+; tested locally on Node.js 24.21.0 Windows (see current roadmap for latest evidence).
-- **CI:** `.github/workflows/tests.yml`, Node 24 on Windows and Linux. Verify the hosted Actions run separately; local tests do not prove CI passed.
+- **CI:** `.github/workflows/ci.yml`, Node 24 on Windows and Linux. Verify the hosted Actions run separately; local tests do not prove CI passed.
 - **Known limits:** No verified public deployment, physical-device run, live SMTP inbox test, complete accessibility audit, load test, or operational restore rehearsal with a separately stored backup.
+- **Offline:** There is no PWA/service worker or offline queue. Same-device localhost use can work without internet while the server process is running; remotely hosted use requires a connection to the host.
 
 ## Agent environment
 

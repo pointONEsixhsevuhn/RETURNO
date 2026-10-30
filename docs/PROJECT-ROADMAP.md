@@ -2,7 +2,7 @@
 
 Reviewed: 2026-10-30
 
-Review baseline commit: `1953ec7`
+Review baseline commit: `07aec94`
 Runtime checked: Node.js 24.21.0 on Windows
 
 ## Current assessment
@@ -13,7 +13,7 @@ The project is on track for its agreed scope. Students create and view reports. 
 
 ## Verified baseline
 
-- **Latest local review (2026-10-30):** full Node suite passed (**113/113**); Playwright passed (**61 passed, 3 intentional skips**); `npm.cmd run verify:workflow` passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**.
+- **Latest local review (2026-10-30):** full Node suite passed (**113/113**); Playwright passed (**61 passed, 3 intentional skips**); `npm.cmd run verify:workflow` passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**. Fixed the unreachable-server screen's link that incorrectly sent remote users to their own `localhost`.
 - `npm.cmd test`: **113 passed, 0 failed** after adding keyed verification-code storage and SQLite backup/restore checks.
 - `npm.cmd run test:e2e -- --trace off`: **61 passed, 3 intentional skips, 0 failed** across desktop, mobile, narrow-phone, and tablet Chromium projects. The seven-size responsive audit runs only in the desktop project. Includes the policy/About Back-navigation regression for both student and admin paths.
 - Test fixtures use temporary databases and servers. Backup/restore round trips are tested on synthetic databases; these checks do not verify real Gmail delivery, physical devices, legal compliance, a live-data restore rehearsal, production hosting, or load capacity.
@@ -53,10 +53,13 @@ Agent workflow policy is canonical in the repository-root [AGENTS.md](../AGENTS.
 
 ## Open work, in priority order
 
-1. **Data recovery and accountability:** add administrator history for status changes and destructive actions. A SQLite-aware backup/restore procedure is implemented; it still needs an operational restore rehearsal with a separately stored backup.
-2. **Media and list performance:** validate decoded image dimensions and separate image delivery from paginated post JSON. Add registered-user pagination if account counts grow.
-3. **Production readiness:** choose persistent hosting, configure HTTPS and secure cookies, verify proxy-aware throttling, email delivery, monitoring, restore, and rollback. Run realistic load and deployment checks.
-4. **Maintainability:** as more work is approved, split the large UI controller and HTTP handler along route/view and domain boundaries. Avoid a framework rewrite without a concrete need.
+1. **Production security before external sharing:** select persistent hosting; require HTTPS and secure cookies; move throttling to a trusted proxy/edge or shared store; add administrator MFA and alerting; store versioned Terms/Privacy acceptance on the server; encrypt and access-control SQLite backups; rehearse restore and rollback. Current rate limits are in-memory per process, policy acknowledgment is browser-only, and local SQLite has no native RLS.
+2. **Administrator accountability:** record status changes and destructive actions with actor, action, target reference, and timestamp. Avoid retaining deleted account contact details in the log.
+3. **Offline support (separate product phase):** there is no service worker or offline cache. First decide whether offline means a cached read-only catalogue or queued report creation. Queued writes need identity/expiry behavior, conflict handling, idempotency, and privacy controls for data cached on shared phones.
+4. **Media and list performance:** decode and constrain uploaded image dimensions/pixels; separate image delivery from paginated post JSON. Add registered-user pagination if account counts grow.
+5. **Maintainability and operations:** exercise a live-data restore in an isolated copy, then consider moving synchronous SQLite/scrypt work off the request event loop if load measurements justify it. Add representative Safari/WebKit and physical-device checks when those platforms become supported targets.
+
+`npm audit --omit=dev` reported no known runtime dependency advisories in this review; rerun it before each release. That result does not replace deployment configuration, threat review, or operational monitoring.
 
 These are recommendations, not blanket authorization to implement all phases. Continue one selected task at a time and keep student/admin permissions unchanged without a product decision.
 

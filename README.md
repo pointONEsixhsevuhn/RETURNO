@@ -12,6 +12,10 @@ The current project status and next tasks are in [docs/PROJECT-ROADMAP.md](docs/
 
 On Windows, use `npm.cmd start` if PowerShell blocks `npm.ps1`. `start.cmd` is also available. Keep the server terminal open. Do not use VS Code Live Server or open `public/index.html` directly; the backend and UI need the same origin.
 
+## Offline behavior
+
+RETURNO has no offline mode or service worker. When the Node server is running on the same device, its local interface and SQLite data can work without internet; email verification and password recovery still need network access to the mail service. If the server is stopped, the app cannot open. A hosted RETURNO needs a network connection to reach its server. Offline browsing or posting from another device is not currently supported.
+
 The first administrator is created locally with `npm run admin`. Use `npm run admin:reset` to reset an administrator password. An authenticated administrator can register additional admins from the application. Admin-created accounts do not use the student email-verification flow.
 
 Optional demo data is for a fresh database only:
