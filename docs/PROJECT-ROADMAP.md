@@ -1,8 +1,8 @@
 # RETURNO project status and roadmap
 
-Reviewed: 2026-10-15
+Reviewed: 2026-10-30
 
-Review baseline commit: `acae536`
+Review baseline commit: `1953ec7`
 Runtime checked: Node.js 24.21.0 on Windows
 
 ## Current assessment
@@ -13,6 +13,7 @@ The project is on track for its agreed scope. Students create and view reports. 
 
 ## Verified baseline
 
+- **Latest local review (2026-10-30):** full Node suite passed (**113/113**); Playwright passed (**61 passed, 3 intentional skips**); `npm.cmd run verify:workflow` passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**.
 - `npm.cmd test`: **113 passed, 0 failed** after adding keyed verification-code storage and SQLite backup/restore checks.
 - `npm.cmd run test:e2e -- --trace off`: **61 passed, 3 intentional skips, 0 failed** across desktop, mobile, narrow-phone, and tablet Chromium projects. The seven-size responsive audit runs only in the desktop project. Includes the policy/About Back-navigation regression for both student and admin paths.
 - Test fixtures use temporary databases and servers. Backup/restore round trips are tested on synthetic databases; these checks do not verify real Gmail delivery, physical devices, legal compliance, a live-data restore rehearsal, production hosting, or load capacity.
