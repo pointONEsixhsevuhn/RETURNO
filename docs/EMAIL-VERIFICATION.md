@@ -8,10 +8,9 @@ This verifies email ownership during signup, not a second factor on each login. 
 
 1. Use a dedicated Google account for RETURNO and enable Google 2-Step Verification.
 2. Generate a Google app password if the account supports it. Use that app password, not its normal password.
-3. Generate a separate 32-byte code pepper in a terminal: `node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('hex'))"`.
-4. Copy `.env.example` to `.env` locally and replace the sender placeholders and `RETURNO_CODE_PEPPER` with the generated 64-character hex value. Never reuse the Gmail password as the pepper. Do not commit `.env` or share any secret in chat. The From address should match the sender.
-5. Start with `npm start` from the repository directory. Startup requires a valid pepper, loads the optional local `.env` file, and lets host environment variables take precedence.
-6. Register a test account, check its actual Gmail inbox/spam folder, enter the code, then log out and log in again.
+3. Copy `.env.example` to `.env` locally and add the sender's Gmail address and app password. The From address should match the sender. Never use the normal Gmail password, and do not commit `.env` or share secrets in chat.
+4. Start with `npm start` or double-click `start.cmd`. On first local startup, RETURNO creates `data/verification-code.key` automatically if no `RETURNO_CODE_PEPPER` is configured. Keep this file across restarts; deleting it invalidates outstanding verification/reset codes. Hosted deployments should provide a stable key through a secret manager.
+5. Register a test account, check its actual Gmail inbox/spam folder, enter the code, then log out and log in again.
 
 Keep the pepper in a secret manager or protected environment configuration, separately from SQLite backups. Use the same value across restarts and application instances. Rotating it invalidates active email codes; users must request new codes. Legacy unkeyed codes are discarded when submitted after upgrading.
 

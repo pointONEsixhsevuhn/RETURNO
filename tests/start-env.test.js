@@ -38,3 +38,24 @@ test("production startup refuses to run without secure cookies", async () => {
   await assert.rejects(run(process.execPath, [path.join(directory, "scripts/start.js")], { cwd: tmpdir(), env, windowsHide: true }), /Production requires COOKIE_SECURE=true/);
  } finally { await rm(directory, { recursive: true, force: true }); }
 });
+test("first start creates and reuses a private verification key in the data directory", async () => {
+ const directory = await mkdtemp(path.join(tmpdir(), "retorno-auto-pepper-"));
+ try {
+  await mkdir(path.join(directory, "scripts"));
+  await writeFile(path.join(directory, "package.json"), '{"type":"module"}');
+  await writeFile(path.join(directory, "scripts/start.js"), await readFile(new URL("../scripts/start.js", import.meta.url)));
+  await writeFile(path.join(directory, "verification-codes.js"), await readFile(new URL("../verification-codes.js", import.meta.url)));
+  await writeFile(path.join(directory, "server.js"), 'console.log("PEPPER_VALID=" + /^[a-f0-9]{64}$/.test(process.env.RETURNO_CODE_PEPPER)); export const server = {};');
+  const keyPath = path.join(directory, "data", "verification-code.key");
+  const env = { ...process.env, OPEN_BROWSER: "false", NODE_ENV: "development" };
+  delete env.RETURNO_CODE_PEPPER;
+  const start = () => run(process.execPath, [path.join(directory, "scripts/start.js")], { cwd: tmpdir(), env, windowsHide: true });
+  const first = await start();
+  assert.match(first.stdout, /PEPPER_VALID=true/);
+  const firstKey = await readFile(keyPath, "utf8");
+  assert.match(firstKey, /^[a-f0-9]{64}$/);
+  const second = await start();
+  assert.match(second.stdout, /PEPPER_VALID=true/);
+  assert.equal(await readFile(keyPath, "utf8"), firstKey);
+ } finally { await rm(directory, { recursive: true, force: true }); }
+});

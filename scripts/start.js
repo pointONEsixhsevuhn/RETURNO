@@ -8,9 +8,29 @@ if (Number(process.versions.node.split(".")[0]) < 24) {
   try {
     // Resolve configuration beside the project, even when launched directly.
     const { loadEnvFile } = await import("node:process");
+    const { randomBytes } = await import("node:crypto");
+    const { mkdir, readFile, writeFile } = await import("node:fs/promises");
+    const path = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     try { loadEnvFile(fileURLToPath(new URL("../.env", import.meta.url))); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (process.env.RETURNO_CODE_PEPPER === undefined) {
+      const dataDir = process.env.DATA_DIR
+        ? path.resolve(process.env.DATA_DIR)
+        : fileURLToPath(new URL("../data/", import.meta.url));
+      const keyPath = path.join(dataDir, "verification-code.key");
+      await mkdir(dataDir, { recursive: true });
+      try {
+        await writeFile(keyPath, randomBytes(32).toString("hex"), {
+          flag: "wx",
+          mode: 0o600,
+        });
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+      }
+      process.env.RETURNO_CODE_PEPPER = (await readFile(keyPath, "utf8")).trim();
+      console.log("Created or loaded the local verification key in data/verification-code.key.");
+    }
     if (process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "true") {
       throw new Error("Production requires COOKIE_SECURE=true and HTTPS at the hosting layer.");
     }

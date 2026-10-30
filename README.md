@@ -42,7 +42,7 @@ Signup email verification confirms email ownership at registration. It is not a 
 
 ## Data and configuration
 
-By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` directory and `.env` are ignored by Git. SMTP and `RETURNO_CODE_PEPPER` settings are documented in `.env.example`; keep real credentials and the 32-byte pepper in local `.env` or a host secret store, separately from SQLite, and never commit them. `npm start` refuses to run without a valid pepper. See [email verification setup](docs/EMAIL-VERIFICATION.md) to generate one.
+By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` directory and `.env` are ignored by Git. SMTP settings are documented in `.env.example`. On first local startup, RETURNO creates `data/verification-code.key` if `RETURNO_CODE_PEPPER` is not configured; keep that file across restarts and store it separately from SQLite backups. Hosted deployments should supply a stable 32-byte pepper through a secret manager. Never commit secrets. See [email verification setup](docs/EMAIL-VERIFICATION.md).
 
 Supported environment settings include `PORT`, `HOST`, `DATA_DIR`, and `COOKIE_SECURE=true` when HTTPS is provided by the hosting layer. The default host is `127.0.0.1`, suitable for local use. Public hosting still needs a persistent data volume, HTTPS, secure-cookie configuration, proxy-aware abuse controls, monitoring, and a tested recovery plan.
 
