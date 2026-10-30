@@ -2,6 +2,7 @@ import http from "node:http";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { randomUUID, randomBytes, randomInt, createHash } from "node:crypto";
+import sharp from "sharp";
 import { db, root, createUser, verifyPassword, hashPassword } from "./db.js";
 import {
   authorize,
@@ -131,14 +132,21 @@ function login(res, user) {
   cookie(res, createSession(user));
   json(res, 200, { user: publicUser(user) });
 }
-function imageData(value) {
+const maxImageBytes = 10 * 1024 * 1024;
+const maxImagePixels = 16_000_000;
+const maxImageDimension = 8_000;
+const storedImageDimension = 2_560;
+
+async function imageData(value) {
   if (value === null || value === "") return null;
   if (typeof value !== "string") fail(400, "Invalid image.");
   const match =
     /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
   if (!match) fail(400, "Use a PNG, JPEG, or WebP image.");
+  if (match[2].length > Math.ceil(maxImageBytes / 3) * 4)
+    fail(413, "Image must be 10 MB or smaller.");
   const bytes = Buffer.from(match[2], "base64");
-  if (bytes.length > 10 * 1024 * 1024)
+  if (bytes.length > maxImageBytes)
     fail(413, "Image must be 10 MB or smaller.");
   const valid =
     match[1] === "png"
@@ -148,7 +156,67 @@ function imageData(value) {
         : bytes.toString("ascii", 0, 4) === "RIFF" &&
           bytes.toString("ascii", 8, 12) === "WEBP";
   if (!valid) fail(400, "Invalid image content.");
-  return value;
+  let metadata;
+  try {
+    metadata = await sharp(bytes, {
+      failOn: "warning",
+      // Read dimensions without allocating decoded pixels, then enforce our
+      // stricter limits before any full decode or transform is attempted.
+      limitInputPixels: false,
+      limitInputChannels: 4,
+      animated: true,
+      pages: -1,
+    }).metadata();
+  } catch {
+    fail(400, "Image is damaged or cannot be decoded.");
+  }
+  if (
+    metadata.format !== match[1] ||
+    !metadata.width ||
+    !metadata.height
+  )
+    fail(400, "Image content does not match its file type.");
+  if (
+    metadata.width > maxImageDimension ||
+    metadata.height > maxImageDimension ||
+    metadata.width * metadata.height > maxImagePixels
+  )
+    fail(413, "Image dimensions are too large. Use an image under 16 megapixels and 8,000 pixels per side.");
+  if (metadata.pages > 1)
+    fail(400, "Animated images are not supported. Choose a still image.");
+
+  let output;
+  let outputFormat = match[1];
+  try {
+    const pipeline = () =>
+      sharp(bytes, {
+        failOn: "warning",
+        limitInputPixels: maxImagePixels,
+        limitInputChannels: 4,
+        pages: 1,
+      })
+        .rotate()
+        .resize({
+          width: storedImageDimension,
+          height: storedImageDimension,
+          fit: "inside",
+          withoutEnlargement: true,
+        });
+    output = await (outputFormat === "jpeg"
+      ? pipeline().jpeg({ quality: 84, mozjpeg: true }).toBuffer()
+      : outputFormat === "webp"
+        ? pipeline().webp({ quality: 82, effort: 4 }).toBuffer()
+        : pipeline().png({ compressionLevel: 9 }).toBuffer());
+    if (output.length > maxImageBytes && outputFormat === "png") {
+      output = await pipeline().webp({ quality: 85, effort: 4 }).toBuffer();
+      outputFormat = "webp";
+    }
+  } catch {
+    fail(400, "Image is damaged or cannot be decoded.");
+  }
+  if (output.length > maxImageBytes)
+    fail(413, "Processed image is larger than 10 MB. Choose a smaller image.");
+  return `data:image/${outputFormat};base64,${output.toString("base64")}`;
 }
 function validEventTime(value) {
   // Campus wall time, independent of the server's timezone or Date.parse normalization.
@@ -166,7 +234,7 @@ function contactField(data, key, previous, max) {
   if (typeof value !== "string" || value.length > max) fail(400, "Invalid contact details.");
   return value.trim();
 }
-function postData(data, previous) {
+async function postData(data, previous) {
   const kind = data.kind;
   if (!["Lost", "Found"].includes(kind)) fail(400, "Select Lost or Found.");
   const status = previous ? (data.status ?? previous.status) : kind;
@@ -186,9 +254,9 @@ function postData(data, previous) {
     eventAt,
     textField(data, "location", 500),
     textField(data, "description", 3000),
-    data.image === undefined
+    data.image === undefined || (previous && data.image === previous.image)
       ? (previous?.image ?? null)
-      : imageData(data.image),
+      : await imageData(data.image),
     contactEmail,
     contactPhone,
     contactField(data, "contact_details", previous, 500),
@@ -578,7 +646,7 @@ export const server = http.createServer(async (req, res) => {
       if (route === "/api/posts" && req.method === "POST") {
         if (user.role !== "student")
           fail(403, "Only students can create posts.");
-        const values = postData(
+        const values = await postData(
           await authorizedBody(req, "posts.create", user.id),
         );
         const id = randomUUID();
@@ -611,7 +679,7 @@ export const server = http.createServer(async (req, res) => {
           return json(res, 200, { ok: true });
         }
         if (req.method === "PUT") {
-          const values = postData(
+          const values = await postData(
             await authorizedBody(req, "posts.manage", user.id),
             post,
           );

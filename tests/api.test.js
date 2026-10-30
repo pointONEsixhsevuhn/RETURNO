@@ -9,11 +9,15 @@ setMailTransport({
 });
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import sharp from "sharp";
 let server, db, createUser, base, directory;
+const walletImage =
+  "data:image/png;base64," +
+  (await readFile(new URL("../public/assets/wallet.png", import.meta.url))).toString("base64");
 before(async () => {
   directory = await mkdtemp(path.join(tmpdir(), "retorno-test-"));
   process.env.DATA_DIR = directory;
@@ -119,8 +123,7 @@ test("registration, authentication, roles, post lifecycle, search and persistenc
     event_at: "2026-10-06T12:30",
     location: "Library",
     description: "Brown wallet",
-    image:
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jSxoAAAAASUVORK5CYII=",
+    image: walletImage,
   };
   const created = await request("/api/posts", "POST", details, student.cookie);
   assert.equal(created.status, 201);
@@ -315,6 +318,20 @@ test("validation, cross-origin protection and static serving", async () => {
       await request(
         "/api/posts",
         "POST",
+        {
+          ...input,
+          image: "data:image/png;base64," + Buffer.from("89504e470d0a1a0a", "hex").toString("base64"),
+        },
+        login.cookie,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(
+        "/api/posts",
+        "POST",
         { ...input, event_at: "not-a-date" },
         login.cookie,
       )
@@ -488,16 +505,74 @@ test("schema integrity, uniqueness, foreign keys and role constraints", async ()
   assert.throws(() => db.prepare("UPDATE posts SET status='Invalid'").run());
 });
 
-test("image upload accepts 10 MB and rejects one byte above the limit", async () => {
+test("image upload accepts valid images and rejects files over 10 MB", async () => {
   createUser("upload-limit@test.example","Upload test","Upload123!","student");
   const login=await request("/api/login","POST",{email:"upload-limit@test.example",password:"Upload123!",role:"student"});
-  const bytes=Buffer.alloc(10*1024*1024);
+  const bytes=Buffer.alloc(10*1024*1024+1);
   Buffer.from("89504e470d0a1a0a","hex").copy(bytes);
   const input={kind:"Found",item_name:"Upload boundary",event_at:"2026-10-09T12:00",location:"Test",description:"Isolated boundary fixture"};
-  const accepted=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+bytes.toString("base64")},login.cookie);
+  const accepted=await request("/api/posts","POST",{...input,image:walletImage},login.cookie);
   assert.equal(accepted.status,201);
-  const rejected=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+Buffer.concat([bytes,Buffer.alloc(1)]).toString("base64")},login.cookie);
+  const rejected=await request("/api/posts","POST",{...input,image:"data:image/png;base64,"+bytes.toString("base64")},login.cookie);
   assert.equal(rejected.status,413);
+});
+
+test("image upload fully decodes images and rejects excessive dimensions", async () => {
+  createUser("image-validation@test.example", "Image validation", "ImageValid123!", "student");
+  const login = await request("/api/login", "POST", {
+    email: "image-validation@test.example",
+    password: "ImageValid123!",
+    role: "student",
+  });
+  const input = {
+    kind: "Found",
+    item_name: "Image validation fixture",
+    event_at: "2026-10-09T12:00",
+    location: "Test",
+    description: "Synthetic image validation",
+  };
+  const largeValidPng = await sharp({
+    create: { width: 3000, height: 1000, channels: 3, background: "#654321" },
+  }).png().toBuffer();
+  const created = await request("/api/posts", "POST", {
+    ...input,
+    image: "data:image/png;base64," + largeValidPng.toString("base64"),
+  }, login.cookie);
+  assert.equal(created.status, 201);
+  const saved = Buffer.from(created.data.post.image.split(",")[1], "base64");
+  const metadata = await sharp(saved).metadata();
+  assert.equal(metadata.width, 2560);
+  assert.equal(metadata.height, 853);
+
+  for (const [format, mime] of [["jpeg", "jpeg"], ["webp", "webp"]]) {
+    const image = await sharp({
+      create: { width: 320, height: 240, channels: 3, background: "#654321" },
+    })[format]().toBuffer();
+    const response = await request("/api/posts", "POST", {
+      ...input,
+      image: `data:image/${mime};base64,${image.toString("base64")}`,
+    }, login.cookie);
+    assert.equal(response.status, 201);
+    assert.match(response.data.post.image, new RegExp(`^data:image/${mime};base64,`));
+  }
+
+  const tooManyPixels = await sharp({
+    create: { width: 4001, height: 4000, channels: 3, background: "#654321" },
+  }).png().toBuffer();
+  const oversized = await request("/api/posts", "POST", {
+    ...input,
+    image: "data:image/png;base64," + tooManyPixels.toString("base64"),
+  }, login.cookie);
+  assert.equal(oversized.status, 413);
+
+  const tooWide = await sharp({
+    create: { width: 8001, height: 1, channels: 3, background: "#654321" },
+  }).png().toBuffer();
+  const wide = await request("/api/posts", "POST", {
+    ...input,
+    image: "data:image/png;base64," + tooWide.toString("base64"),
+  }, login.cookie);
+  assert.equal(wide.status, 413);
 });
 
 test("post contacts validate, persist, and retain admin-only editing", async () => {

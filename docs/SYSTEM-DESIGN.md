@@ -47,7 +47,7 @@ Post reads are paginated by the UI at 28 rows (API limit 100). Search/status/own
 
 Parameterized SQL is used for user-supplied values. Dynamic SQL fragments are fixed allowlisted clauses. API projections exclude password hashes and session tokens. Public static serving is allowlisted by file type and denies the local originals directory. Security headers include CSP, `X-Frame-Options: DENY`, `nosniff`, and same-origin referrer policy.
 
-Images accept PNG/JPEG/WebP with a 10 MB decoded-byte limit and magic-byte checks. Full image decoding and dimension/pixel limits are not implemented. Image bytes in paginated JSON can produce large responses; separate image delivery is a scaling task.
+Images accept PNG/JPEG/WebP with a 10 MB limit, signature and MIME agreement, full Sharp decoding, and dimension limits of 16 megapixels and 8,000 pixels per side. The server auto-orients, strips metadata by re-encoding, and resizes proportionally to fit within 2,560 × 2,560 pixels. Image bytes in paginated JSON can still produce large responses; separate image delivery is a scaling task.
 
 The API runs HTTP and expects HTTPS to be terminated by a hosting layer. The default host is loopback. `COOKIE_SECURE=true`, persistent SQLite storage, proxy-aware rate limiting, monitoring, backups, and restore procedures must be configured and verified before public hosting. The current in-memory per-process rate limiter does not replace an edge-level abuse control. SQLite calls and `scryptSync` execute synchronously, which can block the event loop under heavier workloads. Backup/restore is covered with synthetic databases, but no live-data restore rehearsal, load test, or production deployment check is claimed.
 

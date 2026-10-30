@@ -35,7 +35,7 @@ The demo command refuses to modify a database that already contains users. Its c
 - Administrators manage Claim/Return status processing. Student claims, My claims, and proof-submission workflows are excluded.
 - Students can use the emailed password-reset flow. Admin password recovery remains a local CLI operation.
 - Search history is kept in current-page browser memory and cleared on logout. Post lists paginate at 28 per page.
-- Posts may include PNG, JPEG, or WebP images up to **10 MB**, plus contact details. Images are currently included in paginated post API responses; dimension validation and separate image delivery are not implemented.
+- Posts may include PNG, JPEG, or WebP images up to **10 MB**, plus contact details. The server fully decodes and re-encodes uploads, strips image metadata, rejects images over 16 megapixels or 8,000 pixels on either side, and resizes them proportionally to fit within 2,560 × 2,560 pixels. Images remain included in paginated post API responses.
 - Report event times are entered as campus wall time, PHT (UTC+08:00). They are stored as `YYYY-MM-DDTHH:mm` without server-timezone conversion.
 
 Signup email verification confirms email ownership at registration. It is not a second login factor. Registration's Terms/Privacy acknowledgment is a browser-side required checkbox; versioned acceptance is not stored by the server. See [email verification setup](docs/EMAIL-VERIFICATION.md), [password recovery](docs/PASSWORD-RECOVERY.md), and the current [claim/return decision](docs/CLAIM-RETURN-REQUIREMENTS.md).
