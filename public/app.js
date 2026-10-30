@@ -450,7 +450,7 @@ function showOutcomeNotificationDialog(post) {
       });
       if (pageVersion !== renderVersion) return;
       dismissDialog();
-      state.notice = "Administrator notified. The post status stays the same until an administrator reviews it.";
+      state.notice = "";
       feed(true, ++renderVersion, state.minePage);
     } catch (error) {
       if (pageVersion !== renderVersion || !form.isConnected) return;

@@ -162,7 +162,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog", { name: "Notify administrator about item outcome" })).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("was claimed by its owner");
   await page.getByRole("dialog").getByRole("button", { name: "Send notification", exact: true }).click();
-  await expect(page.locator(".own .success-notice")).toContainText("status stays the same");
+  await expect(page.locator(".own .success-notice")).toHaveCount(0);
   await expect(ownCard).toContainText("Admin notified: claimed by its owner");
   const pendingPost = await (await page.request.get("/api/posts?mine=1")).json();
   expect(pendingPost.posts.find((post) => post.id === id).status).toBe("Lost");
