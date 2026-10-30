@@ -67,7 +67,10 @@ test("all page layouts fit six widths and short landscape screens", async ({page
   await page.evaluate(()=>verificationScreen('layout@e2e.example'));await inspect('verification',w,h);
   await page.evaluate(()=>passwordRecoveryScreen('layout@e2e.example'));await inspect('reset',w,h);
   await page.route('**/api/health',route=>route.abort());await page.reload();
-  await expect(page.getByRole('heading',{name:'Unable to connect',exact:true})).toBeVisible();await inspect('connection-error',w,h);
+  await expect(page.getByRole('heading',{name:'Unable to connect',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Retry'})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Open local system'})).toHaveCount(0);
+  await inspect('connection-error',w,h);
   await page.unroute('**/api/health');await page.reload();await expect(page.getByRole('heading',{name:'About RETURNO',exact:true})).toBeVisible();
  }
  const studentLogin=await page.request.post('/api/login',{data:{email:studentEmail,password:'LayoutStudent123!',role:'student'}});

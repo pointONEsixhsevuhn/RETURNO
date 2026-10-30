@@ -1067,7 +1067,7 @@ async function start() {
     }
     await render();
   } catch (e) {
-    app.innerHTML = `<section class="connection-screen"><img src="assets/logo.png" alt="RETURNO"><h1>Unable to connect</h1><p role="alert">${esc(e.message)}</p><button class="pill" id="retry-connection">Retry</button><p><a href="http://localhost:3000/">Open local system</a></p></section>`;
+    app.innerHTML = `<section class="connection-screen"><img src="assets/logo.png" alt="RETURNO"><h1>Unable to connect</h1><p role="alert">${esc(e.message)}</p><button class="pill" id="retry-connection">Retry</button></section>`;
     document.querySelector("#retry-connection").onclick = start;
   }
 }

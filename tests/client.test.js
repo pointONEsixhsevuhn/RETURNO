@@ -40,7 +40,12 @@ test("disconnected backend gives actionable error without retrying registration"
   });
   await assert.rejects(
     api("/register", { method: "POST", body: "{}" }),
-    (e) => e.code === "CONNECTION" && /Cannot connect/.test(e.message),
+    (e) =>
+      e.code === "CONNECTION" &&
+      /Cannot connect/.test(e.message) &&
+      /Check your connection/.test(e.message) &&
+      /For a local installation/.test(e.message) &&
+      !/localhost:3000/.test(e.message),
   );
   assert.equal(calls, 1);
 });

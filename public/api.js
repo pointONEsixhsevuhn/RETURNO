@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
   const setup =
-    "Start the backend with npm start, then open the address printed in the terminal (normally http://localhost:3000).";
+    "Check your connection and try again. For a local installation, start RETURNO with npm start and open the address printed in the terminal.";
   // One origin for pages, API requests and session cookies. Never retry a mutation automatically.
   async function request(url, options = {}) {
     const controller = new AbortController();
