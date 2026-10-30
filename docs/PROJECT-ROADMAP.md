@@ -1,8 +1,8 @@
 # RETURNO project status and roadmap
 
-Reviewed: 2026-10-30
+Reviewed: 2026-10-31
 
-Review baseline commit: `07aec94`
+Review baseline commit: `75c3490`
 Runtime checked: Node.js 24.21.0 on Windows
 
 ## Current assessment
@@ -13,7 +13,8 @@ The project is on track for its agreed scope. Students create and view reports. 
 
 ## Verified baseline
 
-- **Latest local review (2026-10-30):** full Node suite passed (**116/116**); Playwright passed (**61 passed, 3 intentional skips**); `npm.cmd run verify:workflow` passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**. Added server-enforced policy acceptance, a production secure-cookie startup guard, and first-run generation of a persistent local verification key; fixed the unreachable-server screen's link that incorrectly sent remote users to their own `localhost`.
+- **Whole-system audit (2026-10-31):** Reviewed architecture, route permissions, session and email flows, SQL scopes, static serving/security headers, uploads, data recovery, privacy notice, navigation, and responsive/browser coverage. Full Node suite passed (**119/119**); Playwright passed (**61 passed, 3 intentional skips**); workflow verification passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**. Corrected the stale system-design statement about policy acceptance. This is a source review and automated verification, not a penetration test, legal review, or public-deployment assessment.
+- **Security configuration review (2026-10-30):** full Node suite passed (**116/116**); Playwright passed (**61 passed, 3 intentional skips**); `npm.cmd run verify:workflow` passed; `npm.cmd audit --omit=dev` found **0 runtime dependency vulnerabilities**. Added server-enforced policy acceptance, a production secure-cookie startup guard, and first-run generation of a persistent local verification key; fixed the unreachable-server screen's link that incorrectly sent remote users to their own `localhost`.
 - **Navigation fix (2026-10-30):** Back from student/admin post editing now returns to the originating screen while retaining the relevant search, filters, and page; browser Back closes confirmation/detail dialogs in place. Full Node suite passed (**116/116**) and Playwright passed (**61 passed, 3 intentional skips**) across desktop, mobile, narrow-phone, and tablet Chromium projects.
 - **Student outcome notifications (2026-10-30):** Students can notify administrators that their own Lost item was claimed by its owner or their own Found item was returned to its owner. The API enforces the matching outcome; admins can apply that status or dismiss. The student card opens details directly without a duplicate button and uses its awaiting-review status as the confirmation without a second success banner. Admins open the review inbox from the compact menu, below Register admin; the menu shows a live digits-only count of pending notifications and updates after review. Full Node suite passed (**119/119**), workflow verification passed, and full Playwright passed (**61 passed, 3 intentional skips**) across desktop, mobile, narrow-phone, and tablet. The focused notification-count flow passed on desktop.
 - `npm.cmd test`: **116 passed, 0 failed** after adding policy acceptance, secure-cookie configuration, and automatic local verification-key setup, alongside keyed verification-code storage and SQLite backup/restore checks.
@@ -56,11 +57,12 @@ Agent workflow policy is canonical in the repository-root [AGENTS.md](../AGENTS.
 
 ## Open work, in priority order
 
-1. **Production security before external sharing:** select persistent hosting; terminate HTTPS at the host (production startup now fails unless secure cookies are enabled); move throttling to a trusted proxy/edge or shared store; add administrator MFA and alerting; encrypt and access-control SQLite backups; rehearse restore and rollback. Current rate limits remain in-memory per process, and local SQLite has no native RLS.
-2. **Administrator accountability:** record status changes and destructive actions with actor, action, target reference, and timestamp. Avoid retaining deleted account contact details in the log.
-3. **Offline support (separate product phase):** there is no service worker or offline cache. First decide whether offline means a cached read-only catalogue or queued report creation. Queued writes need identity/expiry behavior, conflict handling, idempotency, and privacy controls for data cached on shared phones.
-4. **Media and list performance:** decode and constrain uploaded image dimensions/pixels; separate image delivery from paginated post JSON. Add registered-user pagination if account counts grow.
-5. **Maintainability and operations:** exercise a live-data restore in an isolated copy, then consider moving synchronous SQLite/scrypt work off the request event loop if load measurements justify it. Add representative Safari/WebKit and physical-device checks when those platforms become supported targets.
+1. **Privacy notice accuracy before external sharing:** the current notice is generic and describes possible analytics/providers without clearly stating RETURNO's actual data fields, that post contact details are visible to signed-in users, the actual hosting/email providers, retention periods, backup deletion limits, or an institution-approved privacy contact. Confirm those facts and have the responsible campus privacy owner approve the wording; do not infer legal requirements from this code review.
+2. **Production security before external sharing:** select persistent hosting; terminate HTTPS at the host (production startup now fails unless secure cookies are enabled); move throttling to a trusted proxy/edge or shared store; add administrator MFA and alerting; encrypt and access-control SQLite backups; rehearse restore and rollback. Current rate limits remain in-memory per process, and local SQLite has no native RLS.
+3. **Administrator accountability:** record status changes and destructive actions with actor, action, target reference, and timestamp. Avoid retaining deleted account contact details in the log.
+4. **Offline support (separate product phase):** there is no service worker or offline cache. First decide whether offline means a cached read-only catalogue or queued report creation. Queued writes need identity/expiry behavior, conflict handling, idempotency, and privacy controls for data cached on shared phones.
+5. **Media and list performance:** decode and constrain uploaded image dimensions/pixels; separate image delivery from paginated post JSON. Add registered-user pagination if account counts grow.
+6. **Maintainability and operations:** exercise a live-data restore in an isolated copy, then consider moving synchronous SQLite/scrypt work off the request event loop if load measurements justify it. Add representative Safari/WebKit and physical-device checks when those platforms become supported targets.
 
 `npm audit --omit=dev` reported no known runtime dependency advisories in this review; rerun it before each release. That result does not replace deployment configuration, threat review, or operational monitoring.
 

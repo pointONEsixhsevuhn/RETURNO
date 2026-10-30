@@ -1,6 +1,6 @@
 # RETURNO system design
 
-Reviewed: 2026-10-14. For current priorities and verified test counts, use [PROJECT-ROADMAP.md](PROJECT-ROADMAP.md). This document describes the implemented architecture, not a production-readiness certification.
+Reviewed: 2026-10-31. For current priorities and verified test counts, use [PROJECT-ROADMAP.md](PROJECT-ROADMAP.md). This document describes the implemented architecture, not a production-readiness certification.
 
 ## Scope and roles
 
@@ -33,7 +33,7 @@ The app uses hash routes and the History API. Normal navigation pushes history; 
 - Student recovery uses an emailed single-use code and revokes all sessions after a successful password change. Admin recovery is a local CLI operation.
 - Non-read API requests check request Origin and cross-site fetch metadata when present. Login/registration/recovery attempts are throttled per source IP in process memory.
 - `access-control.js` uses deny-by-default route permissions. `server.js` derives identity from the authenticated session, rechecks authorization after streamed request bodies, and applies SQL predicates for protected rows.
-- SQLite row controls are **application-enforced**, not native RLS. Filesystem/database access is outside the web permission boundary. Registration's Terms/Privacy checkbox is client-enforced and acceptance is not versioned in the database.
+- SQLite row controls are **application-enforced**, not native RLS. Filesystem/database access is outside the web permission boundary. Registration requires Terms/Privacy agreement in both browser and API; after successful email verification the server records the accepted policy versions and time. Existing accounts have no retroactively inferred acceptance.
 
 ## Data model and migrations
 
