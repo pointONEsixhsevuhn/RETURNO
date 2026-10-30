@@ -7,7 +7,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 - **Product:** NVSU RETURNO, a campus lost-and-found system for reporting and finding belongings.
 - **Primary users:** Students create and browse/search reports; administrators manage reports, account requests, and other accounts.
 - **Main outcomes:** Publish a Lost/Found report, find matching reports, contact the poster, and let administrators manage return statuses.
-- **Out of scope:** Student claim submission, My claims, student proof-of-ownership forms/APIs, and student post editing/status/deletion. Administrators manage claim/return processing.
+- **Out of scope:** Student claim submission, My claims, student proof-of-ownership forms/APIs, and student post editing/status/deletion. Students may send an outcome notification for their own active report, but administrators manage claim/return processing and status changes.
 - **Product decisions:** See [claim and return requirements](docs/CLAIM-RETURN-REQUIREMENTS.md) and the rules in `AGENTS.md`.
 
 ## Repository and architecture

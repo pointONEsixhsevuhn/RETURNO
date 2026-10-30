@@ -66,6 +66,7 @@ function harness({ role = "student", failure = false } = {}) {
     requests.push({ url, options });
     if (failure) throw (failure instanceof Error ? failure : new Error("Unable to save."));
     if (url.startsWith("/posts?q=")) return { posts: [{ id: "match" }] };
+    if (url.startsWith("/item-outcome-notifications")) return { notifications: [] };
     return { post: { id: "saved" } };
   };
   const ctx = vm.createContext({
@@ -360,7 +361,9 @@ test("admin loading and retry preserve status and render an empty report list", 
       assert.equal(url, "/posts?page=1&pageSize=28&status=Returned");
       return { posts: [] };
     }
-    return url === "/stats" ? { stats: { Lost: 0, Found: 0, Claimed: 0, Returned: 0 } } : { users: [] };
+    if (url === "/stats") return { stats: { Lost: 0, Found: 0, Claimed: 0, Returned: 0 } };
+    if (url === "/item-outcome-notifications") return { notifications: [] };
+    return { users: [] };
   };
   await h.element("[data-retry-list]").onclick();
   assert.match(h.element(".admin-list").innerHTML, /No returned posts/);

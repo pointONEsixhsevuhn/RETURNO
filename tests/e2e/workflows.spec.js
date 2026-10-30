@@ -153,6 +153,20 @@ test("student report lifecycle and administrator review, edit, return and delete
       })
     ).status(),
   ).toBe(403);
+  await page.getByRole("button", { name: "Profile options", exact: true }).click();
+  await page.getByRole("button", { name: "Your posts", exact: true }).click();
+  const ownCard = page.locator(`.own .card[data-detail="${id}"]`);
+  await ownCard.getByRole("button", { name: "Notify admin", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Notify administrator about item outcome" })).toBeVisible();
+  await page.getByLabel("Outcome:", { exact: true }).selectOption("Returned");
+  await page.getByRole("dialog").getByRole("button", { name: "Send notification", exact: true }).click();
+  await expect(page.locator(".own .success-notice")).toContainText("status stays the same");
+  await expect(ownCard).toContainText("Admin notified: Returned");
+  const pendingPost = await (await page.request.get("/api/posts?mine=1")).json();
+  expect(pendingPost.posts.find((post) => post.id === id).status).toBe("Lost");
+  expect(pendingPost.posts.find((post) => post.id === id).pending_outcome).toBe("Returned");
+  expect((await page.request.post(`/api/posts/${id}/outcome-notifications`, { data: { outcome: "Returned" } })).status()).toBe(409);
+  await page.getByRole("button", { name: "Home", exact: true }).click();
   await card.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText("Campus library");
@@ -180,6 +194,13 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.goto("/#role");
   await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
   const adminSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
+  const notifications = page.getByRole("region", { name: "Student outcome notifications", exact: true });
+  await expect(notifications).toContainText(`${item}`);
+  await expect(notifications).toContainText("reported this lost item as Returned");
+  await notifications.getByRole("button", { name: `Set Returned for ${item}`, exact: true }).click();
+  await expect(page.locator(".admin .success-notice")).toContainText("Post status changed to Returned");
+  await expect(notifications).toContainText("No pending student notifications.");
+  expect((await (await page.request.get(`/api/posts/${id}`)).json()).post.status).toBe("Returned");
   const row = page
     .locator(".admin-row")
     .filter({ has: page.locator(`[data-detail="${id}"]`) });

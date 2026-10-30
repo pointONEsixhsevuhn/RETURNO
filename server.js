@@ -197,6 +197,10 @@ function rateLimit(req) {
   if (++entry.count > 40) fail(429, "Too many attempts. Try again later.");
   attempts.set(key, entry);
 }
+function resolveOutcomeNotificationsForPost(postId, adminId) {
+  db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+    WHERE post_id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(adminId, postId, adminId);
+}
 
 export const server = http.createServer(async (req, res) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -426,6 +430,60 @@ export const server = http.createServer(async (req, res) => {
         if (!cancelled.changes) fail(404, "No pending account deletion request.");
         return json(res, 200, { ok: true });
       }
+      if (route === "/api/item-outcome-notifications" && req.method === "GET") {
+        const notifications = db.prepare(`SELECT n.id,n.post_id,n.outcome,n.created_at,
+          p.kind,p.status AS current_status,p.item_name,p.location,u.full_name AS student_name
+          FROM item_outcome_notifications n
+          JOIN posts p ON p.id=n.post_id
+          JOIN users u ON u.id=n.student_id
+          WHERE n.reviewed_at IS NULL AND ${adminRowScope}
+          ORDER BY n.created_at DESC,n.id`).all(user.id);
+        return json(res, 200, { notifications });
+      }
+      const studentOutcomeMatch = /^\/api\/posts\/([a-zA-Z0-9-]+)\/outcome-notifications$/.exec(route);
+      if (studentOutcomeMatch && req.method === "POST") {
+        const data = await authorizedBody(req, "outcome-notifications.create", user.id);
+        rateLimit(req);
+        if (Object.keys(data).length !== 1 || !["Claimed", "Returned"].includes(data.outcome))
+          fail(400, "Choose whether the item was Claimed or Returned.");
+        const postId = studentOutcomeMatch[1];
+        const post = db.prepare(`SELECT p.id,p.status FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
+        if (!post) fail(404, "Active post not found.");
+        const pending = db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
+        if (pending) fail(409, "An administrator has already been notified about this post.");
+        const id = randomUUID();
+        const created = db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome)
+          SELECT ?,p.id,?,? FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}
+          ON CONFLICT DO NOTHING`).run(id, user.id, data.outcome, postId, user.id, user.id);
+        if (!created.changes) fail(409, "An administrator has already been notified about this post.");
+        return json(res, 201, { notification: { id, postId, outcome: data.outcome } });
+      }
+      const reviewOutcomeMatch = /^\/api\/item-outcome-notifications\/([a-zA-Z0-9-]+)$/.exec(route);
+      if (reviewOutcomeMatch && req.method === "PATCH") {
+        const data = await authorizedBody(req, "outcome-notifications.review", user.id);
+        if (Object.keys(data).length !== 1 || !["Claimed", "Returned", "Dismissed"].includes(data.status))
+          fail(400, "Choose Claimed, Returned, or Dismissed.");
+        const notificationId = reviewOutcomeMatch[1];
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const notification = db.prepare(`SELECT n.id,n.post_id FROM item_outcome_notifications n
+            WHERE n.id=? AND n.reviewed_at IS NULL AND ${adminRowScope}`).get(notificationId, user.id);
+          if (!notification) fail(404, "Pending notification not found.");
+          if (data.status !== "Dismissed") {
+            const changedPost = db.prepare(`UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP
+              WHERE id=? AND status IN ('Lost','Found') AND ${adminRowScope}`).run(data.status, notification.post_id, user.id);
+            if (!changedPost.changes) fail(409, "This report is no longer active. Refresh the dashboard and review the post.");
+          }
+          const reviewed = db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+            WHERE id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(user.id, notificationId, user.id);
+          if (!reviewed.changes) fail(409, "This notification was already reviewed. Refresh the dashboard.");
+          db.exec("COMMIT");
+          return json(res, 200, { ok: true, status: data.status });
+        } catch (error) {
+          try { db.exec("ROLLBACK"); } catch {}
+          throw error;
+        }
+      }
       if (route === "/api/logout" && req.method === "POST") {
         const token = (req.headers.cookie || "").match(
           /(?:^|;\s*)retorno_session=([^;]+)/,
@@ -492,7 +550,10 @@ export const server = http.createServer(async (req, res) => {
           );
           for (let i = 0; i < 7; i++) params.push(q.slice(0, 200));
         }
-        const filtered = queryPosts + " WHERE " + where.join(" AND ");
+        const selectPosts = url.searchParams.get("mine") === "1" && user.role === "student"
+          ? queryPosts.replace("u.full_name AS author", "u.full_name AS author,(SELECT n.outcome FROM item_outcome_notifications n WHERE n.post_id=p.id AND n.reviewed_at IS NULL) AS pending_outcome")
+          : queryPosts;
+        const filtered = selectPosts + " WHERE " + where.join(" AND ");
         const order = " ORDER BY p.created_at DESC,p.rowid ASC";
         if (url.searchParams.has("page") || url.searchParams.has("pageSize")) {
           const rawPage = url.searchParams.get("page") ?? "1";
@@ -549,13 +610,22 @@ export const server = http.createServer(async (req, res) => {
             await authorizedBody(req, "posts.manage", user.id),
             post,
           );
-          const updated = db
-            .prepare(
-              `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,contact_details=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
-            )
-            .run(...values, post.id, user.id);
-          if (!updated.changes)
-            fail(403, "Post management is no longer permitted.");
+          db.exec("BEGIN IMMEDIATE");
+          try {
+            const updated = db
+              .prepare(
+                `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,contact_details=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+              )
+              .run(...values, post.id, user.id);
+            if (!updated.changes)
+              fail(403, "Post management is no longer permitted.");
+            if (["Claimed", "Returned"].includes(values[1]))
+              resolveOutcomeNotificationsForPost(post.id, user.id);
+            db.exec("COMMIT");
+          } catch (error) {
+            try { db.exec("ROLLBACK"); } catch {}
+            throw error;
+          }
           return json(res, 200, {
             post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });
@@ -566,13 +636,22 @@ export const server = http.createServer(async (req, res) => {
           const kind = ["Lost", "Found"].includes(data.status)
             ? data.status
             : post.kind;
-          const updated = db
-            .prepare(
-              `UPDATE posts SET kind=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
-            )
-            .run(kind, data.status, post.id, user.id);
-          if (!updated.changes)
-            fail(403, "Post management is no longer permitted.");
+          db.exec("BEGIN IMMEDIATE");
+          try {
+            const updated = db
+              .prepare(
+                `UPDATE posts SET kind=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
+              )
+              .run(kind, data.status, post.id, user.id);
+            if (!updated.changes)
+              fail(403, "Post management is no longer permitted.");
+            if (["Claimed", "Returned"].includes(data.status))
+              resolveOutcomeNotificationsForPost(post.id, user.id);
+            db.exec("COMMIT");
+          } catch (error) {
+            try { db.exec("ROLLBACK"); } catch {}
+            throw error;
+          }
           return json(res, 200, {
             post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });

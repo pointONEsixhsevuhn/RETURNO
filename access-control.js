@@ -10,6 +10,9 @@ const permissions = new Map([
   ["account-deletion.read", ["student"]],
   ["account-deletion.request", ["student"]],
   ["account-deletion.cancel", ["student"]],
+  ["outcome-notifications.create", ["student"]],
+  ["outcome-notifications.read", ["admin"]],
+  ["outcome-notifications.review", ["admin"]],
   ["stats.read", ["admin"]],
   ["admins.create", ["admin"]],
 ]);
@@ -32,6 +35,7 @@ export function requestPermission(route, method) {
     ["GET /api/account-deletion-request", "account-deletion.read"],
     ["POST /api/account-deletion-request", "account-deletion.request"],
     ["DELETE /api/account-deletion-request", "account-deletion.cancel"],
+    ["GET /api/item-outcome-notifications", "outcome-notifications.read"],
     ["GET /api/stats", "stats.read"],
     ["POST /api/admins", "admins.create"],
   ]);
@@ -40,6 +44,10 @@ export function requestPermission(route, method) {
     ["GET", "PUT", "PATCH", "DELETE"].includes(method)
   )
     return "posts.manage";
+  if (/^\/api\/posts\/[a-zA-Z0-9-]+\/outcome-notifications$/.test(route) && method === "POST")
+    return "outcome-notifications.create";
+  if (/^\/api\/item-outcome-notifications\/[a-zA-Z0-9-]+$/.test(route) && method === "PATCH")
+    return "outcome-notifications.review";
   if (/^\/api\/users\/[a-zA-Z0-9-]+$/.test(route) && method === "DELETE")
     return "users.delete";
   const permission = routes.get(`${method} ${route}`);

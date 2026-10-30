@@ -1431,6 +1431,22 @@ dialog:has(.detail-layout) h2 { text-align: left; }
 }
 
 .success-notice { padding: 12px 16px; margin: 0 0 16px; border: 1px solid #b5c8a6; border-radius: 12px; background: #edf3e7; color: #345425; }
+.own-post-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #eee8df; }
+.own-post-actions button { min-height: 38px; padding: 7px 14px; }
+.outcome-pending { color: #655a4c; font-size: 13px; }
+.outcome-notifications { margin: 0 0 20px; padding: 16px; border: 1px solid #d8c8ae; border-radius: 16px; background: #fffdf9; box-shadow: 0 3px 0 #e5d9c7, 0 8px 20px #4c361a0d; }
+.outcome-notifications-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.outcome-notifications-head h2 { margin: 0; font-size: 19px; }
+.outcome-notifications-tools { display: flex; align-items: center; gap: 8px; }
+.outcome-notifications-tools > span { min-width: 28px; padding: 3px 8px; border-radius: 999px; background: #eee5d7; text-align: center; font-weight: 650; }
+.outcome-notifications-tools button { min-height: 36px; padding: 6px 12px; }
+.outcome-notification { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid #eee8df; }
+.outcome-notification h3 { margin: 0 0 5px; font-size: 16px; }
+.outcome-notification p { margin: 3px 0; font-size: 14px; color: #655a4c; }
+.outcome-notification-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.outcome-notification-actions button { min-height: 38px; padding: 7px 12px; }
+.outcome-notification-actions button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 600px) { .outcome-notifications { padding: 12px; } .outcome-notification { align-items: stretch; flex-direction: column; gap: 10px; } .outcome-notification-actions { justify-content: flex-start; } }
 #post-status { color: #655a4c; font-size: 14px; margin: 12px 0 0; }
 #post-status:empty { display: none; }
 

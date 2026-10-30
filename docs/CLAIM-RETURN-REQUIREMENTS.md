@@ -2,7 +2,9 @@
 
 Product decision, 2026-10-08: the user reversed student claims. Students create and view reports; administrators manage all claim and return processing. Exclude the student claim form, My claims screen, private-proof submission and student claim API.
 
-Administrators retain existing report editing, Claimed/Returned status changes and deletion controls. Students cannot manage these actions. Ownership verification and physical handover are managed by administrators outside the student portal. No additional administrator workflow is implemented by this reversal.
+Administrators retain existing report editing, Claimed/Returned status changes and deletion controls. Students cannot manage these actions. Ownership verification and physical handover are managed by administrators outside the student portal.
+
+On 2026-10-30, the user approved a limited student-to-admin outcome notification. A student may notify administrators that their own active Lost/Found report was Claimed or Returned. This notification does not submit ownership proof or change report status. Administrators review it and explicitly set the final status to Claimed or Returned, or dismiss it without changing the report. Pending notifications are private to the posting student (for pending state) and administrator inbox; they include no contact details and cascade when the student or post is deleted.
 
 Migration 3 retires the published student claim table. Previously submitted rows remain in retired_student_claims without foreign keys blocking administrator report deletion. That table has no application API or UI. Published migration 2 stays immutable for databases that recorded its checksum. Accounts, sessions and report statuses are preserved.
 
