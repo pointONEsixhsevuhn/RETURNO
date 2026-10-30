@@ -26,3 +26,15 @@ test("direct startup loads the project .env regardless of working directory and 
   assert.match((await start()).stdout, /SETTING=from-host/);
  } finally { await rm(directory, { recursive: true, force: true }); }
 });
+test("production startup refuses to run without secure cookies", async () => {
+ const directory = await mkdtemp(path.join(tmpdir(), "retorno-production-config-"));
+ try {
+  await mkdir(path.join(directory, "scripts"));
+  await writeFile(path.join(directory, "package.json"), '{"type":"module"}');
+  await writeFile(path.join(directory, "scripts/start.js"), await readFile(new URL("../scripts/start.js", import.meta.url)));
+  await writeFile(path.join(directory, "verification-codes.js"), await readFile(new URL("../verification-codes.js", import.meta.url)));
+  await writeFile(path.join(directory, "server.js"), 'throw new Error("server should not start");');
+  const env = { ...process.env, NODE_ENV: "production", COOKIE_SECURE: "false", RETURNO_CODE_PEPPER: "a".repeat(64) };
+  await assert.rejects(run(process.execPath, [path.join(directory, "scripts/start.js")], { cwd: tmpdir(), env, windowsHide: true }), /Production requires COOKIE_SECURE=true/);
+ } finally { await rm(directory, { recursive: true, force: true }); }
+});

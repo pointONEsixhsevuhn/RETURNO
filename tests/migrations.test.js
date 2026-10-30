@@ -65,7 +65,7 @@ test("claim retirement preserves stored evidence and restores administrator dele
       "Test private evidence for persistence",
     );
     db = reopen();
-    assert.equal(migrate(db), 6);
+    assert.equal(migrate(db), 7);
     assert.equal(
       db
         .prepare(
@@ -241,7 +241,7 @@ test("migration checksums tolerate Windows and Linux line endings", () =>
 test("general contact migration preserves existing email and phone", () => isolated(db => {
  migrate(db, allMigrations.slice(0,6));
  db.exec("INSERT INTO users(id,email,full_name,password_hash,role) VALUES('contact-user','fixture@example.com','Fixture','fake','student'); INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,contact_email,contact_phone) VALUES('contact-post','contact-user','Lost','Lost','Test','2026-10-09T12:00','Test','Test','fixture@gmail.com','09123456789');");
- assert.equal(migrate(db),2);
+ assert.equal(migrate(db),3);
  assert.equal(db.prepare("SELECT contact_details FROM posts WHERE id='contact-post'").get().contact_details,'fixture@gmail.com / 09123456789');
 }));
 

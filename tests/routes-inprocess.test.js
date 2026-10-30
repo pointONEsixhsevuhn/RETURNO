@@ -49,6 +49,8 @@ after(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 async function send(url, method = "GET", data, cookie) {
+  if (url === "/api/register" && data && data.policyAgreement === undefined)
+    data = { ...data, policyAgreement: true };
   const input = data === undefined ? [] : [Buffer.from(JSON.stringify(data))];
   const req = Readable.from(input);
   Object.assign(req, {

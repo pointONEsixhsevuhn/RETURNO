@@ -29,6 +29,8 @@ after(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 async function request(route, method = "GET", body, cookie, extra = {}) {
+  if (route === "/api/register" && body && body.policyAgreement === undefined)
+    body = { ...body, policyAgreement: true };
   const res = await fetch(base + route, {
     method,
     headers: {
@@ -58,6 +60,7 @@ test("registration, authentication, roles, post lifecycle, search and persistenc
     fullName: "Student",
     password: "Student123!",
     confirmPassword: "Student123!",
+    policyAgreement: true,
     role: "admin",
   });
   assert.equal(student.status, 201);
@@ -78,6 +81,7 @@ test("registration, authentication, roles, post lifecycle, search and persistenc
         fullName: "Student",
         password: "Student123!",
         confirmPassword: "Student123!",
+        policyAgreement: true,
       })
     ).status,
     409,
@@ -107,6 +111,7 @@ test("registration, authentication, roles, post lifecycle, search and persistenc
     fullName: "Other",
     password: "Student123!",
     confirmPassword: "Student123!",
+    policyAgreement: true,
   });
   const details = {
     kind: "Found",
@@ -367,6 +372,7 @@ test("new account remains usable through a fresh login and feed request", async 
     fullName: "New Account",
     password: "NewAccount123!",
     confirmPassword: "NewAccount123!",
+    policyAgreement: true,
   };
   const registration = await request("/api/register", "POST", account);
   assert.equal(registration.status, 201);
@@ -401,6 +407,7 @@ test("registration rolls back the account if session creation fails", async () =
       fullName: "Rollback",
       password: "Rollback123!",
       confirmPassword: "Rollback123!",
+      policyAgreement: true,
     });
     assert.equal(response.status, 500);
     assert.equal(

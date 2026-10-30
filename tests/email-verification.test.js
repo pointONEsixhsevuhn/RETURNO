@@ -46,6 +46,7 @@ const account = (email) => ({
   fullName: "Verification Student",
   password: "VerifyStudent123!",
   confirmPassword: "VerifyStudent123!",
+  policyAgreement: true,
   role: "admin",
 });
 const verify = (email, code = codes.get(email)) =>
@@ -73,12 +74,23 @@ test("pending signup has no account/session; only a valid single-use code create
   const confirmed = await verify(email);
   assert.equal(confirmed.status, 201);
   assert.equal(confirmed.data.user.role, "student");
+  const acceptance = db.prepare("SELECT terms_version,privacy_version FROM policy_acceptances WHERE user_id=?").get(confirmed.data.user.id);
+  assert.equal(acceptance.terms_version, "1.0");
+  assert.equal(acceptance.privacy_version, "1.0");
   assert.match(confirmed.cookie, /HttpOnly/);
   assert.equal((await verify(email)).status, 400);
   assert.equal(
     (await request("login", { ...account(email), role: "student" })).status,
     200,
   );
+});
+test("registration requires explicit policy agreement on the server", async () => {
+  const result = await request("register", {
+    ...account("no-consent@gmail.com"),
+    policyAgreement: false,
+  });
+  assert.equal(result.status, 400);
+  assert.equal(db.prepare("SELECT * FROM pending_registrations WHERE email=?").get("no-consent@gmail.com"), undefined);
 });
 test("legacy unkeyed signup codes are discarded and can be reissued", async () => {
   const email = "legacy-code@gmail.com";

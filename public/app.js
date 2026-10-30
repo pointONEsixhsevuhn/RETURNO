@@ -228,6 +228,7 @@ function authScreen(register = false) {
       button = form.querySelector("[type=submit]");
     const data = Object.fromEntries(new FormData(form));
     data.role = state.role;
+    if (register) data.policyAgreement = form.elements.policyAgreement.checked;
     const output = document.querySelector("#auth-error");
     output.textContent = "";
     if (register && data.password !== data.confirmPassword)

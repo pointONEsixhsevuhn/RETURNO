@@ -11,6 +11,9 @@ if (Number(process.versions.node.split(".")[0]) < 24) {
     const { fileURLToPath } = await import("node:url");
     try { loadEnvFile(fileURLToPath(new URL("../.env", import.meta.url))); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "true") {
+      throw new Error("Production requires COOKIE_SECURE=true and HTTPS at the hosting layer.");
+    }
     const { assertCodePepper } = await import("../verification-codes.js");
     assertCodePepper();
     const { server } = await import("../server.js");

@@ -20,6 +20,8 @@ import {
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
+const termsVersion = "1.0";
+const privacyVersion = "1.0";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const publicUser = (u) => ({
   id: u.id,
@@ -228,6 +230,8 @@ export const server = http.createServer(async (req, res) => {
         const data = await body(req),
           { email, password } = credentials(data);
         const fullName = textField(data, "fullName", 100);
+        if (data.policyAgreement !== true)
+          fail(400, "Please agree to the Terms & Conditions and acknowledge the Privacy Policy.");
         if (data.confirmPassword !== password)
           fail(400, "Passwords do not match.");
         if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
@@ -259,11 +263,12 @@ export const server = http.createServer(async (req, res) => {
           "DELETE FROM pending_registrations WHERE expires_at <= ?",
         ).run(now);
         db.prepare(
-          `INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at)
-          VALUES(?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
+          `INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at,terms_version,privacy_version)
+          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
           password_hash=excluded.password_hash,code_hash=excluded.code_hash,
-          expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`,
-        ).run(email, fullName, passwordHash, digestVerificationCode("signup", code), now + 10 * 60000, now);
+          expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0,
+          terms_version=excluded.terms_version,privacy_version=excluded.privacy_version`,
+        ).run(email, fullName, passwordHash, digestVerificationCode("signup", code), now + 10 * 60000, now, termsVersion, privacyVersion);
         return json(res, 202, { verificationRequired: true, email });
       }
       if (route === "/api/verify-email" && req.method === "POST") {
@@ -274,6 +279,10 @@ export const server = http.createServer(async (req, res) => {
         const pending = db
           .prepare("SELECT * FROM pending_registrations WHERE email=?")
           .get(email);
+        if (pending && (!pending.terms_version || !pending.privacy_version)) {
+          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
+          fail(400, "Please register again and accept the current policies.");
+        }
         if (
           !pending ||
           pending.expires_at <= Date.now() ||
@@ -300,6 +309,8 @@ export const server = http.createServer(async (req, res) => {
             "INSERT INTO users(id,email,full_name,password_hash,role) VALUES(?,?,?,?,'student')",
           ).run(id, email, pending.full_name, pending.password_hash);
           user = db.prepare("SELECT * FROM users WHERE id=?").get(id);
+          db.prepare("INSERT INTO policy_acceptances(user_id,terms_version,privacy_version) VALUES(?,?,?)")
+            .run(id, pending.terms_version, pending.privacy_version);
           token = createSession(user);
           db.prepare("DELETE FROM pending_registrations WHERE email=?").run(
             email,
