@@ -16,6 +16,7 @@ const state = {
   searchPage: 1,
   adminStatus: "",
   adminPage: 1,
+  outcomeNotificationCount: 0,
 };
 let renderVersion = 0;
 let dialogHistoryEntry = false;
@@ -106,7 +107,8 @@ function header(search = true, welcome = true, backControl = "") {
     policyParams.set("aboutReturn", allowedAboutReturns.has(aboutReturn) ? aboutReturn : admin ? "admin" : "feed");
   }
   const policyContext = `?${policyParams}`;
-  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options' + (admin ? ' admin-profile-options' : '') + '" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-open-outcome-notifications>Student outcome notifications</button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
+  const notificationCount = Number.isSafeInteger(state.outcomeNotificationCount) && state.outcomeNotificationCount >= 0 ? state.outcomeNotificationCount : 0;
+  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options' + (admin ? ' admin-profile-options' : '') + '" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-open-outcome-notifications>Student outcome notifications <span class="notification-count" data-notification-count>'+ notificationCount +'</span></button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
 function bindNavigation() {
@@ -128,6 +130,7 @@ function bindNavigation() {
     button.disabled = true;
     try {
       const { notifications } = await api("/item-outcome-notifications");
+      setOutcomeNotificationCount(notifications.length);
       showOutcomeNotificationsDialog(notifications);
     } catch (error) {
       errorDialog(error);
@@ -158,6 +161,18 @@ function bindNavigation() {
       event.preventDefault();
     }
   };
+}
+function setOutcomeNotificationCount(count) {
+  const safeCount = Number.isSafeInteger(count) && count >= 0 ? count : 0;
+  state.outcomeNotificationCount = safeCount;
+  app.querySelectorAll("[data-notification-count]").forEach((badge) => {
+    badge.textContent = String(safeCount);
+  });
+}
+function refreshOutcomeNotificationCount() {
+  api("/item-outcome-notifications")
+    .then(({ notifications }) => setOutcomeNotificationCount(Array.isArray(notifications) ? notifications.length : 0))
+    .catch(() => {});
 }
 async function logout(button) {
   button.disabled = true;
@@ -375,6 +390,7 @@ function outcomeNotificationPanel(notifications) {
   }).join("") : '<p class="empty">No pending student notifications.</p>'}</section>`;
 }
 function renderOutcomeNotificationsDialog(notifications) {
+  setOutcomeNotificationCount(notifications.length);
   dialog.innerHTML = `${outcomeNotificationPanel(notifications)}<div class="dialog-actions"><button type="button" data-close>Close</button></div>`;
   dialog.querySelector("[data-close]").onclick = dismissDialog;
   bindOutcomeNotifications();
@@ -912,6 +928,7 @@ async function admin(version, status = state.adminStatus, page = state.adminPage
   });
   state.notice = "";
   bindNavigation();
+  refreshOutcomeNotificationCount();
   bindPostActions();
   if (!result.posts.length)
     app.querySelector(".admin-list").innerHTML =
@@ -957,6 +974,7 @@ async function adminProfile(version) {
     document.querySelector("#user-filter-status").textContent = q ? count + " matching users." : "";
   };
   bindNavigation();
+  refreshOutcomeNotificationCount();
   bindPostActions();
   app.querySelectorAll("[data-delete-account]").forEach(button => {
     button.onclick = () => {

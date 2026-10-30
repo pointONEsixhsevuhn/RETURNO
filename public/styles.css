@@ -1493,7 +1493,9 @@ dialog:has(.outcome-notifications) { width: min(calc(100% - 24px), 760px); }
 .profile-chevron { width: 6px; height: 6px; border-right: 1.5px solid #44321d; border-bottom: 1.5px solid #44321d; transform: rotate(45deg); }
 .profile-dropdown[open] .profile-chevron { transform: rotate(225deg); }
 .profile-options { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 180px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--edge); border-radius: 14px; background: #fff; box-shadow: 0 8px 28px #302a2326; }
-.admin-profile-options { width: 230px; }
+.admin-profile-options { width: 260px; }
+.admin-profile-options [data-open-outcome-notifications] { white-space: nowrap; }
+.notification-count { color: #8a5a26; font-weight: 700; }
 .profile-options button { display: block; width: 100%; min-height: 42px; padding: 9px 12px; border-radius: 9px; background: transparent; color: #44321d; text-align: left; font-size: 14px; }
 .profile-options button:hover, .profile-options button:focus-visible, .profile-options a:hover, .profile-options a:focus-visible { background: #f2e7d7; }
 .profile-options [data-logout] { border-top: 1px solid var(--edge); margin-top: 4px; }
