@@ -14,7 +14,14 @@ const details = {
   location: "Gate",
   description: "Security test",
 };
-async function send(url, method = "GET", data, cookie, duringBody) {
+async function send(
+  url,
+  method = "GET",
+  data,
+  cookie,
+  duringBody,
+  remoteAddress = "127.0.0.1",
+) {
   const req = Readable.from(
     (async function* () {
       if (duringBody) duringBody();
@@ -29,7 +36,7 @@ async function send(url, method = "GET", data, cookie, duringBody) {
       "content-type": "application/json",
       ...(cookie ? { cookie } : {}),
     },
-    socket: { remoteAddress: "127.0.0.1" },
+    socket: { remoteAddress },
   });
   let status,
     payload,
@@ -92,6 +99,14 @@ before(async () => {
 after(async () => {
   db.close();
   await rm(directory, { recursive: true, force: true });
+});
+
+test("sensitive API routes enforce the per-address attempt limit", async () => {
+  const address = "198.51.100.90";
+  for (let i = 0; i < 40; i++)
+    assert.equal((await send("/api/register", "POST", {}, undefined, undefined, address)).status, 400);
+  assert.equal((await send("/api/register", "POST", {}, undefined, undefined, address)).status, 429);
+  assert.equal((await send("/api/register", "POST", {}, undefined, undefined, "198.51.100.91")).status, 400);
 });
 
 test("permissions deny unknown roles/actions and require authenticated identity", () => {

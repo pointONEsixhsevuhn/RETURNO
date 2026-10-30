@@ -17,6 +17,7 @@ import {
   isCurrentVerificationCodeDigest,
   verifyVerificationCode,
 } from "./verification-codes.js";
+import { createRequestRateLimiter } from "./request-rate-limit.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -33,7 +34,11 @@ const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.contact_email,p.contact_phone,p.contact_details,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
-const attempts = new Map();
+const allowSensitiveRequest = createRequestRateLimiter({
+  limit: 40,
+  windowMs: 15 * 60 * 1000,
+  maxKeys: 20_000,
+});
 const deliveries = new Set();
 
 function json(res, status, body) {
@@ -190,12 +195,8 @@ function postData(data, previous) {
   ];
 }
 function rateLimit(req) {
-  const key = req.socket.remoteAddress;
-  const now = Date.now();
-  for (const [k, v] of attempts) if (v.reset < now) attempts.delete(k);
-  const entry = attempts.get(key) || { count: 0, reset: now + 15 * 60 * 1000 };
-  if (++entry.count > 40) fail(429, "Too many attempts. Try again later.");
-  attempts.set(key, entry);
+  if (!allowSensitiveRequest(req.socket.remoteAddress))
+    fail(429, "Too many attempts. Try again later.");
 }
 function resolveOutcomeNotificationsForPost(postId, adminId) {
   db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
