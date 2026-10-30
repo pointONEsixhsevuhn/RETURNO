@@ -196,13 +196,19 @@ test("student report lifecycle and administrator review, edit, return and delete
   await page.goto("/#role");
   await login(page, "Admin", "admin@e2e.example", "BrowserAdmin123!");
   const adminSession = (await page.context().cookies()).find((cookie) => cookie.name === "retorno_session");
+  await expect(page.locator(".admin .outcome-notifications")).toHaveCount(0);
+  await page.getByRole("button", { name: "Profile options", exact: true }).click();
+  await expect(page.locator(".profile-options > button")).toHaveText(["Admin profile", "Register admin", "Student outcome notifications", "Log out"]);
+  await page.locator(".profile-options").getByRole("button", { name: "Student outcome notifications", exact: true }).click();
   const notifications = page.getByRole("region", { name: "Student outcome notifications", exact: true });
+  await expect(page.getByRole("dialog", { name: "Student outcome notifications" })).toBeVisible();
   await expect(notifications).toContainText(`${item}`);
   await expect(notifications).toContainText("reported this lost item as claimed by its owner");
   await expect(notifications.getByRole("button", { name: `Set Returned for ${item}`, exact: true })).toHaveCount(0);
   await notifications.getByRole("button", { name: `Set Claimed for ${item}`, exact: true }).click();
   await expect(page.locator(".admin .success-notice")).toContainText("Post status changed to Claimed");
   await expect(notifications).toContainText("No pending student notifications.");
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
   expect((await (await page.request.get(`/api/posts/${id}`)).json()).post.status).toBe("Claimed");
   const row = page
     .locator(".admin-row")
@@ -839,7 +845,7 @@ test("compact menu keeps separate About links and policy pages share the About l
  await page.goto('/#role');
  await login(page,'Admin','admin@e2e.example','BrowserAdmin123!');
  await options.click();
- await expect(page.locator('.profile-options > button')).toHaveText(['Admin profile','Register admin','Log out']);
+ await expect(page.locator('.profile-options > button')).toHaveText(['Admin profile','Register admin','Student outcome notifications','Log out']);
  await expect(page.locator('.profile-options [data-logout]')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
  const adminAbout=page.locator('.profile-about');
  await expect(adminAbout.locator('summary')).toHaveText('About');

@@ -106,7 +106,7 @@ function header(search = true, welcome = true, backControl = "") {
     policyParams.set("aboutReturn", allowedAboutReturns.has(aboutReturn) ? aboutReturn : admin ? "admin" : "feed");
   }
   const policyContext = `?${policyParams}`;
-  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
+  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options' + (admin ? ' admin-profile-options' : '') + '" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-open-outcome-notifications>Student outcome notifications</button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
 function bindNavigation() {
@@ -121,6 +121,19 @@ function bindNavigation() {
       if (pageVersion !== renderVersion) return;
       showAccountDeletionDialog(request, pageVersion);
     }).catch(errorDialog);
+  });
+  app.querySelectorAll("[data-open-outcome-notifications]").forEach(button => button.onclick = async () => {
+    const menu = app.querySelector(".profile-dropdown");
+    if (menu) menu.open = false;
+    button.disabled = true;
+    try {
+      const { notifications } = await api("/item-outcome-notifications");
+      showOutcomeNotificationsDialog(notifications);
+    } catch (error) {
+      errorDialog(error);
+    } finally {
+      button.disabled = false;
+    }
   });
   app
     .querySelectorAll("[data-logout]")
@@ -356,16 +369,34 @@ function adminPostRow(p) {
   return `<article class="admin-row">${itemImage(p, "row-image")}<button class="row-info" data-detail="${p.id}">Posted by:<strong>${esc(p.author)}</strong><small>Click to view more details</small></button><button class="more" data-more="${p.id}" aria-label="Post options" aria-expanded="false">⋮</button>${menu(p)}</article>`;
 }
 function outcomeNotificationPanel(notifications) {
-  return `<section class="outcome-notifications" aria-labelledby="outcome-notifications-title"><div class="outcome-notifications-head"><h2 id="outcome-notifications-title">Student outcome notifications</h2><div class="outcome-notifications-tools"><span>${notifications.length}</span><button type="button" class="pill" data-refresh-outcome-notifications>Refresh</button></div></div>${notifications.length ? notifications.map((item) => {
+  return `<section class="outcome-notifications" aria-labelledby="outcome-notifications-title"><div class="outcome-notifications-head"><h2 id="outcome-notifications-title" tabindex="-1">Student outcome notifications</h2><div class="outcome-notifications-tools"><span>${notifications.length}</span><button type="button" class="pill" data-refresh-outcome-notifications>Refresh</button></div></div>${notifications.length ? notifications.map((item) => {
     const outcomePhrase = item.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
     return `<article class="outcome-notification" data-outcome-notification="${esc(item.id)}"><div><h3>${esc(item.item_name)}</h3><p><strong>${esc(item.student_name)}</strong> reported this ${esc(item.kind.toLowerCase())} item as <strong>${esc(outcomePhrase)}</strong>.</p><p class="outcome-notification-location">Location: ${esc(item.location)}</p><p>Current post status: ${esc(item.current_status)}</p><p class="error" role="alert"></p></div><div class="outcome-notification-actions"><button type="button" class="pill" data-review-status="${esc(item.outcome)}" aria-label="Set ${esc(item.outcome)} for ${esc(item.item_name)}">Set ${esc(item.outcome)}</button><button type="button" class="pill" data-review-status="Dismissed">Dismiss</button></div></article>`;
   }).join("") : '<p class="empty">No pending student notifications.</p>'}</section>`;
 }
+function renderOutcomeNotificationsDialog(notifications) {
+  dialog.innerHTML = `${outcomeNotificationPanel(notifications)}<div class="dialog-actions"><button type="button" data-close>Close</button></div>`;
+  dialog.querySelector("[data-close]").onclick = dismissDialog;
+  bindOutcomeNotifications();
+}
+function showOutcomeNotificationsDialog(notifications) {
+  renderOutcomeNotificationsDialog(notifications);
+  openDialog("Student outcome notifications");
+  dialog.querySelector("h2").focus?.({ preventScroll: true });
+}
 function bindOutcomeNotifications() {
-  app.querySelector("[data-refresh-outcome-notifications]").onclick = () => {
-    admin(++renderVersion, state.adminStatus, state.adminPage).catch(errorDialog);
+  dialog.querySelector("[data-refresh-outcome-notifications]").onclick = async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const { notifications } = await api("/item-outcome-notifications");
+      renderOutcomeNotificationsDialog(notifications);
+      dialog.querySelector("[data-refresh-outcome-notifications]").focus();
+    } catch (error) {
+      errorDialog(error);
+    }
   };
-  app.querySelectorAll("[data-outcome-notification]").forEach((row) => {
+  dialog.querySelectorAll("[data-outcome-notification]").forEach((row) => {
     row.querySelectorAll("[data-review-status]").forEach((button) => {
       button.onclick = async () => {
         button.disabled = true;
@@ -377,7 +408,9 @@ function bindOutcomeNotifications() {
           state.notice = status === "Dismissed"
             ? "Student notification dismissed. The post status was not changed."
             : `Notification reviewed. Post status changed to ${status}.`;
-          admin(++renderVersion, state.adminStatus, state.adminPage).catch(errorDialog);
+          const { notifications } = await api("/item-outcome-notifications");
+          renderOutcomeNotificationsDialog(notifications);
+          if (location.hash === "#admin") admin(++renderVersion, state.adminStatus, state.adminPage).catch(errorDialog);
         } catch (error) {
           if (!row.isConnected) return;
           errorAt(row.querySelector("[role=alert]"), error);
@@ -860,21 +893,19 @@ function showAdminRegistration() {
 }
 async function admin(version, status = state.adminStatus, page = state.adminPage) {
   listLoading("Loading dashboard...");
-  let result, totals, notificationResult;
+  let result, totals;
   try {
-    [result, totals, notificationResult] = await Promise.all([
+    [result, totals] = await Promise.all([
       api("/posts?page=" + page + "&pageSize=28" + (status ? "&status=" + status : "")),
       api("/stats"),
-      api("/item-outcome-notifications"),
     ]);
   } catch (error) {
     listFailure(error, version, () => admin(++renderVersion, status, page));
     return;
   }
   if (version !== renderVersion) return;
-  const notifications = notificationResult.notifications;
   state.posts = result.posts;
-  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${outcomeNotificationPanel(notifications)}${postToolbar(`<nav class="filters admin-status-filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
+  app.innerHTML = `<section class="screen page admin">${header()}${state.notice ? `<p class="success-notice" role="status">${esc(state.notice)}</p>` : ""}${postToolbar(`<nav class="filters admin-status-filters" aria-label="Report status">${["", "Lost", "Found", "Returned", "Claimed"].map((value) => `<button type="button" data-admin-filter="${value}" aria-label="${value || "All"}" class="${status === value ? "active" : ""}" aria-pressed="${status === value}">${value || "All"} <span class="filter-count">(${value ? totals.stats[value] : ["Lost", "Found", "Returned", "Claimed"].reduce((sum, key) => sum + totals.stats[key], 0)})</span>`).join("")}</nav>`)}<div class="admin-list">${result.posts.map(adminPostRow).join("")}</div>${pagination(result.pagination)}</section>`;
   bindPagination(next => {
     state.adminPage = next;
     admin(++renderVersion, status, next);
@@ -882,7 +913,6 @@ async function admin(version, status = state.adminStatus, page = state.adminPage
   state.notice = "";
   bindNavigation();
   bindPostActions();
-  bindOutcomeNotifications();
   if (!result.posts.length)
     app.querySelector(".admin-list").innerHTML =
       `<p class="empty" role="status">${status ? `No ${esc(status.toLowerCase())} posts.` : "No reports have been posted yet."}</p>`;
