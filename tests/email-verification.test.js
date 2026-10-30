@@ -76,7 +76,7 @@ test("pending signup has no account/session; only a valid single-use code create
   assert.equal(confirmed.data.user.role, "student");
   const acceptance = db.prepare("SELECT terms_version,privacy_version FROM policy_acceptances WHERE user_id=?").get(confirmed.data.user.id);
   assert.equal(acceptance.terms_version, "1.0");
-  assert.equal(acceptance.privacy_version, "1.0");
+  assert.equal(acceptance.privacy_version, "1.1");
   assert.match(confirmed.cookie, /HttpOnly/);
   assert.equal((await verify(email)).status, 400);
   assert.equal(

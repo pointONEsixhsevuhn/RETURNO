@@ -21,7 +21,7 @@ import {
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
 const termsVersion = "1.0";
-const privacyVersion = "1.0";
+const privacyVersion = "1.1";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const publicUser = (u) => ({
   id: u.id,

@@ -764,14 +764,14 @@ test("policy documents are public, readable and registration requires acknowledg
  const policy=page;
  await expect(policy).toHaveURL(/privacy\.html/);
  await expect(policy.getByRole('heading',{name:'Privacy Policy',exact:true})).toBeVisible();
- await expect(policy.getByText('Last updated: October 12, 2026')).toBeVisible();
+ await expect(policy.getByText('Last updated: October 31, 2026 · Version 1.1')).toBeVisible();
  await expect(policy.locator('footer.legal')).toHaveCount(0);
  await expect(policy.locator('.policy-tabs')).toHaveCount(0);
  await expect(policy.getByRole('link',{name:'Terms and Conditions',exact:true})).toHaveCount(0);
  await expect(policy.locator('.policy-card p').nth(2)).toHaveCSS('text-align','justify');
  await expect(policy.locator('.policy-card p').nth(2)).toHaveCSS('text-align-last','left');
- await expect(policy.getByRole('heading',{name:'11. Contact Us',exact:true})).toBeVisible();
- await expect(policy.getByText(/javellellantada01@gmail.com/)).toBeVisible();
+ await expect(policy.getByRole('heading',{name:'10. Deployment details to complete before public release',exact:true})).toBeVisible();
+ await expect(policy.getByText(/institution-approved name of the data controller and privacy contact/i)).toBeVisible();
  expect(await policy.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await expect(policy.getByRole('button',{name:'Back',exact:true})).toHaveAttribute('href','/#login');
  await policy.getByRole('button',{name:'Back',exact:true}).click();
