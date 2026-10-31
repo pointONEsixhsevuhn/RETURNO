@@ -13,6 +13,8 @@ The project is on track for its agreed scope. Students create and view reports. 
 
 ## Verified baseline
 
+- **Dependency security and full-system check (2026-10-31):** the audit found a moderate address-parser advisory in Nodemailer 10.0.16; updated the lockfile to Nodemailer 10.3.1. Full and runtime npm audits report **0 vulnerabilities**. Full Node suite passed (**138/138**); Playwright passed (**61 passed, 3 intentional skips**) across desktop, mobile, narrow-phone and tablet; workflow verification and whitespace checks passed. This does not verify live deployment, actual Gmail delivery, physical devices or external Supabase production behavior.
+
 - **Keep outcome-review feedback in the inbox (2026-10-31):** dismissing or approving a student outcome request no longer creates a separate success notice on the admin dashboard. The admin reviews requests through Student outcome notifications; dismissing still leaves the report status unchanged. Focused Playwright outcome workflow passed on desktop, mobile, narrow-phone and tablet (**4/4**); full Node suite passed (**138/138**); workflow verification and `git diff --check` passed.
 
 - **Outcome requests derive status from report kind (2026-10-31):** students submit only the required proof image; the server derives Claimed for Lost reports and Returned for Found reports. Requests remain pending until an admin reviews them. Focused notification tests passed (3/3); full Node suite passed (138/138); Playwright passed (61, 3 intentional skips) across desktop, mobile, narrow-phone and tablet; workflow verification passed.
