@@ -20,6 +20,6 @@ This is a review procedure. Enforced product policy remains in `AGENTS.md`, `acc
 
 ## Review proposed tooling and policy
 
-Confirm dependency source/version/license and lockfile effects before installation. Confirm CI action provenance, triggers, and minimum token permissions before changing workflows. Treat examples, skill names, JSON manifests, and proposed policies as unverified until the exact tool/version and enforcement path are established. The supplied Flower proposal has no verified CLI/schema contract and is not adopted; the repo already has its Node 24 CI workflow. Do not adopt Supabase/RLS instructions or another repository's upload/coverage thresholds for this SQLite project.
+Confirm dependency source/version/license and lockfile effects before installation. Confirm CI action provenance, triggers, and minimum token permissions before changing workflows. Treat examples, skill names, JSON manifests, and proposed policies as unverified until the exact tool/version and enforcement path are established. The supplied Flower proposal has no verified CLI/schema contract and is not adopted; the repo already has its Node 24 CI workflow. Do not adopt provider-specific database policy or another repository's upload/coverage thresholds for this SQLite project.
 
 For a product/security decision, document scope, owner decision, enforcement point, verification evidence, and date in the project's normal documentation. Do not label a control enforced until it is exercised and tested.

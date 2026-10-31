@@ -6,4 +6,3 @@ node_modules/
 test-results/
 playwright-report/
 public/assets/originals/
-supabase-root-ca.crt

@@ -17,7 +17,6 @@ const state = {
   adminStatus: "",
   adminPage: 1,
   outcomeNotificationCount: 0,
-  directImageUpload: false,
 };
 let renderVersion = 0;
 let dialogHistoryEntry = false;
@@ -518,18 +517,13 @@ function showOutcomeNotificationDialog(post) {
       proofFile = null;
       return errorAt(dialog.querySelector("[role=alert]"), "Proof image must be 10 MB or smaller.");
     }
-    if (state.directImageUpload) {
-      proofPreview = URL.createObjectURL(proofFile);
+    const reader = new FileReader();
+    reader.onload = () => {
+      proofPreview = reader.result;
       preview.innerHTML = `<img src="${esc(proofPreview)}" alt="Selected proof image preview">`;
-    } else {
-      const reader = new FileReader();
-      reader.onload = () => {
-        proofPreview = reader.result;
-        preview.innerHTML = `<img src="${esc(proofPreview)}" alt="Selected proof image preview">`;
-      };
-      reader.onerror = () => errorAt(dialog.querySelector("[role=alert]"), "Unable to read the proof image.");
-      reader.readAsDataURL(proofFile);
-    }
+    };
+    reader.onerror = () => errorAt(dialog.querySelector("[role=alert]"), "Unable to read the proof image.");
+    reader.readAsDataURL(proofFile);
     dialog.querySelector("[role=alert]").textContent = "";
   };
   dialog.querySelector("form").onsubmit = async (event) => {
@@ -539,26 +533,8 @@ function showOutcomeNotificationDialog(post) {
     if (!proofFile) return errorAt(form.querySelector("[role=alert]"), "Choose a proof image before sending the notification.");
     submit.disabled = true;
     try {
-      let proof;
-      if (state.directImageUpload) {
-        const ticket = await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications/proof-upload-ticket`, {
-          method: "POST",
-          body: JSON.stringify({ contentType: proofFile.type, size: proofFile.size }),
-        });
-        const uploadBody = new FormData();
-        uploadBody.append("cacheControl", "3600");
-        uploadBody.append("", proofFile);
-        const uploaded = await fetch(ticket.uploadUrl, {
-          method: "PUT",
-          headers: { "x-upsert": "false" },
-          body: uploadBody,
-        });
-        if (!uploaded.ok) throw new Error("Proof upload failed. Please try again.");
-        proof = { imageKey: ticket.path };
-      } else {
-        if (!proofPreview) throw new Error("Please wait for the proof image preview.");
-        proof = { image: proofPreview };
-      }
+      if (!proofPreview) throw new Error("Please wait for the proof image preview.");
+      const proof = { image: proofPreview };
       await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications`, {
         method: "POST",
         body: JSON.stringify(proof),
@@ -883,9 +859,7 @@ function editor() {
     selectedFile = file;
     output.textContent = "";
     try {
-      const selectedImage = state.directImageUpload
-        ? URL.createObjectURL(file)
-        : await new Promise((resolve, reject) => {
+      const selectedImage = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(new Error("Unable to read image."));
@@ -919,7 +893,7 @@ function editor() {
       contact_details: contacts,
       kind,
     };
-    if (!state.directImageUpload) data.image = image;
+    data.image = image;
     if (post)
       data.status = ["Lost", "Found"].includes(post.status)
         ? kind
@@ -931,22 +905,6 @@ function editor() {
     document.querySelector("#post-form").setAttribute("aria-busy", "true");
     document.querySelector("#post-status").textContent = "Saving your post...";
     try {
-      if (state.directImageUpload && selectedFile) {
-        const ticket = await api("/report-images/upload-ticket", {
-          method: "POST",
-          body: JSON.stringify({ contentType: selectedFile.type, size: selectedFile.size }),
-        });
-        const uploadBody = new FormData();
-        uploadBody.append("cacheControl", "3600");
-        uploadBody.append("", selectedFile);
-        const uploaded = await fetch(ticket.uploadUrl, {
-          method: "PUT",
-          headers: { "x-upsert": "false" },
-          body: uploadBody,
-        });
-        if (!uploaded.ok) throw new Error("Image upload failed. Please try again.");
-        data.imageKey = ticket.path;
-      }
       await api("/posts" + (post ? "/" + post.id : ""), {
         method: post ? "PUT" : "POST",
         body: JSON.stringify(data),
@@ -1326,7 +1284,6 @@ async function start() {
   } catch {}
   try {
     const health = await api("/health");
-    state.directImageUpload = health.directImageUpload === true;
     if (health.service !== "retorno")
       throw new Error("Open RETURNO using the address printed by npm start.");
     try {

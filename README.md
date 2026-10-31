@@ -18,7 +18,7 @@ For a temporary free friend test on Windows, double-click `share-cloudflare.cmd`
 
 RETURNO has no offline mode or service worker. When the Node server is running on the same device, its local interface and SQLite data can work without internet; email verification and password recovery still need network access to the mail service. If the server is stopped, the app cannot open. A hosted RETURNO needs a network connection to reach its server. Offline browsing or posting from another device is not currently supported.
 
-Create the first administrator with `npm run admin`. The command uses `.env` and works with either local SQLite or the selected Postgres database. Use `npm run admin:reset` to reset an administrator password; this also revokes that administrator's existing sessions. An authenticated administrator can register additional admins from the application. Admin-created accounts do not use the student email-verification flow.
+Create the first administrator with `npm run admin`. The command uses the local SQLite database. Use `npm run admin:reset` to reset an administrator password; this also revokes that administrator's existing sessions. An authenticated administrator can register additional admins from the application. Admin-created accounts do not use the student email-verification flow.
 
 Optional demo data is for a fresh database only:
 
@@ -48,7 +48,7 @@ By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` director
 
 Supported environment settings include `PORT`, `HOST`, `DATA_DIR`, and `COOKIE_SECURE=true` when HTTPS is provided by the hosting layer. The default host is `127.0.0.1`, suitable for local use. Public hosting still needs a persistent data volume, HTTPS, secure-cookie configuration, proxy-aware abuse controls, monitoring, and a tested recovery plan.
 
-For a single-host production deployment, the repository includes a Docker Compose setup with a persistent SQLite volume and Caddy-managed HTTPS. See [deployment instructions](docs/DEPLOYMENT.md). The Vercel route and Supabase adapter are still behind a readiness gate; follow [Vercel deployment status](docs/VERCEL-DEPLOYMENT.md) and run `npm run vercel:check` before enabling that route.
+For a single-host production deployment, the repository includes a Docker Compose setup with a persistent SQLite volume and Caddy-managed HTTPS. See [deployment instructions](docs/DEPLOYMENT.md).
 
 Use the SQLite-aware backup commands below; they include committed WAL data and validate the backup against SQLite integrity, foreign keys, and this app's migration history. Keep backups in a private, access-controlled location because they contain student names, emails, posts, and contact details. The `backups/` folder is ignored by Git.
 

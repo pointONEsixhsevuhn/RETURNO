@@ -437,38 +437,6 @@ test("registration rolls back the account if session creation fails", async () =
     db.exec("DROP TRIGGER test_session_failure");
   }
 });
-test("Vercel request failures return a support ID without logging database details", async () => {
-  db.exec(
-    "CREATE TRIGGER test_session_failure BEFORE INSERT ON sessions BEGIN SELECT RAISE(ABORT,'private database detail'); END;",
-  );
-  const previousVercel = process.env.VERCEL;
-  const originalConsoleError = console.error;
-  const logged = [];
-  process.env.VERCEL = "1";
-  console.error = (...values) => logged.push(values);
-  let response;
-  try {
-    response = await request("/api/register", "POST", {
-      email: "vercel-error@test.example",
-      fullName: "Vercel Error",
-      password: "VercelError123!",
-      confirmPassword: "VercelError123!",
-      policyAgreement: true,
-    });
-  } finally {
-    console.error = originalConsoleError;
-    if (previousVercel === undefined) delete process.env.VERCEL;
-    else process.env.VERCEL = previousVercel;
-    db.exec("DROP TRIGGER test_session_failure");
-  }
-
-  assert.equal(response.status, 500);
-  assert.match(response.data.incidentId, /^[0-9a-f-]{36}$/i);
-  assert.equal(logged.length, 1);
-  assert.equal(logged[0][0], "RETURNO request failure");
-  assert.equal(logged[0][1].incidentId, response.data.incidentId);
-  assert.equal(JSON.stringify(logged).includes("private database detail"), false);
-});
 test("active status and report type stay consistent after status changes", async () => {
   const login = await request("/api/login", "POST", {
     email: "second@test.example",
