@@ -1,0 +1,58 @@
+services:
+  retorno:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATA_DIR: /app/data
+      COOKIE_SECURE: "true"
+      NPM_CONFIG_CACHE: /tmp/npm-cache
+    expose:
+      - "3000"
+    volumes:
+      - retorno_data:/app/data
+      - ./backups:/app/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0: 1)).catch(() => process.exit(1))
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      RETURNO_HOSTNAME: ${RETURNO_HOSTNAME:?Set RETURNO_HOSTNAME in .env to your public DNS name}
+    depends_on:
+      retorno:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  retorno_data:
+  caddy_data:
+  caddy_config:

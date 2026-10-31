@@ -48,6 +48,8 @@ By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` director
 
 Supported environment settings include `PORT`, `HOST`, `DATA_DIR`, and `COOKIE_SECURE=true` when HTTPS is provided by the hosting layer. The default host is `127.0.0.1`, suitable for local use. Public hosting still needs a persistent data volume, HTTPS, secure-cookie configuration, proxy-aware abuse controls, monitoring, and a tested recovery plan.
 
+For a single-host production deployment, the repository includes a Docker Compose setup with a persistent SQLite volume and Caddy-managed HTTPS. See [deployment instructions](docs/DEPLOYMENT.md). This configuration prepares the app to run on a VM; it does not provision a cloud account, hostname, or public link.
+
 Use the SQLite-aware backup commands below; they include committed WAL data and validate the backup against SQLite integrity, foreign keys, and this app's migration history. Keep backups in a private, access-controlled location because they contain student names, emails, posts, and contact details. The `backups/` folder is ignored by Git.
 
 ```powershell

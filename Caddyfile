@@ -1,0 +1,4 @@
+{$RETURNO_HOSTNAME} {
+	encode zstd gzip
+	reverse_proxy retorno:3000
+}

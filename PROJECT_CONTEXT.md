@@ -15,6 +15,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 - **Stack:** Node.js 24 or newer, npm, browser-native HTML/CSS/JavaScript, Node HTTP server, SQLite via `node:sqlite`.
 - **Package manager:** npm; `package-lock.json` is committed.
 - **Entry points:** `scripts/start.js` starts the service; `server.js` implements the HTTP/API layer; `public/index.html` and `public/app.js` implement the SPA; `public/terms.html` and `public/privacy.html` are standalone policy documents.
+- **Deployment preparation:** `Dockerfile`, `compose.yaml`, and `Caddyfile` package the existing Node/SQLite app with a persistent database volume and HTTPS reverse proxy for a single Linux host. See [deployment instructions](docs/DEPLOYMENT.md). No public host has been provisioned or verified.
 - **Temporary sharing:** Windows users can run `share-cloudflare.cmd` to expose the existing local server through a temporary Cloudflare Quick Tunnel. This is not a persistent deployment; details and privacy cautions are in [Cloudflare Quick Tunnel testing](docs/CLOUDFLARE-QUICK-TUNNEL.md).
 - **Architecture:** Same-origin browser and API, one Node process and local SQLite database. Authorization and row scoping are enforced in application code; SQLite native RLS is not used. See [system design](docs/SYSTEM-DESIGN.md) and [access control](docs/ACCESS-CONTROL.md).
 - **Brand and UI:** `public/styles.css`, `public/assets/`, brown/white RETURNO theme; keep status badges at the upper-right of post cards.
