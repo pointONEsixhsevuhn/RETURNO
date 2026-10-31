@@ -17,9 +17,16 @@ function config() {
       role = JSON.parse(Buffer.from(parts[1] || "", "base64url").toString("utf8")).role;
     } catch {}
     if (parts.length !== 3 || role !== "service_role")
-      throw new Error("Configure a Supabase secret key or legacy service-role key.");
+      throw new Error("SUPABASE_SECRET_KEY must be a server-only sb_secret_ key or a valid legacy service-role key.");
   }
   return { base: url.origin, key, useBearer: !secretKey };
+}
+
+// Validate the elevated key without making a Storage request. This diagnostic
+// never returns or displays the configured credential.
+export function validateStorageConfiguration() {
+  config();
+  return true;
 }
 
 function objectUrl(path, mode = "object") {

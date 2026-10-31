@@ -1,6 +1,8 @@
 # RETURNO project status and roadmap
 
 Reviewed: 2026-10-31
+- **Vercel deployment hardening (2026-10-31):** admin setup and password-recovery commands now await Postgres operations and close their pools; added read-only local provider preflight and an isolated Supabase proof workflow smoke command. Supabase TLS/schema/RLS/private-bucket checks and SMTP authentication passed, and migration 004 was applied to the configured disposable project. Full synthetic proof workflow is blocked by the local `.env` Storage credential, which is not a valid server-only Supabase key; no deployment was made and readiness remains disabled. Replace the key locally, then rerun `npm run vercel:check` and `npm run supabase:smoke` before attempting Preview deployment.
+
 
 Review baseline commit: `f97e600`
 Runtime checked: Node.js 24.21.0 on Windows

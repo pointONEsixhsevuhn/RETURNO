@@ -92,4 +92,8 @@ export class PostgresStore {
       }
     });
   }
+
+  async close() {
+    await this.pool.end();
+  }
 }

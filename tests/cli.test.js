@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { scryptSync, timingSafeEqual } from "node:crypto";
 import http from "node:http";
+import { createAdminAccount, resetAdminPassword } from "../scripts/admin-accounts.js";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const originalPassword = "CliAdmin123!";
@@ -218,6 +219,69 @@ test("admin setup normalizes accounts, hashes passwords and refuses duplicates/i
       before,
     );
   }));
+
+test("admin account setup awaits asynchronous database lookups and inserts", async () => {
+  let saved = null;
+  const calls = [];
+  const db = {
+    prepare(sql) {
+      assert.match(sql, /SELECT id FROM users WHERE email=\?/);
+      return { async get(email) { calls.push(["get", email]); return saved; } };
+    },
+  };
+  const createUser = async (email, name, password, role) => {
+    await Promise.resolve();
+    calls.push(["create", email, name, password, role]);
+    saved = { id: "admin-id" };
+  };
+  assert.equal(await createAdminAccount({
+    db, createUser, email: " ADMIN@EXAMPLE.TEST ", name: " Admin ", password: originalPassword,
+  }), "admin@example.test");
+  assert.deepEqual(calls, [
+    ["get", "admin@example.test"],
+    ["create", "admin@example.test", "Admin", originalPassword, "admin"],
+  ]);
+  await assert.rejects(createAdminAccount({
+    db, createUser, email: "admin@example.test", name: "Admin", password: originalPassword,
+  }), /Email already exists/);
+  assert.equal(calls.length, 3);
+});
+
+test("admin password recovery awaits Postgres reads and atomically revokes sessions", async () => {
+  const events = [];
+  const db = {
+    prepare(sql) {
+      if (sql.startsWith("SELECT")) return { async all(role) {
+        await Promise.resolve();
+        assert.equal(role, "admin");
+        return [{ id: "admin-id", email: "admin@example.test", full_name: "Admin" }];
+      } };
+      return { async run(value, userId) {
+        await Promise.resolve();
+        events.push([sql.startsWith("UPDATE") ? "update" : "revoke", value, userId]);
+        return { changes: 1 };
+      } };
+    },
+  };
+  const resetArgs = {
+    db, email: " ADMIN@EXAMPLE.TEST ", password: changedPassword,
+    confirmation: changedPassword, hashPassword: (value) => `hash:${value}`,
+    withTransaction: async (callback) => {
+      events.push(["begin"]);
+      try { const result = await callback(); events.push(["commit"]); return result; }
+      catch (error) { events.push(["rollback"]); throw error; }
+    },
+  };
+  assert.equal(await resetAdminPassword(resetArgs), "admin@example.test");
+  assert.deepEqual(events, [
+    ["begin"], ["update", `hash:${changedPassword}`, "admin-id"],
+    ["revoke", "admin-id", undefined], ["commit"],
+  ]);
+  await assert.rejects(resetAdminPassword({
+    ...resetArgs, confirmation: "Mismatch123!",
+  }), /Passwords do not match/);
+  assert.equal(events.length, 4);
+});
 
 test("interactive admin setup accepts prompt-by-prompt input", async () =>
   isolated(async (directory) => {

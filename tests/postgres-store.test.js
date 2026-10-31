@@ -130,3 +130,10 @@ test("Postgres request transactions use isolated clients and roll back on failur
   assert.equal(clients[2].statements.at(-1)[0], "ROLLBACK");
   assert.equal(clients[2].released, true);
 });
+
+test("Postgres store closes its pool for command-line tools", async () => {
+  let closed = false;
+  const db = new PostgresStore({ async end() { closed = true; } });
+  await db.close();
+  assert.equal(closed, true);
+});

@@ -6,7 +6,7 @@ The current project status and next tasks are in [docs/PROJECT-ROADMAP.md](docs/
 
 ## Run locally
 
-1. Install Node.js 24 or newer.
+1. Install Node.js 24.x.
 2. In this folder, run `npm install` (or `npm ci` for a clean dependency install).
 3. Run `npm start` and open the URL printed in the terminal, normally `http://localhost:3000`.
 
@@ -18,7 +18,7 @@ For a temporary free friend test on Windows, double-click `share-cloudflare.cmd`
 
 RETURNO has no offline mode or service worker. When the Node server is running on the same device, its local interface and SQLite data can work without internet; email verification and password recovery still need network access to the mail service. If the server is stopped, the app cannot open. A hosted RETURNO needs a network connection to reach its server. Offline browsing or posting from another device is not currently supported.
 
-The first administrator is created locally with `npm run admin`. Use `npm run admin:reset` to reset an administrator password. An authenticated administrator can register additional admins from the application. Admin-created accounts do not use the student email-verification flow.
+Create the first administrator with `npm run admin`. The command uses `.env` and works with either local SQLite or the selected Postgres database. Use `npm run admin:reset` to reset an administrator password; this also revokes that administrator's existing sessions. An authenticated administrator can register additional admins from the application. Admin-created accounts do not use the student email-verification flow.
 
 Optional demo data is for a fresh database only:
 
@@ -40,7 +40,7 @@ The demo command refuses to modify a database that already contains users. Its c
 - Posts may include PNG, JPEG, or WebP images up to **10 MB**, plus contact details. The server fully decodes and re-encodes uploads, strips image metadata, rejects images over 16 megapixels or 8,000 pixels on either side, and resizes them proportionally to fit within 2,560 × 2,560 pixels. Images remain included in paginated post API responses.
 - Report event times are entered as campus wall time, PHT (UTC+08:00). They are stored as `YYYY-MM-DDTHH:mm` without server-timezone conversion.
 
-Signup email verification confirms email ownership at registration. It is not a second login factor. Registration's Terms/Privacy acknowledgment is a browser-side required checkbox; versioned acceptance is not stored by the server. See [email verification setup](docs/EMAIL-VERIFICATION.md), [password recovery](docs/PASSWORD-RECOVERY.md), and the current [claim/return decision](docs/CLAIM-RETURN-REQUIREMENTS.md).
+Signup email verification confirms email ownership at registration. It is not a second login factor. Registration requires policy acknowledgment in both the browser and API; successful registration records the accepted Terms and Privacy versions and timestamp. See [email verification setup](docs/EMAIL-VERIFICATION.md), [password recovery](docs/PASSWORD-RECOVERY.md), and the current [claim/return decision](docs/CLAIM-RETURN-REQUIREMENTS.md).
 
 ## Data and configuration
 
@@ -48,7 +48,7 @@ By default, SQLite data is stored in `data/retorno.sqlite`. The `data/` director
 
 Supported environment settings include `PORT`, `HOST`, `DATA_DIR`, and `COOKIE_SECURE=true` when HTTPS is provided by the hosting layer. The default host is `127.0.0.1`, suitable for local use. Public hosting still needs a persistent data volume, HTTPS, secure-cookie configuration, proxy-aware abuse controls, monitoring, and a tested recovery plan.
 
-For a single-host production deployment, the repository includes a Docker Compose setup with a persistent SQLite volume and Caddy-managed HTTPS. See [deployment instructions](docs/DEPLOYMENT.md). This configuration prepares the app to run on a VM; it does not provision a cloud account, hostname, or public link.
+For a single-host production deployment, the repository includes a Docker Compose setup with a persistent SQLite volume and Caddy-managed HTTPS. See [deployment instructions](docs/DEPLOYMENT.md). The Vercel route and Supabase adapter are still behind a readiness gate; follow [Vercel deployment status](docs/VERCEL-DEPLOYMENT.md) and run `npm run vercel:check` before enabling that route.
 
 Use the SQLite-aware backup commands below; they include committed WAL data and validate the backup against SQLite integrity, foreign keys, and this app's migration history. Keep backups in a private, access-controlled location because they contain student names, emails, posts, and contact details. The `backups/` folder is ignored by Git.
 

@@ -109,8 +109,9 @@ test("Supabase publishable keys are rejected for privileged Storage operations",
     return new Response("unexpected", { status: 200 });
   };
   try {
-    const { createImageUpload } = await import(`../supabase-storage.js?public=${Date.now()}`);
-    await assert.rejects(() => createImageUpload("user-id", "image/png"), /secret key or legacy service-role key/);
+    const { createImageUpload, validateStorageConfiguration } = await import(`../supabase-storage.js?public=${Date.now()}`);
+    assert.throws(() => validateStorageConfiguration(), /server-only sb_secret_/);
+    await assert.rejects(() => createImageUpload("user-id", "image/png"), /server-only sb_secret_/);
     assert.equal(requested, false);
   } finally {
     globalThis.fetch = originalFetch;

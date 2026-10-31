@@ -5,17 +5,19 @@
   "type": "module",
   "description": "NVSU Bayombong Lost & Found System",
   "engines": {
-    "node": ">=24.0.0"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node --env-file-if-exists=.env scripts/start.js",
-    "admin": "node scripts/admin.js",
-    "admin:reset": "node scripts/admin-recovery.js",
+    "admin": "node --env-file-if-exists=.env scripts/admin.js",
+    "admin:reset": "node --env-file-if-exists=.env scripts/admin-recovery.js",
     "db:backup": "node scripts/database.js backup",
     "db:verify": "node scripts/database.js verify",
     "db:restore": "node scripts/database.js restore",
     "demo": "node scripts/demo.js",
     "verify:workflow": "node scripts/verify-workflow.js",
+    "vercel:check": "node --env-file-if-exists=.env scripts/vercel-readiness.js",
+    "supabase:smoke": "node --env-file-if-exists=.env scripts/supabase-smoke.js",
     "test": "node --test tests/*.test.js",
     "test:e2e": "playwright test"
   },

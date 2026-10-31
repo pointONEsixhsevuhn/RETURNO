@@ -79,3 +79,33 @@ export function createUser(email, fullName, password, role = "student") {
   ).run(id, email.toLowerCase().trim(), fullName, hashPassword(password), role);
   return id;
 }
+
+export async function withDatabaseTransaction(callback) {
+  if (usePostgres) {
+    return db.withRequest(async () => {
+      await db.exec("BEGIN");
+      try {
+        const result = await callback();
+        await db.exec("COMMIT");
+        return result;
+      } catch (error) {
+        try {
+          await db.exec("ROLLBACK");
+        } catch {}
+        throw error;
+      }
+    });
+  }
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = await callback();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {}
+    throw error;
+  }
+}
