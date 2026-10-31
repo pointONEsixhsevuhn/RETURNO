@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { migrate } from "./migrations.js";
 import pg from "pg";
 import { PostgresStore } from "./postgres-store.js";
+import { postgresSslOptions } from "./postgres-ssl.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
@@ -35,7 +36,7 @@ export const db = usePostgres
       new pg.Pool({
         connectionString: process.env.DATABASE_URL,
         max: 1,
-        ssl: { rejectUnauthorized: true },
+        ssl: postgresSslOptions(),
         connectionTimeoutMillis: 5000,
         idleTimeoutMillis: 10000,
         statement_timeout: 10000,

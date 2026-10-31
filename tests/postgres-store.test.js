@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PostgresStore, toPostgresSql } from "../postgres-store.js";
+import { postgresSslOptions } from "../postgres-ssl.js";
 
 test("Postgres query conversion keeps placeholders parameterized and rewrites SQLite search/order syntax", () => {
   const sql = toPostgresSql(
@@ -18,6 +19,18 @@ test("Postgres query conversion keeps placeholders parameterized and rewrites SQ
   assert.equal(
     toPostgresSql("UPDATE posts SET updated_at=CURRENT_TIMESTAMP WHERE id=?"),
     "UPDATE posts SET updated_at=CURRENT_TIMESTAMP::text WHERE id=$1",
+  );
+});
+
+test("Postgres TLS always verifies certificates and accepts an explicit CA", () => {
+  assert.deepEqual(postgresSslOptions({}), { rejectUnauthorized: true });
+  assert.deepEqual(
+    postgresSslOptions({ DATABASE_SSL_CA: "-----BEGIN CERTIFICATE-----\\nabc\\n-----END CERTIFICATE-----" }),
+    { rejectUnauthorized: true, ca: "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----" },
+  );
+  assert.throws(
+    () => postgresSslOptions({ DATABASE_SSL_CA: "ca", DATABASE_SSL_CA_FILE: "ca.crt" }),
+    /Set only one/,
   );
 });
 
