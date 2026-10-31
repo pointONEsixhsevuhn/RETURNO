@@ -2,7 +2,7 @@
 
 Reviewed: 2026-10-31
 
-Review baseline commit: `75c3490`
+Review baseline commit: `f97e600`
 Runtime checked: Node.js 24.21.0 on Windows
 
 ## Current assessment
@@ -12,6 +12,8 @@ RETURNO is a working local/small-pilot lost-and-found system. Its current archit
 The project is on track for its agreed scope. Students create and view reports. Administrators manage report statuses, claims/returns, registered accounts, and additional administrator accounts. Student claim submission, My claims, and student proof-of-ownership APIs are excluded. The current claim/return policy is documented in [CLAIM-RETURN-REQUIREMENTS.md](CLAIM-RETURN-REQUIREMENTS.md).
 
 ## Verified baseline
+
+- **Distributed email delivery reservations (2026-10-31):** Postgres signup sends now acquire a shared one-minute reservation before SMTP, while preserving an older pending code when email delivery fails. Password-reset issuance uses a conditional upsert so parallel Vercel instances cannot replace one another's code; generic reset responses remain unchanged. Added RLS-protected migration `003-email-delivery-reservations.sql`. Full Node suite passed (**135/135**); Playwright passed (**61 passed, 3 intentional skips**). Live Supabase SQL/concurrency and SMTP delivery are not verified, so Vercel readiness remains disabled.
 
 - **Supabase private image flow (2026-10-31):** Postgres mode now issues authenticated, path-scoped upload grants for direct browser-to-private-Storage uploads, then downloads and revalidates/re-encodes images with Sharp before attaching their object keys to reports. Postgres API responses expose same-origin authenticated image routes; delete, account deletion, and replacement perform best-effort object cleanup. SQLite keeps its existing image flow. Added mock REST tests for signed upload path and credential isolation. Full Node suite passed (**131/131**). Playwright, live Supabase/CORS/schema integration, cleanup-failure rehearsal, and Vercel build remain unverified. Distributed rate limiting and real Postgres integration tests remain open, so `RETURNO_POSTGRES_READY` stays unset.
 

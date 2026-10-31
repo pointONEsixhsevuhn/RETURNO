@@ -55,6 +55,18 @@ test("distributed rate-limit migration keeps only bounded hashed keys outside br
   assert.match(sql, /REVOKE ALL ON request_rate_limits FROM anon, authenticated/);
 });
 
+test("email reservation migration keeps signup send locks server-only", async () => {
+  const sql = await readFile(
+    new URL("../migrations/postgres/003-email-delivery-reservations.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /email_delivery_reservations/);
+  assert.match(sql, /PRIMARY KEY \(email, purpose\)/);
+  assert.match(sql, /CHECK \(purpose = 'signup'\)/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /REVOKE ALL ON email_delivery_reservations FROM anon, authenticated/);
+});
+
 test("Postgres request transactions use isolated clients and roll back on failure", async () => {
   const clients = [];
   const pool = {

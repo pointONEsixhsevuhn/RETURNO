@@ -384,38 +384,68 @@ async function handleRequestScoped(req, res) {
         if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
           fail(409, "Email is already registered.");
         const now = Date.now();
-        const pending = await db
-          .prepare("SELECT sent_at FROM pending_registrations WHERE email=?")
-          .get(email);
-        if (pending && now - pending.sent_at < 60000)
-          fail(429, "Wait one minute before requesting another code.");
-        if (deliveries.has(email))
-          fail(429, "A verification email is already being sent.");
         const code = String(randomInt(100000, 1000000));
         const passwordHash = hashPassword(password);
-        deliveries.add(email);
-        try {
-          await sendVerification(email, code);
-        } catch {
-          fail(
-            503,
-            "Could not send the verification email. Please try again later or contact the administrator.",
-          );
-        } finally {
-          deliveries.delete(email);
+        const codeHash = digestVerificationCode("signup", code);
+        if (postgresMode) {
+          // Keep the reservation separate so failed SMTP does not invalidate an
+          // older, still-usable code. The unique key coordinates Vercel instances.
+          const reservation = await db.prepare(`INSERT INTO email_delivery_reservations
+            (email,purpose,reserved_at) VALUES(?,'signup',?)
+            ON CONFLICT(email,purpose) DO UPDATE SET reserved_at=excluded.reserved_at
+            WHERE email_delivery_reservations.reserved_at <= ?
+            AND NOT EXISTS (SELECT 1 FROM pending_registrations p
+              WHERE p.email=excluded.email AND p.sent_at > ?) RETURNING email`)
+            .get(email, now, now - 60000, now - 60000);
+          if (!reservation)
+            fail(429, "Wait one minute before requesting another code.");
+          try {
+            await sendVerification(email, code);
+          } catch {
+            await db.prepare("DELETE FROM email_delivery_reservations WHERE email=? AND purpose='signup' AND reserved_at=?")
+              .run(email, now);
+            fail(503, "Could not send the verification email. Please try again later or contact the administrator.");
+          }
+          try {
+            if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
+              fail(409, "Email is already registered.");
+            await db.prepare("DELETE FROM pending_registrations WHERE expires_at <= ?").run(now);
+            await db.prepare(`INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at,terms_version,privacy_version)
+              VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
+              password_hash=excluded.password_hash,code_hash=excluded.code_hash,
+              expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0,
+              terms_version=excluded.terms_version,privacy_version=excluded.privacy_version`)
+              .run(email, fullName, passwordHash, codeHash, now + 10 * 60000, now, termsVersion, privacyVersion);
+          } finally {
+            await db.prepare("DELETE FROM email_delivery_reservations WHERE email=? AND purpose='signup' AND reserved_at=?")
+              .run(email, now);
+          }
+        } else {
+          const pending = await db
+            .prepare("SELECT sent_at FROM pending_registrations WHERE email=?")
+            .get(email);
+          if (pending && now - pending.sent_at < 60000)
+            fail(429, "Wait one minute before requesting another code.");
+          if (deliveries.has(email))
+            fail(429, "A verification email is already being sent.");
+          deliveries.add(email);
+          try {
+            await sendVerification(email, code);
+          } catch {
+            fail(503, "Could not send the verification email. Please try again later or contact the administrator.");
+          } finally {
+            deliveries.delete(email);
+          }
+          if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
+            fail(409, "Email is already registered.");
+          await db.prepare("DELETE FROM pending_registrations WHERE expires_at <= ?").run(now);
+          await db.prepare(`INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at,terms_version,privacy_version)
+            VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
+            password_hash=excluded.password_hash,code_hash=excluded.code_hash,
+            expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0,
+            terms_version=excluded.terms_version,privacy_version=excluded.privacy_version`)
+            .run(email, fullName, passwordHash, codeHash, now + 10 * 60000, now, termsVersion, privacyVersion);
         }
-        if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
-          fail(409, "Email is already registered.");
-        await db.prepare(
-          "DELETE FROM pending_registrations WHERE expires_at <= ?",
-        ).run(now);
-        await db.prepare(
-          `INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at,terms_version,privacy_version)
-          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
-          password_hash=excluded.password_hash,code_hash=excluded.code_hash,
-          expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0,
-          terms_version=excluded.terms_version,privacy_version=excluded.privacy_version`,
-        ).run(email, fullName, passwordHash, digestVerificationCode("signup", code), now + 10 * 60000, now, termsVersion, privacyVersion);
         return json(res, 202, { verificationRequired: true, email });
       }
       if (route === "/api/verify-email" && req.method === "POST") {
@@ -479,18 +509,21 @@ async function handleRequestScoped(req, res) {
         const now = Date.now();
         await db.prepare("DELETE FROM password_resets WHERE expires_at<=?").run(now);
         const pending = target && await db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
-        if (target && (!pending || now - pending.sent_at >= 60000)) {
+        if (target && (postgresMode || !pending || now - pending.sent_at >= 60000)) {
           const code = String(randomInt(100000, 1000000));
           const codeHash = digestVerificationCode("password-reset", code);
-          await db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
+          const reservation = await db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
             VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,
-            password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`)
-            .run(target.id,codeHash,target.password_hash,now+10*60000,now);
-          // SMTP runs off the response path so account existence is not exposed by delivery timing.
-          void sendPasswordReset(target.email, code).catch(async () => {
-            await db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
-            console.error("Password reset email delivery failed.");
-          });
+            password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0
+            WHERE password_resets.sent_at <= ? RETURNING user_id`)
+            .get(target.id,codeHash,target.password_hash,now+10*60000,now,now-60000);
+          if (reservation) {
+            // SMTP runs off the response path so account existence is not exposed by delivery timing.
+            void sendPasswordReset(target.email, code).catch(async () => {
+              await db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
+              console.error("Password reset email delivery failed.");
+            });
+          }
         }
         return json(res, 202, { message: "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
       }
