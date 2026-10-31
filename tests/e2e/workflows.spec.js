@@ -212,7 +212,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(notifications.getByRole("button", { name: `Set Claimed for ${item}`, exact: true })).toBeEnabled();
   await expect(notifications.getByRole("button", { name: `Set Returned for ${item}`, exact: true })).toHaveCount(0);
   await notifications.getByRole("button", { name: `Set Claimed for ${item}`, exact: true }).click();
-  await expect(page.locator(".admin .success-notice")).toContainText("Post status changed to Claimed");
+  await expect(page.locator(".admin .success-notice")).toHaveCount(0);
   await expect(notifications).toContainText("No pending student notifications.");
   await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Profile options", exact: true }).click();

@@ -433,9 +433,6 @@ function bindOutcomeNotifications() {
             method: "PATCH",
             body: JSON.stringify({ status: button.dataset.reviewStatus }),
           });
-          state.notice = status === "Dismissed"
-            ? "Student notification dismissed. The post status was not changed."
-            : `Notification reviewed. Post status changed to ${status}.`;
           const { notifications } = await api("/item-outcome-notifications");
           renderOutcomeNotificationsDialog(notifications);
           if (location.hash === "#admin") admin(++renderVersion, state.adminStatus, state.adminPage).catch(errorDialog);
