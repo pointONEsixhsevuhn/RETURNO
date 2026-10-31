@@ -1,6 +1,7 @@
 # RETURNO project status and roadmap
 
-Reviewed: 2026-10-31
+Reviewed: 2026-11-01
+- **Vercel startup diagnostics (2026-11-01):** the Vercel function now imports the shared backend on demand and turns initialization failures into a safe JSON response with a correlatable incident ID. Runtime logs include only the error class/code and incident ID, not exception text that might contain connection details. This improves diagnosis of Vercel's generic invocation failures; it does not by itself complete deployment readiness or fix incorrect/missing provider settings.
 - **Vercel deployment hardening (2026-10-31):** admin setup and password-recovery commands now await Postgres operations and close their pools; added read-only local provider preflight and an isolated Supabase proof workflow smoke command. Supabase TLS/schema/RLS/private-bucket checks and SMTP authentication passed, and migration 004 was applied to the configured disposable project. Supabase TLS/schema/RLS/private-bucket checks, SMTP authentication and the synthetic proof upload/admin review/cleanup flow passed against the configured disposable project. The smoke flow uses synthetic accounts and sends no mail. Live signup delivery, shared rate-limit concurrency and Vercel Preview checks remain; readiness stays disabled.
 
 

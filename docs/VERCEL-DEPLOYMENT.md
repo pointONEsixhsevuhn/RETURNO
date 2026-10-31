@@ -25,6 +25,7 @@ The selected target is Vercel Hobby with Supabase Postgres and Supabase Storage.
 ## Current behavior and safety
 
 - `api/index.js` exports the Node handler expected by Vercel.
+- The Vercel entry point loads the shared handler on demand. Initialization failures return a sanitized JSON 503 with an incident ID; Vercel runtime logs contain only the error class/code and matching incident ID, not exception messages or connection credentials.
 - `vercel.json` serves the existing `public/` directory and routes API requests to that function.
 - In Postgres mode, `/api/health` reports that direct image uploads are enabled. The browser obtains a server-issued upload grant and sends the file directly to Supabase; the service-role key remains server-side. In local SQLite mode, the existing data-URL upload route remains active.
 - Vercel startup refuses to initialize unless `RETURNO_POSTGRES_READY=true`; leave it unset until real Postgres/Storage integration tests and production security configuration are complete. The local SQLite backend is still the default outside Vercel.
