@@ -14,6 +14,7 @@ const studentEmail = `smoke-student-${runId}@example.test`;
 const adminEmail = `smoke-admin-${runId}@example.test`;
 const password = `Smoke-${randomBytes(18).toString("hex")}!`;
 let studentId, adminId, proofPath, base;
+let stage = "initialization";
 
 async function request(route, method = "GET", data, cookie) {
   const response = await fetch(base + route, {
@@ -35,15 +36,19 @@ function expectStatus(result, status, operation) {
 }
 
 try {
+  stage = "create synthetic accounts";
   studentId = await createUser(studentEmail, "Synthetic Smoke Student", password, "student");
   adminId = await createUser(adminEmail, "Synthetic Smoke Admin", password, "admin");
+  stage = "start local API";
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 
+  stage = "student login";
   const studentLoginResult = await request("/api/login", "POST", {
     email: studentEmail, password, role: "student",
   });
   expectStatus(studentLoginResult, 200, "Student login");
+  stage = "administrator login";
   const adminLoginResult = await request("/api/login", "POST", {
     email: adminEmail, password, role: "admin",
   });
@@ -52,6 +57,7 @@ try {
   const adminCookie = adminLoginResult.cookie;
   if (!studentCookie || !adminCookie) throw new Error("Login did not establish test sessions.");
 
+  stage = "create synthetic report";
   const post = expectStatus(await request("/api/posts", "POST", {
     kind: "Lost",
     item_name: "Synthetic smoke test item",
@@ -60,6 +66,7 @@ try {
     description: "Temporary deployment verification record.",
   }, studentCookie), 201, "Create synthetic report").post;
 
+  stage = "request proof upload ticket";
   const bytes = await readFile(new URL("../public/assets/wallet.png", import.meta.url));
   const ticket = expectStatus(await request(
     `/api/posts/${encodeURIComponent(post.id)}/outcome-notifications/proof-upload-ticket`,
@@ -67,6 +74,7 @@ try {
     { contentType: "image/png", size: bytes.length },
     studentCookie,
   ), 201, "Create proof upload ticket");
+  stage = "upload synthetic proof to Storage";
   proofPath = ticket.path;
   const form = new FormData();
   form.append("cacheControl", "3600");
@@ -78,12 +86,14 @@ try {
   });
   if (!upload.ok) throw new Error(`Supabase proof upload returned HTTP ${upload.status}.`);
 
+  stage = "submit proof notification";
   const submitted = expectStatus(await request(
     `/api/posts/${encodeURIComponent(post.id)}/outcome-notifications`,
     "POST", { imageKey: proofPath }, studentCookie,
   ), 201, "Submit proof notification").notification;
   if (submitted.outcome !== "Claimed") throw new Error("Lost report did not derive Claimed.");
 
+  stage = "verify administrator inbox and proof permissions";
   const inbox = expectStatus(await request("/api/item-outcome-notifications", "GET", undefined, adminCookie), 200, "Read admin inbox");
   const notification = inbox.notifications.find((item) => item.id === submitted.id);
   if (!notification?.has_proof || notification.outcome !== "Claimed")
@@ -97,18 +107,27 @@ try {
   if (!visibleProof.ok || visibleProof.headers.get("content-type") !== "image/png")
     throw new Error("Admin could not load the uploaded proof image.");
 
+  stage = "administrator approval and Storage cleanup";
   expectStatus(await request(`/api/item-outcome-notifications/${notification.id}`, "PATCH", {
     status: "Claimed",
   }, adminCookie), 200, "Admin approval");
   const savedPost = expectStatus(await request(`/api/posts/${post.id}`, "GET", undefined, adminCookie), 200, "Read reviewed report").post;
   if (savedPost.status !== "Claimed") throw new Error("Admin approval did not update report status.");
-  if ((await downloadImage(proofPath)).ok)
+  let proofStillExists = false;
+  try {
+    await downloadImage(proofPath);
+    proofStillExists = true;
+  } catch (error) {
+    // Supabase Storage responds with HTTP 400 for a missing object.
+    if (![400, 404].includes(error.status)) throw error;
+  }
+  if (proofStillExists)
     throw new Error("Reviewed proof image was not removed from private Storage.");
 
   console.log("Supabase synthetic login, report, private proof, admin review and Storage cleanup: PASS");
   console.log("No email was sent; only the synthetic records created by this check were used.");
 } catch (error) {
-  console.error(error.message || "Supabase smoke check failed.");
+  console.error(`Smoke check failed during ${stage}: ${error.message || "unexpected error"}`);
   process.exitCode = 1;
 } finally {
   if (proofPath) {
