@@ -22,6 +22,7 @@ import {
 import { createRequestRateLimiter, createPostgresRequestRateLimiter } from "./request-rate-limit.js";
 import { assertCodePepper } from "./verification-codes.js";
 import { createImageUpload, downloadImage, imageUrl, replaceImage, deleteImage, storageOrigin } from "./supabase-storage.js";
+import { scheduleAfterResponse } from "./platform-tasks.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -522,11 +523,17 @@ async function handleRequestScoped(req, res) {
             WHERE password_resets.sent_at <= ? RETURNING user_id`)
             .get(target.id,codeHash,target.password_hash,now+10*60000,now,now-60000);
           if (reservation) {
-            // SMTP runs off the response path so account existence is not exposed by delivery timing.
-            void sendPasswordReset(target.email, code).catch(async () => {
-              await db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
+            // Keep response timing independent of account existence, but let
+            // Vercel finish the email task after sending the generic response.
+            const delivery = sendPasswordReset(target.email, code).catch(async () => {
+              try {
+                await db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
+              } catch {
+                // The code expires after ten minutes even if cleanup is unavailable.
+              }
               console.error("Password reset email delivery failed.");
             });
+            await scheduleAfterResponse(delivery);
           }
         }
         return json(res, 202, { message: "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
@@ -556,7 +563,9 @@ async function handleRequestScoped(req, res) {
           await db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
           await db.exec("COMMIT");
         } catch (error) { await db.exec("ROLLBACK"); throw error; }
-        void sendPasswordChanged(target.email).catch(() => console.error("Password change notification delivery failed."));
+        await scheduleAfterResponse(
+          sendPasswordChanged(target.email).catch(() => console.error("Password change notification delivery failed.")),
+        );
         return json(res, 200, { message: "Password changed. Please log in with your new password." });
       }
       if (route === "/api/login" && req.method === "POST") {
@@ -1007,12 +1016,25 @@ async function handleRequestScoped(req, res) {
     });
     res.end(req.method === "HEAD" ? undefined : bytes);
   } catch (error) {
+    const unexpected = !error.status;
+    const incidentId = unexpected && process.env.VERCEL === "1" ? randomUUID() : null;
     if (!res.headersSent)
       json(res, error.status || 500, {
         error: error.status ? error.message : "Server error.",
+        ...(incidentId ? { incidentId } : {}),
       });
     else res.end();
-    if (!error.status) console.error(error);
+    if (unexpected) {
+      if (incidentId) {
+        console.error("RETURNO request failure", {
+          incidentId,
+          name: error?.name || "Error",
+          code: error?.code || "UNKNOWN",
+        });
+      } else {
+        console.error(error);
+      }
+    }
   }
 }
 export function handleRequest(req, res) {

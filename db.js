@@ -4,6 +4,7 @@ import { migrate } from "./migrations.js";
 import pg from "pg";
 import { PostgresStore } from "./postgres-store.js";
 import { postgresSslOptions } from "./postgres-ssl.js";
+import { attachVercelDatabasePool } from "./platform-tasks.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
@@ -31,17 +32,19 @@ if (usePostgres && !process.env.DATABASE_URL) {
     "RETURNO requires DATABASE_URL for Vercel or Postgres mode. SQLite is local and non-persistent on Vercel.",
   );
 }
-export const db = usePostgres
-  ? new PostgresStore(
-      new pg.Pool({
-        connectionString: process.env.DATABASE_URL,
-        max: 1,
-        ssl: postgresSslOptions(),
-        connectionTimeoutMillis: 5000,
-        idleTimeoutMillis: 10000,
-        statement_timeout: 10000,
-      }),
-    )
+const postgresPool = usePostgres
+  ? new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 1,
+      ssl: postgresSslOptions(),
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000,
+      statement_timeout: 10000,
+    })
+  : null;
+if (postgresPool) attachVercelDatabasePool(postgresPool);
+export const db = postgresPool
+  ? new PostgresStore(postgresPool)
   : (() => {
       mkdirSync(dataDir, { recursive: true });
       const sqlite = new DatabaseSync(path.join(dataDir, "retorno.sqlite"));

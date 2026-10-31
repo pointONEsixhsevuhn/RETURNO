@@ -6,6 +6,8 @@ The Vercel request entry point and PostgreSQL/Storage adapters are present. **RE
 
 The selected target is Vercel Hobby with Supabase Postgres and Supabase Storage. Existing local SQLite remains the development and test backend. Supabase SQL migrations `001`–`004` must all be applied before the deployment check passes. Migration `004-outcome-notification-proof.sql` adds the private proof reference used by the current student outcome request flow.
 
+The Supabase transaction pooler for this project is in London (`eu-west-2`); `vercel.json` pins the function to Vercel's London region (`lhr1`) to reduce database round-trip latency. Keep this aligned if the database region changes. The Postgres pool uses Vercel's idle-connection lifecycle hook, and password-reset and password-change emails use Vercel's `waitUntil()` integration so the function can manage database connections and finish mail tasks after a response. This does not make SMTP or a misconfigured deployment succeed by itself.
+
 ## Migration phases
 
 1. **Vercel request boundary (complete):** Vercel routes `/api/*` to `api/index.js`, which exports the same request handler used by the local Node server. Local startup behavior remains unchanged. The platform adapter does not start a separate listener.
@@ -25,13 +27,13 @@ The selected target is Vercel Hobby with Supabase Postgres and Supabase Storage.
 ## Current behavior and safety
 
 - `api/index.js` exports the Node handler expected by Vercel.
-- The Vercel entry point loads the shared handler on demand. Initialization failures return a sanitized JSON 503 with an incident ID; Vercel runtime logs contain only the error class/code and matching incident ID, not exception messages or connection credentials.
+- The Vercel entry point loads the shared handler on demand. Initialization failures return a sanitized JSON 503 with an incident ID; Vercel runtime logs contain only the error class/code and matching incident ID, not exception messages or connection credentials. Unexpected request failures also return a generic 500 with a correlatable incident ID; runtime logs omit database/provider exception text. Local development retains detailed error logs.
 - `vercel.json` serves the existing `public/` directory and routes API requests to that function.
 - In Postgres mode, `/api/health` reports that direct image uploads are enabled. The browser obtains a server-issued upload grant and sends the file directly to Supabase; the service-role key remains server-side. In local SQLite mode, the existing data-URL upload route remains active.
 - Vercel startup refuses to initialize unless `RETURNO_POSTGRES_READY=true`; leave it unset until real Postgres/Storage integration tests and production security configuration are complete. The local SQLite backend is still the default outside Vercel.
 - Set `RETURNO_DATABASE=postgres` only for local testing with a disposable Postgres database. Vercel requires `RETURNO_POSTGRES_READY=true`; do not set this flag yet because real provider integration and full deployment verification remain incomplete.
 - Local `.env` values do not transfer to Vercel; enter production values through Vercel's Environment Variables settings. SMTP delivery has not been verified.
-- Email send cooldown coordination is database-backed in Postgres mode. Apply `003-email-delivery-reservations.sql` and verify signup/reset behavior against a disposable Supabase project before enabling Vercel.
+- Email send cooldown coordination is database-backed in Postgres mode. Apply `003-email-delivery-reservations.sql` and verify signup/reset behavior against a disposable Supabase project before enabling Vercel. Password-reset delivery and password-change security notices are registered with Vercel's background-task lifecycle. Signup verification remains awaited as part of registration so the API can handle delivery failure before creating a session.
 - Supabase Free projects may pause after a week of low activity. Free quotas and eligibility must be checked in the provider dashboards before inviting users.
 
 This scaffold is not evidence of a successful Vercel build or deployment. Next, test actual signup email delivery and concurrent rate/email behavior. After the Vercel preview is configured, repeat image CORS checks using that exact origin before inviting testers.
