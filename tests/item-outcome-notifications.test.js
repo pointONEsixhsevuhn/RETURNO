@@ -57,19 +57,18 @@ after(async () => {
 });
 
 test("students notify admins without changing status; admins set status or dismiss safely", async () => {
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed", extra: "no" }, student)).status, 400);
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed", image: proofImage }, otherStudent)).status, 404);
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Lost", image: proofImage }, student)).status, 400);
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Returned", image: proofImage }, student)).status, 400);
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed" }, student)).status, 400);
-  const notified = await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed", image: proofImage }, student);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { image: proofImage, extra: "no" }, student)).status, 400);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { image: proofImage }, otherStudent)).status, 404);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { image: proofImage, outcome: "Returned" }, student)).status, 400);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", {}, student)).status, 400);
+  const notified = await request(`/api/posts/${postId}/outcome-notifications`, "POST", { image: proofImage }, student);
   assert.equal(notified.status, 201);
   assert.equal((await request(`/api/posts/${postId}`, "PATCH", { status: "Returned" }, student)).status, 403);
 
   const ownPosts = await request("/api/posts?mine=1", "GET", undefined, student);
   assert.equal(ownPosts.data.posts[0].status, "Lost");
   assert.equal(ownPosts.data.posts[0].pending_outcome, "Claimed");
-  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { outcome: "Claimed", image: proofImage }, student)).status, 409);
+  assert.equal((await request(`/api/posts/${postId}/outcome-notifications`, "POST", { image: proofImage }, student)).status, 409);
   assert.equal((await request("/api/item-outcome-notifications", "GET", undefined, student)).status, 403);
   assert.equal((await request("/api/item-outcome-notifications", "GET", undefined, admin)).status, 200);
   const inbox = await request("/api/item-outcome-notifications", "GET", undefined, admin);
@@ -110,11 +109,12 @@ test("administrators can dismiss without changing a report and pending entries c
     location: "Hall", description: "Synthetic test keys",
   }, student);
   const id = created.data.post.id;
-  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Claimed", image: proofImage }, student)).status, 400);
-  const submitted = await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Returned", image: proofImage }, student);
+  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { image: proofImage, outcome: "Claimed" }, student)).status, 400);
+  const submitted = await request(`/api/posts/${id}/outcome-notifications`, "POST", { image: proofImage }, student);
   assert.equal(submitted.status, 201);
   const entry = (await request("/api/item-outcome-notifications", "GET", undefined, admin)).data.notifications.find((item) => item.post_id === id);
   assert.ok(entry);
+  assert.equal(entry.outcome, "Returned");
   assert.equal((await request(`/api/item-outcome-notifications/${entry.id}`, "PATCH", { status: "Dismissed" }, admin)).status, 200);
   assert.equal((await fetch(`${base}/api/item-outcome-notifications/${entry.id}/proof`, { headers: { Cookie: admin } })).status, 404);
   assert.equal((await request(`/api/posts/${id}`, "GET", undefined, admin)).data.post.status, "Found");
@@ -129,7 +129,7 @@ test("administrators must review a pending proof in the inbox before changing th
     location: "Gym", description: "Synthetic test jacket",
   }, student);
   const id = created.data.post.id;
-  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { outcome: "Claimed", image: proofImage }, student)).status, 201);
+  assert.equal((await request(`/api/posts/${id}/outcome-notifications`, "POST", { image: proofImage }, student)).status, 201);
   assert.equal((await request(`/api/posts/${id}`, "PATCH", { status: "Claimed" }, admin)).status, 409);
   assert.equal((await request(`/api/posts/${id}`, "PUT", { kind: "Lost", status: "Claimed", item_name: "Test jacket", event_at: "2026-10-08T12:00", location: "Gym", description: "Synthetic test jacket" }, admin)).status, 409);
   const notification = (await request("/api/item-outcome-notifications", "GET", undefined, admin)).data.notifications.find((item) => item.post_id === id);

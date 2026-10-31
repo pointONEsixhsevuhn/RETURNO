@@ -687,14 +687,13 @@ async function handleRequestScoped(req, res) {
       if (studentOutcomeMatch && req.method === "POST") {
         const data = await authorizedBody(req, "outcome-notifications.create", user.id);
         await rateLimit(req);
-        const expectedKeys = postgresMode ? "imageKey,outcome" : "image,outcome";
-        if (Object.keys(data).sort().join(",") !== expectedKeys || !["Claimed", "Returned"].includes(data.outcome))
-          fail(400, "Choose the outcome and attach a proof image.");
+        const expectedKeys = postgresMode ? "imageKey" : "image";
+        if (Object.keys(data).sort().join(",") !== expectedKeys)
+          fail(400, "Attach a proof image.");
         const postId = studentOutcomeMatch[1];
         const post = await db.prepare(`SELECT p.id,p.status,p.kind FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
         if (!post) fail(404, "Active post not found.");
-        const expectedOutcome = post.kind === "Lost" ? "Claimed" : "Returned";
-        if (data.outcome !== expectedOutcome) fail(400, "Choose the outcome that matches this post type.");
+        const outcome = post.kind === "Lost" ? "Claimed" : "Returned";
         const pending = await db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
         if (pending) fail(409, "An administrator has already been notified about this post.");
         const id = randomUUID();
@@ -722,13 +721,13 @@ async function handleRequestScoped(req, res) {
           }
           const created = await db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome,proof_image)
             SELECT ?,p.id,?,?,? FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}
-            ON CONFLICT DO NOTHING`).run(id, user.id, data.outcome, proofImage, postId, user.id, user.id);
+            ON CONFLICT DO NOTHING`).run(id, user.id, outcome, proofImage, postId, user.id, user.id);
           if (!created.changes) fail(409, "An administrator has already been notified about this post.");
         } catch (error) {
           if (postgresMode && uploadedKey?.startsWith(`${user.id}/`)) await cleanupImage(uploadedKey);
           throw error;
         }
-        return json(res, 201, { notification: { id, postId, outcome: data.outcome } });
+        return json(res, 201, { notification: { id, postId, outcome } });
       }
       const reviewOutcomeMatch = /^\/api\/item-outcome-notifications\/([a-zA-Z0-9-]+)$/.exec(route);
       if (reviewOutcomeMatch && req.method === "PATCH") {

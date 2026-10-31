@@ -495,7 +495,6 @@ function showDetails(id) {
 }
 function showOutcomeNotificationDialog(post) {
   const pageVersion = renderVersion;
-  const outcome = post.kind === "Lost" ? "Claimed" : "Returned";
   const outcomePhrase = post.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
   dialog.innerHTML = `<form id="outcome-notification-form"><h2>Notify administrator</h2><p>Tell an administrator that <strong>${esc(post.item_name)}</strong> was ${esc(outcomePhrase)}. This will not change the post status. An administrator will review the proof and set the final status.</p><label for="outcome-proof-file">Upload proof image (required)</label><input id="outcome-proof-file" type="file" accept="image/png,image/jpeg,image/webp" required><small>PNG, JPEG, or WebP up to 10 MB. Only administrators can view it. The image is deleted after the request is reviewed.</small><div id="outcome-proof-preview" class="outcome-proof-preview" aria-live="polite"></div><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Send notification</button></div></form>`;
   let proofFile = null;
@@ -565,7 +564,7 @@ function showOutcomeNotificationDialog(post) {
       }
       await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications`, {
         method: "POST",
-        body: JSON.stringify({ outcome, ...proof }),
+        body: JSON.stringify(proof),
       });
       if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
       if (pageVersion !== renderVersion) return;

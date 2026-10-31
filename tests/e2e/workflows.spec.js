@@ -169,7 +169,7 @@ test("student report lifecycle and administrator review, edit, return and delete
   const pendingPost = await (await page.request.get("/api/posts?mine=1")).json();
   expect(pendingPost.posts.find((post) => post.id === id).status).toBe("Lost");
   expect(pendingPost.posts.find((post) => post.id === id).pending_outcome).toBe("Claimed");
-  expect((await page.request.post(`/api/posts/${id}/outcome-notifications`, { data: { outcome: "Claimed", image: "data:image/png;base64,AA==" } })).status()).toBe(409);
+  expect((await page.request.post(`/api/posts/${id}/outcome-notifications`, { data: { image: "data:image/png;base64,AA==" } })).status()).toBe(409);
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await card.focus();
   await page.keyboard.press("Enter");
