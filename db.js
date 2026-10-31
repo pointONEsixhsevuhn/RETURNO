@@ -13,6 +13,11 @@ export const root = path.dirname(fileURLToPath(import.meta.url));
 export const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(root, "data");
+if (process.env.VERCEL === "1") {
+  throw new Error(
+    "RETURNO is not ready for Vercel deployment: the SQLite database is local and non-persistent. Complete the Supabase Postgres migration before deploying.",
+  );
+}
 mkdirSync(dataDir, { recursive: true });
 export const db = new DatabaseSync(path.join(dataDir, "retorno.sqlite"));
 db.exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");

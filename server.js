@@ -271,7 +271,7 @@ function resolveOutcomeNotificationsForPost(postId, adminId) {
     WHERE post_id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(adminId, postId, adminId);
 }
 
-export const server = http.createServer(async (req, res) => {
+export async function handleRequest(req, res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
@@ -773,7 +773,8 @@ export const server = http.createServer(async (req, res) => {
     else res.end();
     if (!error.status) console.error(error);
   }
-});
+}
+export const server = http.createServer(handleRequest);
 server.on("error", (error) => {
   console.error(
     error.code === "EADDRINUSE"
@@ -782,7 +783,7 @@ server.on("error", (error) => {
   );
   process.exitCode = 1;
 });
-if (process.env.NODE_ENV !== "test")
+if (process.env.NODE_ENV !== "test" && process.env.VERCEL !== "1")
   server.listen(
     Number(process.env.PORT || 3000),
     process.env.HOST || "127.0.0.1",
