@@ -21,7 +21,12 @@ test("SQLite refuses to initialize on Vercel until persistent storage is ready",
       {
         cwd: process.cwd(),
         encoding: "utf8",
-        env: { ...process.env, VERCEL: "1", DATA_DIR: directory },
+        env: {
+          ...process.env,
+          VERCEL: "1",
+          RETURNO_POSTGRES_READY: "",
+          DATA_DIR: directory,
+        },
       },
     );
     assert.notEqual(result.status, 0);

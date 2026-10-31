@@ -89,14 +89,14 @@ function credentials(data) {
     fail(400, "Password must contain 8–128 characters.");
   return { email, password: data.password };
 }
-function auth(req) {
+async function auth(req) {
   const token = (req.headers.cookie || "")
     .split(";")
     .map((x) => x.trim())
     .find((x) => x.startsWith("retorno_session="))
     ?.slice(16);
   if (!token) fail(401, "Please log in.");
-  const user = db
+  const user = await db
     .prepare(
       `SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`,
     )
@@ -113,23 +113,23 @@ function cookie(res, token, maxAge = sessionAge / 1000) {
 async function authorizedBody(req, permission, expectedId) {
   const data = await body(req);
   // Body streaming yields: a session may be revoked or a role changed meanwhile.
-  const currentUser = auth(req);
+  const currentUser = await auth(req);
   if (currentUser.id !== expectedId) fail(401, "Please log in again.");
   authorize(currentUser, permission);
   return data;
 }
-function createSession(user) {
-  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
+async function createSession(user) {
+  await db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
   const token = randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
+  await db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
     hash(token),
     user.id,
     Date.now() + sessionAge,
   );
   return token;
 }
-function login(res, user) {
-  cookie(res, createSession(user));
+async function login(res, user) {
+  cookie(res, await createSession(user));
   json(res, 200, { user: publicUser(user) });
 }
 const maxImageBytes = 10 * 1024 * 1024;
@@ -266,12 +266,12 @@ function rateLimit(req) {
   if (!allowSensitiveRequest(req.socket.remoteAddress))
     fail(429, "Too many attempts. Try again later.");
 }
-function resolveOutcomeNotificationsForPost(postId, adminId) {
-  db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+async function resolveOutcomeNotificationsForPost(postId, adminId) {
+  await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
     WHERE post_id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(adminId, postId, adminId);
 }
 
-export async function handleRequest(req, res) {
+async function handleRequestScoped(req, res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
@@ -295,7 +295,7 @@ export async function handleRequest(req, res) {
           fail(403, "Invalid origin.");
       }
       if (route === "/api/health" && req.method === "GET") {
-        db.prepare("SELECT 1").get();
+        await db.prepare("SELECT 1").get();
         return json(res, 200, { service: "retorno", version: "1.3.0" });
       }
       if (route === "/api/register" && req.method === "POST") {
@@ -307,10 +307,10 @@ export async function handleRequest(req, res) {
           fail(400, "Please agree to the Terms & Conditions and acknowledge the Privacy Policy.");
         if (data.confirmPassword !== password)
           fail(400, "Passwords do not match.");
-        if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
+        if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
           fail(409, "Email is already registered.");
         const now = Date.now();
-        const pending = db
+        const pending = await db
           .prepare("SELECT sent_at FROM pending_registrations WHERE email=?")
           .get(email);
         if (pending && now - pending.sent_at < 60000)
@@ -330,12 +330,12 @@ export async function handleRequest(req, res) {
         } finally {
           deliveries.delete(email);
         }
-        if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
+        if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
           fail(409, "Email is already registered.");
-        db.prepare(
+        await db.prepare(
           "DELETE FROM pending_registrations WHERE expires_at <= ?",
         ).run(now);
-        db.prepare(
+        await db.prepare(
           `INSERT INTO pending_registrations(email,full_name,password_hash,code_hash,expires_at,sent_at,terms_version,privacy_version)
           VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET full_name=excluded.full_name,
           password_hash=excluded.password_hash,code_hash=excluded.code_hash,
@@ -349,11 +349,11 @@ export async function handleRequest(req, res) {
         const data = await body(req);
         const email = textField(data, "email", 254).toLowerCase();
         const code = textField(data, "code", 6);
-        const pending = db
+        const pending = await db
           .prepare("SELECT * FROM pending_registrations WHERE email=?")
           .get(email);
         if (pending && (!pending.terms_version || !pending.privacy_version)) {
-          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
+          await db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
           fail(400, "Please register again and accept the current policies.");
         }
         if (
@@ -366,31 +366,31 @@ export async function handleRequest(req, res) {
             "Code expired or unavailable. Register again to request a new code.",
           );
         if (!isCurrentVerificationCodeDigest(pending.code_hash)) {
-          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
+          await db.prepare("DELETE FROM pending_registrations WHERE email=?").run(email);
           fail(400, "This verification code is no longer valid. Register again to request a new code.");
         }
-        db.prepare(
+        await db.prepare(
           "UPDATE pending_registrations SET attempts=attempts+1 WHERE email=?",
         ).run(email);
         if (!/^\d{6}$/.test(code) || !verifyVerificationCode("signup", code, pending.code_hash))
           fail(400, "Incorrect verification code.");
         let user, token;
-        db.exec("BEGIN IMMEDIATE");
+        await db.exec("BEGIN IMMEDIATE");
         try {
           const id = randomUUID();
-          db.prepare(
+          await db.prepare(
             "INSERT INTO users(id,email,full_name,password_hash,role) VALUES(?,?,?,?,'student')",
           ).run(id, email, pending.full_name, pending.password_hash);
-          user = db.prepare("SELECT * FROM users WHERE id=?").get(id);
-          db.prepare("INSERT INTO policy_acceptances(user_id,terms_version,privacy_version) VALUES(?,?,?)")
+          user = await db.prepare("SELECT * FROM users WHERE id=?").get(id);
+          await db.prepare("INSERT INTO policy_acceptances(user_id,terms_version,privacy_version) VALUES(?,?,?)")
             .run(id, pending.terms_version, pending.privacy_version);
-          token = createSession(user);
-          db.prepare("DELETE FROM pending_registrations WHERE email=?").run(
+          token = await createSession(user);
+          await db.prepare("DELETE FROM pending_registrations WHERE email=?").run(
             email,
           );
-          db.exec("COMMIT");
+          await db.exec("COMMIT");
         } catch (error) {
-          db.exec("ROLLBACK");
+          await db.exec("ROLLBACK");
           throw error;
         }
         cookie(res, token);
@@ -401,20 +401,20 @@ export async function handleRequest(req, res) {
         const data = await body(req);
         const email = textField(data, "email", 254).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, "Enter a valid email.");
-        const target = db.prepare("SELECT id,email,password_hash FROM users WHERE email=? AND role='student'").get(email);
+        const target = await db.prepare("SELECT id,email,password_hash FROM users WHERE email=? AND role='student'").get(email);
         const now = Date.now();
-        db.prepare("DELETE FROM password_resets WHERE expires_at<=?").run(now);
-        const pending = target && db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
+        await db.prepare("DELETE FROM password_resets WHERE expires_at<=?").run(now);
+        const pending = target && await db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
         if (target && (!pending || now - pending.sent_at >= 60000)) {
           const code = String(randomInt(100000, 1000000));
           const codeHash = digestVerificationCode("password-reset", code);
-          db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
+          await db.prepare(`INSERT INTO password_resets(user_id,code_hash,password_version,expires_at,sent_at)
             VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,
             password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0`)
             .run(target.id,codeHash,target.password_hash,now+10*60000,now);
           // SMTP runs off the response path so account existence is not exposed by delivery timing.
-          void sendPasswordReset(target.email, code).catch(() => {
-            db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
+          void sendPasswordReset(target.email, code).catch(async () => {
+            await db.prepare("DELETE FROM password_resets WHERE user_id=? AND code_hash=?").run(target.id,codeHash);
             console.error("Password reset email delivery failed.");
           });
         }
@@ -426,25 +426,25 @@ export async function handleRequest(req, res) {
         const { email, password } = credentials(data);
         if (data.confirmPassword !== password) fail(400, "Passwords do not match.");
         const code = textField(data,"code",6);
-        const target = db.prepare(`SELECT u.id,u.email,u.password_hash,r.code_hash,r.password_version,r.expires_at,r.attempts
+        const target = await db.prepare(`SELECT u.id,u.email,u.password_hash,r.code_hash,r.password_version,r.expires_at,r.attempts
           FROM users u JOIN password_resets r ON r.user_id=u.id WHERE u.email=? AND u.role='student'`).get(email);
         const invalid = "Invalid or expired reset code. Request a new code.";
         if (!target || target.expires_at<=Date.now() || target.attempts>=5 || target.password_hash!==target.password_version) fail(400,invalid);
         if (!isCurrentVerificationCodeDigest(target.code_hash)) {
-          db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
+          await db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
           fail(400, invalid);
         }
-        db.prepare("UPDATE password_resets SET attempts=attempts+1 WHERE user_id=?").run(target.id);
+        await db.prepare("UPDATE password_resets SET attempts=attempts+1 WHERE user_id=?").run(target.id);
         if (!/^\d{6}$/.test(code) || !verifyVerificationCode("password-reset", code, target.code_hash)) fail(400,invalid);
         const passwordHash = hashPassword(password);
-        db.exec("BEGIN IMMEDIATE");
+        await db.exec("BEGIN IMMEDIATE");
         try {
-          const updated = db.prepare("UPDATE users SET password_hash=? WHERE id=? AND role='student' AND password_hash=?").run(passwordHash,target.id,target.password_version);
+          const updated = await db.prepare("UPDATE users SET password_hash=? WHERE id=? AND role='student' AND password_hash=?").run(passwordHash,target.id,target.password_version);
           if (!updated.changes) fail(400,invalid);
-          db.prepare("DELETE FROM sessions WHERE user_id=?").run(target.id);
-          db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
-          db.exec("COMMIT");
-        } catch (error) { db.exec("ROLLBACK"); throw error; }
+          await db.prepare("DELETE FROM sessions WHERE user_id=?").run(target.id);
+          await db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
+          await db.exec("COMMIT");
+        } catch (error) { await db.exec("ROLLBACK"); throw error; }
         void sendPasswordChanged(target.email).catch(() => console.error("Password change notification delivery failed."));
         return json(res, 200, { message: "Password changed. Please log in with your new password." });
       }
@@ -452,16 +452,16 @@ export async function handleRequest(req, res) {
         rateLimit(req);
         const data = await body(req),
           { email, password } = credentials(data);
-        const user = db.prepare("SELECT * FROM users WHERE email=?").get(email);
+        const user = await db.prepare("SELECT * FROM users WHERE email=?").get(email);
         if (
           !user ||
           !verifyPassword(password, user.password_hash) ||
           user.role !== data.role
         )
           fail(401, "Incorrect email, password, or role.");
-        return login(res, user);
+        return await login(res, user);
       }
-      const user = auth(req);
+      const user = await auth(req);
       authorize(user, requestPermission(route, req.method));
       if (route === "/api/admins" && req.method === "POST") {
         if (user.role !== "admin")
@@ -471,36 +471,36 @@ export async function handleRequest(req, res) {
           fullName = textField(data, "fullName", 100);
         if (data.confirmPassword !== password)
           fail(400, "Passwords do not match.");
-        if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
+        if (await db.prepare("SELECT id FROM users WHERE email=?").get(email))
           fail(409, "Email is already registered.");
-        const id = createUser(email, fullName, password, "admin");
+        const id = await createUser(email, fullName, password, "admin");
         return json(res, 201, {
           user: publicUser(
-            db.prepare("SELECT * FROM users WHERE id=?").get(id),
+            await db.prepare("SELECT * FROM users WHERE id=?").get(id),
           ),
         });
       }
       if (route === "/api/me" && req.method === "GET")
         return json(res, 200, { user: publicUser(user) });
       if (route === "/api/account-deletion-request" && req.method === "GET") {
-        const request = db.prepare(`SELECT user_id,requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
+        const request = await db.prepare(`SELECT user_id,requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
         return json(res, 200, { request: request ? { requestedAt: request.requested_at } : null });
       }
       if (route === "/api/account-deletion-request" && req.method === "POST") {
         const data = await authorizedBody(req, "account-deletion.request", user.id);
         if (Object.keys(data).length) fail(400, "This request does not accept additional details.");
-        const created = db.prepare(`INSERT OR IGNORE INTO account_deletion_requests(user_id) SELECT ? WHERE ${studentRowScope}`).run(user.id, user.id);
-        const request = db.prepare(`SELECT requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
+        const created = await db.prepare(`INSERT OR IGNORE INTO account_deletion_requests(user_id) SELECT ? WHERE ${studentRowScope}`).run(user.id, user.id);
+        const request = await db.prepare(`SELECT requested_at FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).get(user.id, user.id);
         if (!request) fail(403, "Student access is required.");
         return json(res, created.changes ? 201 : 200, { request: { requestedAt: request.requested_at } });
       }
       if (route === "/api/account-deletion-request" && req.method === "DELETE") {
-        const cancelled = db.prepare(`DELETE FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).run(user.id, user.id);
+        const cancelled = await db.prepare(`DELETE FROM account_deletion_requests WHERE user_id=? AND ${studentRowScope}`).run(user.id, user.id);
         if (!cancelled.changes) fail(404, "No pending account deletion request.");
         return json(res, 200, { ok: true });
       }
       if (route === "/api/item-outcome-notifications" && req.method === "GET") {
-        const notifications = db.prepare(`SELECT n.id,n.post_id,n.outcome,n.created_at,
+        const notifications = await db.prepare(`SELECT n.id,n.post_id,n.outcome,n.created_at,
           p.kind,p.status AS current_status,p.item_name,p.location,u.full_name AS student_name
           FROM item_outcome_notifications n
           JOIN posts p ON p.id=n.post_id
@@ -516,14 +516,14 @@ export async function handleRequest(req, res) {
         if (Object.keys(data).length !== 1 || !["Claimed", "Returned"].includes(data.outcome))
           fail(400, "Choose whether the item was Claimed or Returned.");
         const postId = studentOutcomeMatch[1];
-        const post = db.prepare(`SELECT p.id,p.status,p.kind FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
+        const post = await db.prepare(`SELECT p.id,p.status,p.kind FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
         if (!post) fail(404, "Active post not found.");
         const expectedOutcome = post.kind === "Lost" ? "Claimed" : "Returned";
         if (data.outcome !== expectedOutcome) fail(400, "Choose the outcome that matches this post type.");
-        const pending = db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
+        const pending = await db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
         if (pending) fail(409, "An administrator has already been notified about this post.");
         const id = randomUUID();
-        const created = db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome)
+        const created = await db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome)
           SELECT ?,p.id,?,? FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}
           ON CONFLICT DO NOTHING`).run(id, user.id, data.outcome, postId, user.id, user.id);
         if (!created.changes) fail(409, "An administrator has already been notified about this post.");
@@ -535,25 +535,25 @@ export async function handleRequest(req, res) {
         if (Object.keys(data).length !== 1 || !["Claimed", "Returned", "Dismissed"].includes(data.status))
           fail(400, "Choose Claimed, Returned, or Dismissed.");
         const notificationId = reviewOutcomeMatch[1];
-        db.exec("BEGIN IMMEDIATE");
+        await db.exec("BEGIN IMMEDIATE");
         try {
-          const notification = db.prepare(`SELECT n.id,n.post_id,n.outcome FROM item_outcome_notifications n
+          const notification = await db.prepare(`SELECT n.id,n.post_id,n.outcome FROM item_outcome_notifications n
             WHERE n.id=? AND n.reviewed_at IS NULL AND ${adminRowScope}`).get(notificationId, user.id);
           if (!notification) fail(404, "Pending notification not found.");
           if (data.status !== "Dismissed" && data.status !== notification.outcome)
             fail(400, `This notification can only set the status to ${notification.outcome}.`);
           if (data.status !== "Dismissed") {
-            const changedPost = db.prepare(`UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP
+            const changedPost = await db.prepare(`UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP
               WHERE id=? AND status IN ('Lost','Found') AND ${adminRowScope}`).run(data.status, notification.post_id, user.id);
             if (!changedPost.changes) fail(409, "This report is no longer active. Refresh the dashboard and review the post.");
           }
-          const reviewed = db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+          const reviewed = await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
             WHERE id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(user.id, notificationId, user.id);
           if (!reviewed.changes) fail(409, "This notification was already reviewed. Refresh the dashboard.");
-          db.exec("COMMIT");
+          await db.exec("COMMIT");
           return json(res, 200, { ok: true, status: data.status });
         } catch (error) {
-          try { db.exec("ROLLBACK"); } catch {}
+          try { await db.exec("ROLLBACK"); } catch {}
           throw error;
         }
       }
@@ -562,7 +562,7 @@ export async function handleRequest(req, res) {
           /(?:^|;\s*)retorno_session=([^;]+)/,
         )?.[1];
         if (token)
-          db.prepare(
+          await db.prepare(
             "DELETE FROM sessions WHERE token_hash=? AND user_id=?",
           ).run(hash(token), user.id);
         cookie(res, "", 0);
@@ -571,12 +571,12 @@ export async function handleRequest(req, res) {
       if (route === "/api/stats" && req.method === "GET") {
         if (user.role !== "admin") fail(403, "Administrator access required.");
         const stats = Object.fromEntries(statuses.map((s) => [s, 0]));
-        for (const row of db
+        for (const row of await db
           .prepare(
             `SELECT status,COUNT(*) AS count FROM posts WHERE ${adminRowScope} GROUP BY status`,
           )
           .all(user.id))
-          stats[row.status] = row.count;
+          stats[row.status] = Number(row.count);
         return json(res, 200, { stats });
       }
       const accountMatch = /^\/api\/users\/([a-zA-Z0-9-]+)$/.exec(route);
@@ -584,18 +584,18 @@ export async function handleRequest(req, res) {
         const data = await authorizedBody(req, "users.delete", user.id);
         const id = accountMatch[1];
         if (id === user.id) fail(409, "You cannot delete your own administrator account.");
-        const target = db.prepare(`SELECT id,email FROM users WHERE id=? AND ${adminRowScope}`).get(id, user.id);
+        const target = await db.prepare(`SELECT id,email FROM users WHERE id=? AND ${adminRowScope}`).get(id, user.id);
         if (!target) fail(404, "Account not found.");
         if (textField(data, "confirmEmail", 254).toLowerCase() !== target.email)
           fail(400, "Enter the account's email address to confirm deletion.");
         // Foreign-key cascades remove the target's reports and all sessions atomically.
-        const deleted = db.prepare(`DELETE FROM users WHERE id=? AND id<>? AND ${adminRowScope}`).run(id, user.id, user.id);
+        const deleted = await db.prepare(`DELETE FROM users WHERE id=? AND id<>? AND ${adminRowScope}`).run(id, user.id, user.id);
         if (!deleted.changes) fail(403, "Account deletion was not permitted.");
         return json(res, 200, { ok: true });
       }
       if (route === "/api/users" && req.method === "GET") {
         if (user.role !== "admin") fail(403, "Administrator access required.");
-        const users = db
+        const users = await db
           .prepare(
             `SELECT u.id,u.email,u.full_name,u.role,u.created_at,r.requested_at AS deletion_requested_at FROM users u LEFT JOIN account_deletion_requests r ON r.user_id=u.id WHERE ${adminRowScope} ORDER BY u.created_at DESC,u.email COLLATE NOCASE`,
           )
@@ -634,13 +634,14 @@ export async function handleRequest(req, res) {
           if (!/^[1-9][0-9]{0,5}$/.test(rawPage) || !/^[1-9][0-9]{0,2}$/.test(rawSize) || Number(rawSize) > 100)
             fail(400, "Invalid pagination parameters.");
           const pageSize = Number(rawSize);
-          const total = db.prepare("SELECT COUNT(*) AS total FROM (" + filtered + ")").get(...params).total;
+          const totalRow = await db.prepare("SELECT COUNT(*) AS total FROM (" + filtered + ")").get(...params);
+          const total = Number(totalRow.total);
           const totalPages = Math.max(1, Math.ceil(total / pageSize));
           const page = Math.min(Number(rawPage), totalPages);
-          const posts = db.prepare(filtered + order + " LIMIT ? OFFSET ?").all(...params, pageSize, (page - 1) * pageSize);
+          const posts = await db.prepare(filtered + order + " LIMIT ? OFFSET ?").all(...params, pageSize, (page - 1) * pageSize);
           return json(res, 200, { posts, pagination: { page, pageSize, total, totalPages } });
         }
-        const posts = db.prepare(filtered + order).all(...params);
+        const posts = await db.prepare(filtered + order).all(...params);
         return json(res, 200, { posts });
       }
       if (route === "/api/posts" && req.method === "POST") {
@@ -650,7 +651,7 @@ export async function handleRequest(req, res) {
           await authorizedBody(req, "posts.create", user.id),
         );
         const id = randomUUID();
-        const inserted = db
+        const inserted = await db
           .prepare(
             `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone,contact_details) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
           )
@@ -658,12 +659,12 @@ export async function handleRequest(req, res) {
         if (!inserted.changes)
           fail(403, "Post creation is no longer permitted.");
         return json(res, 201, {
-          post: db.prepare(queryPosts + " WHERE p.id=?").get(id),
+          post: await db.prepare(queryPosts + " WHERE p.id=?").get(id),
         });
       }
       const match = /^\/api\/posts\/([a-zA-Z0-9-]+)$/.exec(route);
       if (match) {
-        const post = db
+        const post = await db
           .prepare(queryPosts + ` WHERE p.id=? AND ${adminRowScope}`)
           .get(match[1], user.id);
         if (!post) fail(404, "Post not found.");
@@ -671,7 +672,7 @@ export async function handleRequest(req, res) {
           fail(403, "Only administrators can review or manage posts.");
         if (req.method === "GET") return json(res, 200, { post });
         if (req.method === "DELETE") {
-          const deleted = db
+          const deleted = await db
             .prepare(`DELETE FROM posts WHERE id=? AND ${adminRowScope}`)
             .run(post.id, user.id);
           if (!deleted.changes)
@@ -683,9 +684,9 @@ export async function handleRequest(req, res) {
             await authorizedBody(req, "posts.manage", user.id),
             post,
           );
-          db.exec("BEGIN IMMEDIATE");
+          await db.exec("BEGIN IMMEDIATE");
           try {
-            const updated = db
+            const updated = await db
               .prepare(
                 `UPDATE posts SET kind=?,status=?,item_name=?,event_at=?,location=?,description=?,image=?,contact_email=?,contact_phone=?,contact_details=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
               )
@@ -693,14 +694,14 @@ export async function handleRequest(req, res) {
             if (!updated.changes)
               fail(403, "Post management is no longer permitted.");
             if (["Claimed", "Returned"].includes(values[1]))
-              resolveOutcomeNotificationsForPost(post.id, user.id);
-            db.exec("COMMIT");
+              await resolveOutcomeNotificationsForPost(post.id, user.id);
+            await db.exec("COMMIT");
           } catch (error) {
-            try { db.exec("ROLLBACK"); } catch {}
+            try { await db.exec("ROLLBACK"); } catch {}
             throw error;
           }
           return json(res, 200, {
-            post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
+            post: await db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });
         }
         if (req.method === "PATCH") {
@@ -709,9 +710,9 @@ export async function handleRequest(req, res) {
           const kind = ["Lost", "Found"].includes(data.status)
             ? data.status
             : post.kind;
-          db.exec("BEGIN IMMEDIATE");
+          await db.exec("BEGIN IMMEDIATE");
           try {
-            const updated = db
+            const updated = await db
               .prepare(
                 `UPDATE posts SET kind=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND ${adminRowScope}`,
               )
@@ -719,14 +720,14 @@ export async function handleRequest(req, res) {
             if (!updated.changes)
               fail(403, "Post management is no longer permitted.");
             if (["Claimed", "Returned"].includes(data.status))
-              resolveOutcomeNotificationsForPost(post.id, user.id);
-            db.exec("COMMIT");
+              await resolveOutcomeNotificationsForPost(post.id, user.id);
+            await db.exec("COMMIT");
           } catch (error) {
-            try { db.exec("ROLLBACK"); } catch {}
+            try { await db.exec("ROLLBACK"); } catch {}
             throw error;
           }
           return json(res, 200, {
-            post: db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
+            post: await db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
           });
         }
       }
@@ -773,6 +774,11 @@ export async function handleRequest(req, res) {
     else res.end();
     if (!error.status) console.error(error);
   }
+}
+export function handleRequest(req, res) {
+  return typeof db.withRequest === "function"
+    ? db.withRequest(() => handleRequestScoped(req, res))
+    : handleRequestScoped(req, res);
 }
 export const server = http.createServer(handleRequest);
 server.on("error", (error) => {

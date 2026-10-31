@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "nodemailer": "^10.0.16",
+    "pg": "^8.23.1",
     "sharp": "^0.35.5"
   }
 }
