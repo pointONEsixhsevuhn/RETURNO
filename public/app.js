@@ -17,6 +17,7 @@ const state = {
   adminStatus: "",
   adminPage: 1,
   outcomeNotificationCount: 0,
+  directImageUpload: false,
 };
 let renderVersion = 0;
 let dialogHistoryEntry = false;
@@ -694,6 +695,7 @@ function editor() {
   const post = state.user?.role === "admin" ? state.edit : null;
   let kind = post?.kind || "",
     image = post?.image || null,
+    selectedFile = null,
     reading = false,
     saving = false;
   app.innerHTML = `<section class="screen editor"><form class="editor-panel" id="post-form"><div class="editor-head"><button type="button" class="editor-logo" data-go="${state.user.role === "admin" ? state.back : "feed"}" aria-label="Home">${logo}</button><div class="editor-actions"><button type="button" class="pill cancel-post-button" data-cancel-post>Cancel</button><button class="pill post-button" type="submit">${post ? "Update" : "Post"}</button></div></div><label class="upload-area" id="upload-area"><span id="upload-preview">${image ? `<img src="${esc(image)}" alt="Selected item">` : "Upload your image here"}</span><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" aria-label="Upload your image here"></label><div class="post-fields"><div class="post-field status-field"><span>Status:</span><button id="status-trigger" class="pill status-trigger" type="button" aria-expanded="false" aria-controls="status-options"><span id="chosen-kind">${kind}</span><span class="triangle"></span></button><div class="status-options" id="status-options" hidden><button type="button" data-kind="Lost">Lost</button><button type="button" data-kind="Found">Found</button></div></div><label class="post-field"><span>Item name:</span><input name="item_name" required maxlength="200" value="${esc(post?.item_name)}"></label><label class="post-field"><span id="event-time-label">${kind ? `Date time ${kind.toLowerCase()}:` : "Date time:"}</span><input name="event_at" type="datetime-local" required value="${esc(post?.event_at)}"></label><label class="post-field"><span>Location/Address :</span><input name="location" required maxlength="500" value="${esc(post?.location)}"></label><div class="contact-methods"><span>How to contact you (optional):</span><div class="contact-box"><div id="contact-rows"></div><button type="button" id="add-contact">Add contact method</button></div></div><p class="contact-note">What you enter here will appear on your home post.</p><label class="post-field"><span>Description:</span><textarea name="description" required maxlength="3000">${esc(post?.description)}</textarea></label></div><p id="post-status" role="status" aria-live="polite"></p><p id="post-error" class="error" role="alert"></p></form></section>`;
@@ -809,9 +811,12 @@ function editor() {
       );
     }
     reading = true;
+    selectedFile = file;
     output.textContent = "";
     try {
-      const selectedImage = await new Promise((resolve, reject) => {
+      const selectedImage = state.directImageUpload
+        ? URL.createObjectURL(file)
+        : await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(new Error("Unable to read image."));
@@ -844,8 +849,8 @@ function editor() {
       ...Object.fromEntries(new FormData(event.currentTarget)),
       contact_details: contacts,
       kind,
-      image,
     };
+    if (!state.directImageUpload) data.image = image;
     if (post)
       data.status = ["Lost", "Found"].includes(post.status)
         ? kind
@@ -857,6 +862,22 @@ function editor() {
     document.querySelector("#post-form").setAttribute("aria-busy", "true");
     document.querySelector("#post-status").textContent = "Saving your post...";
     try {
+      if (state.directImageUpload && selectedFile) {
+        const ticket = await api("/report-images/upload-ticket", {
+          method: "POST",
+          body: JSON.stringify({ contentType: selectedFile.type, size: selectedFile.size }),
+        });
+        const uploadBody = new FormData();
+        uploadBody.append("cacheControl", "3600");
+        uploadBody.append("", selectedFile);
+        const uploaded = await fetch(ticket.uploadUrl, {
+          method: "PUT",
+          headers: { "x-upsert": "false" },
+          body: uploadBody,
+        });
+        if (!uploaded.ok) throw new Error("Image upload failed. Please try again.");
+        data.imageKey = ticket.path;
+      }
       await api("/posts" + (post ? "/" + post.id : ""), {
         method: post ? "PUT" : "POST",
         body: JSON.stringify(data),
@@ -1236,6 +1257,7 @@ async function start() {
   } catch {}
   try {
     const health = await api("/health");
+    state.directImageUpload = health.directImageUpload === true;
     if (health.service !== "retorno")
       throw new Error("Open RETURNO using the address printed by npm start.");
     try {

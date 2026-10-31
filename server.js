@@ -19,11 +19,13 @@ import {
   verifyVerificationCode,
 } from "./verification-codes.js";
 import { createRequestRateLimiter } from "./request-rate-limit.js";
+import { createImageUpload, downloadImage, imageUrl, replaceImage, deleteImage, storageOrigin } from "./supabase-storage.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
 const termsVersion = "1.0";
 const privacyVersion = "1.1";
+const postgresMode = typeof db.withRequest === "function";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const publicUser = (u) => ({
   id: u.id,
@@ -35,6 +37,19 @@ const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 const queryPosts = `SELECT p.id,p.user_id,p.kind,p.status,p.item_name,p.event_at,p.location,p.description,p.image,p.contact_email,p.contact_phone,p.contact_details,p.created_at,p.updated_at,u.full_name AS author FROM posts p JOIN users u ON u.id=p.user_id`;
+function publicPost(post) {
+  return post && postgresMode && post.image
+    ? { ...post, image: imageUrl(post.id) }
+    : post;
+}
+function publicPosts(posts) {
+  return postgresMode ? posts.map(publicPost) : posts;
+}
+async function cleanupImage(image) {
+  if (!postgresMode || !image) return;
+  try { await deleteImage(image); }
+  catch { console.error("Report image cleanup failed."); }
+}
 const allowSensitiveRequest = createRequestRateLimiter({
   limit: 40,
   windowMs: 15 * 60 * 1000,
@@ -234,7 +249,7 @@ function contactField(data, key, previous, max) {
   if (typeof value !== "string" || value.length > max) fail(400, "Invalid contact details.");
   return value.trim();
 }
-async function postData(data, previous) {
+async function postData(data, previous, userId) {
   const kind = data.kind;
   if (!["Lost", "Found"].includes(kind)) fail(400, "Select Lost or Found.");
   const status = previous ? (data.status ?? previous.status) : kind;
@@ -247,6 +262,34 @@ async function postData(data, previous) {
   const contactPhone = contactField(data, "contact_phone", previous, 30);
   if (contactEmail && !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@gmail\.com$/i.test(contactEmail)) fail(400, "Enter a valid Gmail contact address.");
   if (contactPhone && (!/^\+?[0-9 ()-]+$/.test(contactPhone) || contactPhone.replace(/\D/g, "").length < 7 || contactPhone.replace(/\D/g, "").length > 15)) fail(400, "Enter a valid contact number (7-15 digits).");
+  let image = data.image === undefined || (previous && data.image === previous.image)
+    ? (previous?.image ?? null)
+    : await imageData(data.image);
+  if (postgresMode && data.imageKey !== undefined) {
+    const key = data.imageKey;
+    if (typeof key !== "string" || !key.startsWith(`${userId}/`) ||
+      !/^[a-zA-Z0-9-]+\/[a-f0-9-]{36}\.(png|jpg|webp)$/.test(key))
+      fail(400, "Invalid image upload. Please choose the image again.");
+    try {
+      const response = await downloadImage(key);
+      const mime = response.headers.get("content-type")?.split(";")[0];
+      if (!response.ok || !["image/png", "image/jpeg", "image/webp"].includes(mime))
+        fail(400, "Use a PNG, JPEG, or WebP image.");
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > maxImageBytes) fail(413, "Image must be 10 MB or smaller.");
+      const normalized = await imageData(`data:${mime};base64,${bytes.toString("base64")}`);
+      const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(normalized);
+      if (!match) fail(400, "Invalid image content.");
+      await replaceImage(key, Buffer.from(match[2], "base64"), match[1]);
+      image = key;
+    } catch (error) {
+      await cleanupImage(key);
+      if (error.status) throw error;
+      fail(400, "Image upload was not found or could not be processed. Please choose it again.");
+    }
+  }
+  if (postgresMode && data.image !== undefined && data.imageKey === undefined && data.image !== previous?.image)
+    fail(400, "Upload the image directly before saving the report.");
   return [
     kind,
     status,
@@ -254,9 +297,7 @@ async function postData(data, previous) {
     eventAt,
     textField(data, "location", 500),
     textField(data, "description", 3000),
-    data.image === undefined || (previous && data.image === previous.image)
-      ? (previous?.image ?? null)
-      : await imageData(data.image),
+    image,
     contactEmail,
     contactPhone,
     contactField(data, "contact_details", previous, 500),
@@ -275,9 +316,10 @@ async function handleRequestScoped(req, res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
+  const storageHost = storageOrigin();
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    `default-src 'self'; img-src 'self' data:; connect-src 'self'${storageHost ? ` ${storageHost}` : ""}; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
   );
   try {
     const url = new URL(req.url, "http://localhost");
@@ -296,7 +338,7 @@ async function handleRequestScoped(req, res) {
       }
       if (route === "/api/health" && req.method === "GET") {
         await db.prepare("SELECT 1").get();
-        return json(res, 200, { service: "retorno", version: "1.3.0" });
+        return json(res, 200, { service: "retorno", version: "1.3.0", directImageUpload: postgresMode });
       }
       if (route === "/api/register" && req.method === "POST") {
         rateLimit(req);
@@ -463,6 +505,29 @@ async function handleRequestScoped(req, res) {
       }
       const user = await auth(req);
       authorize(user, requestPermission(route, req.method));
+      if (route === "/api/report-images/upload-ticket" && req.method === "POST") {
+        if (!postgresMode) fail(404, "Direct image upload is unavailable.");
+        const data = await authorizedBody(req, "images.upload", user.id);
+        if (Object.keys(data).sort().join(",") !== "contentType,size" ||
+          !Number.isInteger(data.size) || data.size < 1 || data.size > maxImageBytes)
+          fail(400, "Choose a PNG, JPEG, or WebP image 10 MB or smaller.");
+        const ticket = await createImageUpload(user.id, data.contentType);
+        return json(res, 201, ticket);
+      }
+      const imageMatch = /^\/api\/post-images\/([a-zA-Z0-9-]+)$/.exec(route);
+      if (imageMatch && req.method === "GET") {
+        const post = await db.prepare("SELECT image FROM posts WHERE id=?").get(imageMatch[1]);
+        if (!post?.image) fail(404, "Image not found.");
+        let response;
+        try { response = await downloadImage(post.image); }
+        catch { fail(404, "Image not found."); }
+        const mime = response.headers.get("content-type")?.split(";")[0];
+        if (!response.ok || !["image/png", "image/jpeg", "image/webp"].includes(mime)) fail(404, "Image not found.");
+        const bytes = Buffer.from(await response.arrayBuffer());
+        res.writeHead(200, { "Content-Type": mime, "Content-Length": bytes.length,
+          "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+        return res.end(req.method === "HEAD" ? undefined : bytes);
+      }
       if (route === "/api/admins" && req.method === "POST") {
         if (user.role !== "admin")
           fail(403, "Only administrators can register another admin.");
@@ -588,9 +653,13 @@ async function handleRequestScoped(req, res) {
         if (!target) fail(404, "Account not found.");
         if (textField(data, "confirmEmail", 254).toLowerCase() !== target.email)
           fail(400, "Enter the account's email address to confirm deletion.");
+        const images = postgresMode
+          ? (await db.prepare("SELECT image FROM posts WHERE user_id=? AND image IS NOT NULL").all(id)).map(row => row.image)
+          : [];
         // Foreign-key cascades remove the target's reports and all sessions atomically.
         const deleted = await db.prepare(`DELETE FROM users WHERE id=? AND id<>? AND ${adminRowScope}`).run(id, user.id, user.id);
         if (!deleted.changes) fail(403, "Account deletion was not permitted.");
+        await Promise.all(images.map(cleanupImage));
         return json(res, 200, { ok: true });
       }
       if (route === "/api/users" && req.method === "GET") {
@@ -639,27 +708,35 @@ async function handleRequestScoped(req, res) {
           const totalPages = Math.max(1, Math.ceil(total / pageSize));
           const page = Math.min(Number(rawPage), totalPages);
           const posts = await db.prepare(filtered + order + " LIMIT ? OFFSET ?").all(...params, pageSize, (page - 1) * pageSize);
-          return json(res, 200, { posts, pagination: { page, pageSize, total, totalPages } });
+          return json(res, 200, { posts: publicPosts(posts), pagination: { page, pageSize, total, totalPages } });
         }
         const posts = await db.prepare(filtered + order).all(...params);
-        return json(res, 200, { posts });
+        return json(res, 200, { posts: publicPosts(posts) });
       }
       if (route === "/api/posts" && req.method === "POST") {
         if (user.role !== "student")
           fail(403, "Only students can create posts.");
         const values = await postData(
-          await authorizedBody(req, "posts.create", user.id),
+          await authorizedBody(req, "posts.create", user.id), null, user.id,
         );
         const id = randomUUID();
-        const inserted = await db
-          .prepare(
-            `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone,contact_details) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
-          )
-          .run(id, user.id, ...values, user.id);
-        if (!inserted.changes)
+        let inserted;
+        try {
+          inserted = await db
+            .prepare(
+              `INSERT INTO posts(id,user_id,kind,status,item_name,event_at,location,description,image,contact_email,contact_phone,contact_details) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${studentRowScope}`,
+            )
+            .run(id, user.id, ...values, user.id);
+        } catch (error) {
+          await cleanupImage(values[6]);
+          throw error;
+        }
+        if (!inserted.changes) {
+          await cleanupImage(values[6]);
           fail(403, "Post creation is no longer permitted.");
+        }
         return json(res, 201, {
-          post: await db.prepare(queryPosts + " WHERE p.id=?").get(id),
+          post: publicPost(await db.prepare(queryPosts + " WHERE p.id=?").get(id)),
         });
       }
       const match = /^\/api\/posts\/([a-zA-Z0-9-]+)$/.exec(route);
@@ -670,19 +747,20 @@ async function handleRequestScoped(req, res) {
         if (!post) fail(404, "Post not found.");
         if (user.role !== "admin")
           fail(403, "Only administrators can review or manage posts.");
-        if (req.method === "GET") return json(res, 200, { post });
+        if (req.method === "GET") return json(res, 200, { post: publicPost(post) });
         if (req.method === "DELETE") {
           const deleted = await db
             .prepare(`DELETE FROM posts WHERE id=? AND ${adminRowScope}`)
             .run(post.id, user.id);
           if (!deleted.changes)
             fail(403, "Post management is no longer permitted.");
+          await cleanupImage(post.image);
           return json(res, 200, { ok: true });
         }
         if (req.method === "PUT") {
           const values = await postData(
             await authorizedBody(req, "posts.manage", user.id),
-            post,
+            post, user.id,
           );
           await db.exec("BEGIN IMMEDIATE");
           try {
@@ -698,10 +776,14 @@ async function handleRequestScoped(req, res) {
             await db.exec("COMMIT");
           } catch (error) {
             try { await db.exec("ROLLBACK"); } catch {}
+            if (postgresMode && values[6] && values[6] !== post.image)
+              await cleanupImage(values[6]);
             throw error;
           }
+          if (postgresMode && post.image && values[6] !== post.image)
+            await cleanupImage(post.image);
           return json(res, 200, {
-            post: await db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
+            post: publicPost(await db.prepare(queryPosts + " WHERE p.id=?").get(post.id)),
           });
         }
         if (req.method === "PATCH") {
@@ -727,7 +809,7 @@ async function handleRequestScoped(req, res) {
             throw error;
           }
           return json(res, 200, {
-            post: await db.prepare(queryPosts + " WHERE p.id=?").get(post.id),
+            post: publicPost(await db.prepare(queryPosts + " WHERE p.id=?").get(post.id)),
           });
         }
       }

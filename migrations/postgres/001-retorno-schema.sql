@@ -115,5 +115,15 @@ REVOKE ALL ON users, sessions, posts, retired_student_claims,
   pending_registrations, password_resets, account_deletion_requests,
   policy_acceptances, item_outcome_notifications FROM anon, authenticated;
 
+-- Report photos are private; browsers receive one-use, short-lived upload grants
+-- from the authenticated application server and read images through its API.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('retorno-images', 'retorno-images', false, 10485760,
+  ARRAY['image/png', 'image/jpeg', 'image/webp'])
+ON CONFLICT (id) DO UPDATE SET
+  public = false,
+  file_size_limit = 10485760,
+  allowed_mime_types = ARRAY['image/png', 'image/jpeg', 'image/webp'];
+
 -- Never expose the private DATABASE_URL to browser code. The server still
 -- enforces student/admin permissions and SQL row scopes on every request.

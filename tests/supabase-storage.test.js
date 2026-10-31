@@ -1,0 +1,64 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+const originalFetch = globalThis.fetch;
+const env = {
+  url: process.env.SUPABASE_URL,
+  key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  bucket: process.env.SUPABASE_STORAGE_BUCKET,
+  nodeEnv: process.env.NODE_ENV,
+};
+
+test("signed upload grants are scoped to a generated private object path", async () => {
+  process.env.SUPABASE_URL = "https://project.example.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-server-secret";
+  process.env.SUPABASE_STORAGE_BUCKET = "private-images";
+  process.env.NODE_ENV = "test";
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return new Response(JSON.stringify({ url: "/object/upload/sign/private-images/user-id/file.png?token=short-lived" }), { status: 200 });
+  };
+
+  try {
+    const { createImageUpload } = await import(`../supabase-storage.js?test=${Date.now()}`);
+    const ticket = await createImageUpload("user-id", "image/png");
+    assert.match(ticket.path, /^user-id\/[a-f0-9-]{36}\.png$/);
+    assert.equal(request.url, `https://project.example.test/storage/v1/object/upload/sign/private-images/${ticket.path}`);
+    assert.equal(request.options.method, "POST");
+    assert.equal(request.options.headers.Authorization, "Bearer test-server-secret");
+    assert.match(ticket.uploadUrl, /token=short-lived$/);
+    assert.doesNotMatch(ticket.uploadUrl, /test-server-secret|service_role/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries({
+      SUPABASE_URL: env.url,
+      SUPABASE_SERVICE_ROLE_KEY: env.key,
+      SUPABASE_STORAGE_BUCKET: env.bucket,
+      NODE_ENV: env.nodeEnv,
+    })) value === undefined ? delete process.env[key] : process.env[key] = value;
+  }
+});
+
+test("Storage failures do not return server credentials or provider response details", async () => {
+  process.env.SUPABASE_URL = "https://project.example.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-server-secret";
+  process.env.NODE_ENV = "test";
+  globalThis.fetch = async () => new Response("provider-private-detail", { status: 500 });
+  try {
+    const { createImageUpload } = await import(`../supabase-storage.js?failure=${Date.now()}`);
+    await assert.rejects(() => createImageUpload("user-id", "image/png"), error => {
+      assert.match(error.message, /500/);
+      assert.doesNotMatch(error.message, /provider-private-detail|test-server-secret/);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries({
+      SUPABASE_URL: env.url,
+      SUPABASE_SERVICE_ROLE_KEY: env.key,
+      SUPABASE_STORAGE_BUCKET: env.bucket,
+      NODE_ENV: env.nodeEnv,
+    })) value === undefined ? delete process.env[key] : process.env[key] = value;
+  }
+});
