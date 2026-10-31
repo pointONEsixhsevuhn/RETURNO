@@ -4,12 +4,22 @@ const bucket = process.env.SUPABASE_STORAGE_BUCKET || "retorno-images";
 
 function config() {
   const base = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !key) throw new Error("Supabase Storage is not configured.");
   const url = new URL(base);
   if (url.protocol !== "https:" && process.env.NODE_ENV !== "test")
     throw new Error("Supabase Storage must use HTTPS.");
-  return { base: url.origin, key };
+  const secretKey = /^sb_secret_[A-Za-z0-9_-]+$/.test(key);
+  if (!secretKey) {
+    const parts = key.split(".");
+    let role;
+    try {
+      role = JSON.parse(Buffer.from(parts[1] || "", "base64url").toString("utf8")).role;
+    } catch {}
+    if (parts.length !== 3 || role !== "service_role")
+      throw new Error("Configure a Supabase secret key or legacy service-role key.");
+  }
+  return { base: url.origin, key, useBearer: !secretKey };
 }
 
 function objectUrl(path, mode = "object") {
@@ -21,12 +31,12 @@ function objectUrl(path, mode = "object") {
 }
 
 async function storageRequest(url, options = {}) {
-  const { key } = config();
+  const { key, useBearer } = config();
   const response = await fetch(url, {
     ...options,
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      ...(useBearer ? { Authorization: `Bearer ${key}` } : {}),
       ...options.headers,
     },
   });
