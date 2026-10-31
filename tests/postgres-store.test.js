@@ -43,6 +43,18 @@ test("Supabase schema includes current account/report features and blocks browse
   assert.match(sql, /ON DELETE CASCADE/);
 });
 
+test("distributed rate-limit migration keeps only bounded hashed keys outside browser access", async () => {
+  const sql = await readFile(
+    new URL("../migrations/postgres/002-distributed-rate-limits.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /request_rate_limits/);
+  assert.match(sql, /key_hash TEXT PRIMARY KEY CHECK \(key_hash ~ '\^\[a-f0-9\]\{64\}\$'\)/);
+  assert.match(sql, /expires_at BIGINT NOT NULL/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /REVOKE ALL ON request_rate_limits FROM anon, authenticated/);
+});
+
 test("Postgres request transactions use isolated clients and roll back on failure", async () => {
   const clients = [];
   const pool = {

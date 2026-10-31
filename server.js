@@ -1,7 +1,8 @@
 import http from "node:http";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
-import { randomUUID, randomBytes, randomInt, createHash } from "node:crypto";
+import { randomUUID, randomBytes, randomInt, createHash, createHmac } from "node:crypto";
+import { isIP } from "node:net";
 import sharp from "sharp";
 import { db, root, createUser, verifyPassword, hashPassword } from "./db.js";
 import {
@@ -18,13 +19,16 @@ import {
   isCurrentVerificationCodeDigest,
   verifyVerificationCode,
 } from "./verification-codes.js";
-import { createRequestRateLimiter } from "./request-rate-limit.js";
+import { createRequestRateLimiter, createPostgresRequestRateLimiter } from "./request-rate-limit.js";
+import { assertCodePepper } from "./verification-codes.js";
 import { createImageUpload, downloadImage, imageUrl, replaceImage, deleteImage, storageOrigin } from "./supabase-storage.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
 const termsVersion = "1.0";
 const privacyVersion = "1.1";
+if (process.env.VERCEL === "1" && process.env.RETURNO_POSTGRES_READY === "true")
+  assertCodePepper();
 const postgresMode = typeof db.withRequest === "function";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const publicUser = (u) => ({
@@ -55,6 +59,14 @@ const allowSensitiveRequest = createRequestRateLimiter({
   windowMs: 15 * 60 * 1000,
   maxKeys: 20_000,
 });
+const allowPersistentSensitiveRequest = postgresMode
+  ? createPostgresRequestRateLimiter({
+      db,
+      limit: 40,
+      windowMs: 15 * 60 * 1000,
+      maxKeys: 20_000,
+    })
+  : null;
 const deliveries = new Set();
 
 function json(res, status, body) {
@@ -303,8 +315,28 @@ async function postData(data, previous, userId) {
     contactField(data, "contact_details", previous, 500),
   ];
 }
-function rateLimit(req) {
-  if (!allowSensitiveRequest(req.socket.remoteAddress))
+function clientAddress(req) {
+  if (process.env.VERCEL === "1") {
+    const forwarded = req.headers["x-forwarded-for"];
+    const candidate = typeof forwarded === "string" ? forwarded.split(",", 1)[0].trim() : "";
+    if (isIP(candidate)) return candidate;
+  }
+  const remote = req.socket?.remoteAddress;
+  return typeof remote === "string" && isIP(remote) ? remote : "unknown";
+}
+function rateLimitKey(address) {
+  assertCodePepper();
+  return createHmac("sha256", Buffer.from(process.env.RETURNO_CODE_PEPPER, "hex"))
+    .update("RETURNO:request-rate-limit:v1:")
+    .update(address)
+    .digest("hex");
+}
+async function rateLimit(req) {
+  const address = clientAddress(req);
+  const allowed = postgresMode
+    ? await allowPersistentSensitiveRequest(rateLimitKey(address))
+    : allowSensitiveRequest(address);
+  if (!allowed)
     fail(429, "Too many attempts. Try again later.");
 }
 async function resolveOutcomeNotificationsForPost(postId, adminId) {
@@ -341,7 +373,7 @@ async function handleRequestScoped(req, res) {
         return json(res, 200, { service: "retorno", version: "1.3.0", directImageUpload: postgresMode });
       }
       if (route === "/api/register" && req.method === "POST") {
-        rateLimit(req);
+        await rateLimit(req);
         const data = await body(req),
           { email, password } = credentials(data);
         const fullName = textField(data, "fullName", 100);
@@ -387,7 +419,7 @@ async function handleRequestScoped(req, res) {
         return json(res, 202, { verificationRequired: true, email });
       }
       if (route === "/api/verify-email" && req.method === "POST") {
-        rateLimit(req);
+        await rateLimit(req);
         const data = await body(req);
         const email = textField(data, "email", 254).toLowerCase();
         const code = textField(data, "code", 6);
@@ -439,7 +471,7 @@ async function handleRequestScoped(req, res) {
         return json(res, 201, { user: publicUser(user) });
       }
       if (route === "/api/forgot-password" && req.method === "POST") {
-        rateLimit(req);
+        await rateLimit(req);
         const data = await body(req);
         const email = textField(data, "email", 254).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, "Enter a valid email.");
@@ -463,7 +495,7 @@ async function handleRequestScoped(req, res) {
         return json(res, 202, { message: "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
       }
       if (route === "/api/reset-password" && req.method === "POST") {
-        rateLimit(req);
+        await rateLimit(req);
         const data = await body(req);
         const { email, password } = credentials(data);
         if (data.confirmPassword !== password) fail(400, "Passwords do not match.");
@@ -491,7 +523,7 @@ async function handleRequestScoped(req, res) {
         return json(res, 200, { message: "Password changed. Please log in with your new password." });
       }
       if (route === "/api/login" && req.method === "POST") {
-        rateLimit(req);
+        await rateLimit(req);
         const data = await body(req),
           { email, password } = credentials(data);
         const user = await db.prepare("SELECT * FROM users WHERE email=?").get(email);
@@ -577,7 +609,7 @@ async function handleRequestScoped(req, res) {
       const studentOutcomeMatch = /^\/api\/posts\/([a-zA-Z0-9-]+)\/outcome-notifications$/.exec(route);
       if (studentOutcomeMatch && req.method === "POST") {
         const data = await authorizedBody(req, "outcome-notifications.create", user.id);
-        rateLimit(req);
+        await rateLimit(req);
         if (Object.keys(data).length !== 1 || !["Claimed", "Returned"].includes(data.outcome))
           fail(400, "Choose whether the item was Claimed or Returned.");
         const postId = studentOutcomeMatch[1];
