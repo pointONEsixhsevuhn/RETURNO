@@ -161,13 +161,15 @@ test("student report lifecycle and administrator review, edit, return and delete
   await ownCard.getByRole("button", { name: "Notify admin: claimed by its owner", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Notify administrator about item outcome" })).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("was claimed by its owner");
+  await page.locator("#outcome-proof-file").setInputFiles("public/assets/wallet.png");
+  await expect(page.locator("#outcome-proof-preview img")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Send notification", exact: true }).click();
   await expect(page.locator(".own .success-notice")).toHaveCount(0);
   await expect(ownCard).toContainText("Admin notified: claimed by its owner");
   const pendingPost = await (await page.request.get("/api/posts?mine=1")).json();
   expect(pendingPost.posts.find((post) => post.id === id).status).toBe("Lost");
   expect(pendingPost.posts.find((post) => post.id === id).pending_outcome).toBe("Claimed");
-  expect((await page.request.post(`/api/posts/${id}/outcome-notifications`, { data: { outcome: "Claimed" } })).status()).toBe(409);
+  expect((await page.request.post(`/api/posts/${id}/outcome-notifications`, { data: { outcome: "Claimed", image: "data:image/png;base64,AA==" } })).status()).toBe(409);
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await card.focus();
   await page.keyboard.press("Enter");
@@ -206,6 +208,8 @@ test("student report lifecycle and administrator review, edit, return and delete
   await expect(page.getByRole("dialog", { name: "Student outcome notifications" })).toBeVisible();
   await expect(notifications).toContainText(`${item}`);
   await expect(notifications).toContainText("reported this lost item as claimed by its owner");
+  await expect(notifications.locator(".outcome-proof-image")).toBeVisible();
+  await expect(notifications.getByRole("button", { name: `Set Claimed for ${item}`, exact: true })).toBeEnabled();
   await expect(notifications.getByRole("button", { name: `Set Returned for ${item}`, exact: true })).toHaveCount(0);
   await notifications.getByRole("button", { name: `Set Claimed for ${item}`, exact: true }).click();
   await expect(page.locator(".admin .success-notice")).toContainText("Post status changed to Claimed");
@@ -764,7 +768,7 @@ test("policy documents are public, readable and registration requires acknowledg
  const policy=page;
  await expect(policy).toHaveURL(/privacy\.html/);
  await expect(policy.getByRole('heading',{name:'Privacy Policy',exact:true})).toBeVisible();
- await expect(policy.getByText('Last updated: October 31, 2026 · Version 1.1')).toBeVisible();
+ await expect(policy.getByText('Last updated: October 31, 2026 · Version 1.2')).toBeVisible();
  await expect(policy.locator('footer.legal')).toHaveCount(0);
  await expect(policy.locator('.policy-tabs')).toHaveCount(0);
  await expect(policy.getByRole('link',{name:'Terms and Conditions',exact:true})).toHaveCount(0);

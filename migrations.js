@@ -41,6 +41,7 @@ export const migrations = [
   { version: 8, name: "account-deletion-requests", sql: readFileSync(new URL("./migrations/008-account-deletion-requests.sql", import.meta.url), "utf8") },
   { version: 9, name: "policy-acceptance", sql: readFileSync(new URL("./migrations/009-policy-acceptance.sql", import.meta.url), "utf8") },
   { version: 10, name: "item-outcome-notifications", sql: readFileSync(new URL("./migrations/010-item-outcome-notifications.sql", import.meta.url), "utf8") },
+  { version: 11, name: "outcome-notification-proof", sql: readFileSync(new URL("./migrations/011-outcome-notification-proof.sql", import.meta.url), "utf8") },
 ];
 
 export function migrate(db, steps = migrations) {

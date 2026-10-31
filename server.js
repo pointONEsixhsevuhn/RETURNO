@@ -26,7 +26,7 @@ import { createImageUpload, downloadImage, imageUrl, replaceImage, deleteImage, 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
 const termsVersion = "1.0";
-const privacyVersion = "1.1";
+const privacyVersion = "1.2";
 if (process.env.VERCEL === "1" && process.env.RETURNO_POSTGRES_READY === "true")
   assertCodePepper();
 const postgresMode = typeof db.withRequest === "function";
@@ -340,8 +340,12 @@ async function rateLimit(req) {
     fail(429, "Too many attempts. Try again later.");
 }
 async function resolveOutcomeNotificationsForPost(postId, adminId) {
-  await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+  const proofs = (await db.prepare(`SELECT proof_image FROM item_outcome_notifications
+    WHERE post_id=? AND reviewed_at IS NULL AND proof_image IS NOT NULL AND ${adminRowScope}`)
+    .all(postId, adminId)).map((row) => row.proof_image);
+  await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?,proof_image=NULL
     WHERE post_id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(adminId, postId, adminId);
+  return proofs;
 }
 
 async function handleRequestScoped(req, res) {
@@ -579,6 +583,45 @@ async function handleRequestScoped(req, res) {
         const ticket = await createImageUpload(user.id, data.contentType);
         return json(res, 201, ticket);
       }
+      const proofTicketMatch = /^\/api\/posts\/([a-zA-Z0-9-]+)\/outcome-notifications\/proof-upload-ticket$/.exec(route);
+      if (proofTicketMatch && req.method === "POST") {
+        const data = await authorizedBody(req, "outcome-notifications.create", user.id);
+        if (!postgresMode) fail(404, "Direct proof upload is unavailable.");
+        if (Object.keys(data).sort().join(",") !== "contentType,size" ||
+          !Number.isInteger(data.size) || data.size < 1 || data.size > maxImageBytes)
+          fail(400, "Choose a PNG, JPEG, or WebP proof image 10 MB or smaller.");
+        const post = await db.prepare(`SELECT p.id FROM posts p WHERE p.id=? AND p.user_id=?
+          AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(proofTicketMatch[1], user.id, user.id);
+        if (!post) fail(404, "Active post not found.");
+        const pending = await db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(post.id);
+        if (pending) fail(409, "An administrator has already been notified about this post.");
+        await rateLimit(req);
+        return json(res, 201, await createImageUpload(user.id, data.contentType));
+      }
+      const outcomeProofMatch = /^\/api\/item-outcome-notifications\/([a-zA-Z0-9-]+)\/proof$/.exec(route);
+      if (outcomeProofMatch && req.method === "GET") {
+        const notification = await db.prepare(`SELECT n.proof_image FROM item_outcome_notifications n
+          WHERE n.id=? AND n.reviewed_at IS NULL AND ${adminRowScope}`)
+          .get(outcomeProofMatch[1], user.id);
+        if (!notification?.proof_image) fail(404, "Pending proof image not found.");
+        let bytes, mime;
+        if (postgresMode) {
+          let response;
+          try { response = await downloadImage(notification.proof_image); }
+          catch { fail(404, "Proof image not found."); }
+          mime = response.headers.get("content-type")?.split(";")[0];
+          if (!response.ok || !["image/png", "image/jpeg", "image/webp"].includes(mime)) fail(404, "Proof image not found.");
+          bytes = Buffer.from(await response.arrayBuffer());
+        } else {
+          const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(notification.proof_image);
+          if (!match) fail(404, "Proof image not found.");
+          mime = match[1];
+          bytes = Buffer.from(match[2], "base64");
+        }
+        res.writeHead(200, { "Content-Type": mime, "Content-Length": bytes.length,
+          "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+        return res.end(bytes);
+      }
       const imageMatch = /^\/api\/post-images\/([a-zA-Z0-9-]+)$/.exec(route);
       if (imageMatch && req.method === "GET") {
         const post = await db.prepare("SELECT image FROM posts WHERE id=?").get(imageMatch[1]);
@@ -631,6 +674,7 @@ async function handleRequestScoped(req, res) {
       }
       if (route === "/api/item-outcome-notifications" && req.method === "GET") {
         const notifications = await db.prepare(`SELECT n.id,n.post_id,n.outcome,n.created_at,
+          CASE WHEN n.proof_image IS NULL THEN 0 ELSE 1 END AS has_proof,
           p.kind,p.status AS current_status,p.item_name,p.location,u.full_name AS student_name
           FROM item_outcome_notifications n
           JOIN posts p ON p.id=n.post_id
@@ -643,8 +687,9 @@ async function handleRequestScoped(req, res) {
       if (studentOutcomeMatch && req.method === "POST") {
         const data = await authorizedBody(req, "outcome-notifications.create", user.id);
         await rateLimit(req);
-        if (Object.keys(data).length !== 1 || !["Claimed", "Returned"].includes(data.outcome))
-          fail(400, "Choose whether the item was Claimed or Returned.");
+        const expectedKeys = postgresMode ? "imageKey,outcome" : "image,outcome";
+        if (Object.keys(data).sort().join(",") !== expectedKeys || !["Claimed", "Returned"].includes(data.outcome))
+          fail(400, "Choose the outcome and attach a proof image.");
         const postId = studentOutcomeMatch[1];
         const post = await db.prepare(`SELECT p.id,p.status,p.kind FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}`).get(postId, user.id, user.id);
         if (!post) fail(404, "Active post not found.");
@@ -653,10 +698,36 @@ async function handleRequestScoped(req, res) {
         const pending = await db.prepare("SELECT id FROM item_outcome_notifications WHERE post_id=? AND reviewed_at IS NULL").get(postId);
         if (pending) fail(409, "An administrator has already been notified about this post.");
         const id = randomUUID();
-        const created = await db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome)
-          SELECT ?,p.id,?,? FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}
-          ON CONFLICT DO NOTHING`).run(id, user.id, data.outcome, postId, user.id, user.id);
-        if (!created.changes) fail(409, "An administrator has already been notified about this post.");
+        let proofImage = null;
+        let uploadedKey = null;
+        try {
+          if (postgresMode) {
+            uploadedKey = data.imageKey;
+            if (typeof uploadedKey !== "string" || !uploadedKey.startsWith(`${user.id}/`) ||
+              !/^[a-zA-Z0-9-]+\/[a-f0-9-]{36}\.(png|jpg|webp)$/.test(uploadedKey))
+              fail(400, "Upload a proof image before sending the notification.");
+            const response = await downloadImage(uploadedKey);
+            const mime = response.headers.get("content-type")?.split(";")[0];
+            if (!response.ok || !["image/png", "image/jpeg", "image/webp"].includes(mime))
+              fail(400, "Use a PNG, JPEG, or WebP proof image.");
+            const bytes = Buffer.from(await response.arrayBuffer());
+            if (bytes.length > maxImageBytes) fail(413, "Proof image must be 10 MB or smaller.");
+            const normalizedProof = await imageData(`data:${mime};base64,${bytes.toString("base64")}`);
+            const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(normalizedProof);
+            await replaceImage(uploadedKey, Buffer.from(match[2], "base64"), match[1]);
+            proofImage = uploadedKey;
+          } else {
+            proofImage = await imageData(data.image);
+            if (!proofImage) fail(400, "Attach a proof image before sending the notification.");
+          }
+          const created = await db.prepare(`INSERT INTO item_outcome_notifications(id,post_id,student_id,outcome,proof_image)
+            SELECT ?,p.id,?,?,? FROM posts p WHERE p.id=? AND p.user_id=? AND p.status IN ('Lost','Found') AND ${studentRowScope}
+            ON CONFLICT DO NOTHING`).run(id, user.id, data.outcome, proofImage, postId, user.id, user.id);
+          if (!created.changes) fail(409, "An administrator has already been notified about this post.");
+        } catch (error) {
+          if (postgresMode && uploadedKey?.startsWith(`${user.id}/`)) await cleanupImage(uploadedKey);
+          throw error;
+        }
         return json(res, 201, { notification: { id, postId, outcome: data.outcome } });
       }
       const reviewOutcomeMatch = /^\/api\/item-outcome-notifications\/([a-zA-Z0-9-]+)$/.exec(route);
@@ -667,20 +738,23 @@ async function handleRequestScoped(req, res) {
         const notificationId = reviewOutcomeMatch[1];
         await db.exec("BEGIN IMMEDIATE");
         try {
-          const notification = await db.prepare(`SELECT n.id,n.post_id,n.outcome FROM item_outcome_notifications n
+          const notification = await db.prepare(`SELECT n.id,n.post_id,n.outcome,n.proof_image FROM item_outcome_notifications n
             WHERE n.id=? AND n.reviewed_at IS NULL AND ${adminRowScope}`).get(notificationId, user.id);
           if (!notification) fail(404, "Pending notification not found.");
           if (data.status !== "Dismissed" && data.status !== notification.outcome)
             fail(400, `This notification can only set the status to ${notification.outcome}.`);
+          if (data.status !== "Dismissed" && !notification.proof_image)
+            fail(409, "This request has no proof image. Dismiss it and ask the student to submit a new request with proof.");
           if (data.status !== "Dismissed") {
             const changedPost = await db.prepare(`UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP
               WHERE id=? AND status IN ('Lost','Found') AND ${adminRowScope}`).run(data.status, notification.post_id, user.id);
             if (!changedPost.changes) fail(409, "This report is no longer active. Refresh the dashboard and review the post.");
           }
-          const reviewed = await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?
+          const reviewed = await db.prepare(`UPDATE item_outcome_notifications SET reviewed_at=CURRENT_TIMESTAMP,reviewed_by=?,proof_image=NULL
             WHERE id=? AND reviewed_at IS NULL AND ${adminRowScope}`).run(user.id, notificationId, user.id);
           if (!reviewed.changes) fail(409, "This notification was already reviewed. Refresh the dashboard.");
           await db.exec("COMMIT");
+          if (postgresMode) await cleanupImage(notification.proof_image);
           return json(res, 200, { ok: true, status: data.status });
         } catch (error) {
           try { await db.exec("ROLLBACK"); } catch {}
@@ -721,10 +795,16 @@ async function handleRequestScoped(req, res) {
         const images = postgresMode
           ? (await db.prepare("SELECT image FROM posts WHERE user_id=? AND image IS NOT NULL").all(id)).map(row => row.image)
           : [];
+        const outcomeProofs = postgresMode
+          ? (await db.prepare(`SELECT n.proof_image FROM item_outcome_notifications n
+              JOIN posts p ON p.id=n.post_id WHERE (n.student_id=? OR p.user_id=?) AND n.proof_image IS NOT NULL`)
+              .all(id, id)).map(row => row.proof_image)
+          : [];
         // Foreign-key cascades remove the target's reports and all sessions atomically.
         const deleted = await db.prepare(`DELETE FROM users WHERE id=? AND id<>? AND ${adminRowScope}`).run(id, user.id, user.id);
         if (!deleted.changes) fail(403, "Account deletion was not permitted.");
         await Promise.all(images.map(cleanupImage));
+        await Promise.all(outcomeProofs.map(cleanupImage));
         return json(res, 200, { ok: true });
       }
       if (route === "/api/users" && req.method === "GET") {
@@ -814,20 +894,27 @@ async function handleRequestScoped(req, res) {
           fail(403, "Only administrators can review or manage posts.");
         if (req.method === "GET") return json(res, 200, { post: publicPost(post) });
         if (req.method === "DELETE") {
+          const outcomeProofs = (await db.prepare(`SELECT n.proof_image FROM item_outcome_notifications n
+            JOIN posts p ON p.id=n.post_id WHERE p.id=? AND n.proof_image IS NOT NULL AND ${adminRowScope}`)
+            .all(post.id, user.id)).map((row) => row.proof_image);
           const deleted = await db
             .prepare(`DELETE FROM posts WHERE id=? AND ${adminRowScope}`)
             .run(post.id, user.id);
           if (!deleted.changes)
             fail(403, "Post management is no longer permitted.");
           await cleanupImage(post.image);
+          if (postgresMode) await Promise.all(outcomeProofs.map(cleanupImage));
           return json(res, 200, { ok: true });
         }
         if (req.method === "PUT") {
-          const values = await postData(
-            await authorizedBody(req, "posts.manage", user.id),
-            post, user.id,
-          );
+          const input = await authorizedBody(req, "posts.manage", user.id);
+          const pendingOutcome = await db.prepare(`SELECT id FROM item_outcome_notifications
+            WHERE post_id=? AND reviewed_at IS NULL`).get(post.id);
+          if (pendingOutcome)
+            fail(409, "Review or dismiss the student's request in Student outcome notifications before editing this post.");
+          const values = await postData(input, post, user.id);
           await db.exec("BEGIN IMMEDIATE");
+          let outcomeProofs = [];
           try {
             const updated = await db
               .prepare(
@@ -837,7 +924,7 @@ async function handleRequestScoped(req, res) {
             if (!updated.changes)
               fail(403, "Post management is no longer permitted.");
             if (["Claimed", "Returned"].includes(values[1]))
-              await resolveOutcomeNotificationsForPost(post.id, user.id);
+              outcomeProofs = await resolveOutcomeNotificationsForPost(post.id, user.id);
             await db.exec("COMMIT");
           } catch (error) {
             try { await db.exec("ROLLBACK"); } catch {}
@@ -847,6 +934,7 @@ async function handleRequestScoped(req, res) {
           }
           if (postgresMode && post.image && values[6] !== post.image)
             await cleanupImage(post.image);
+          if (postgresMode) await Promise.all(outcomeProofs.map(cleanupImage));
           return json(res, 200, {
             post: publicPost(await db.prepare(queryPosts + " WHERE p.id=?").get(post.id)),
           });
@@ -854,10 +942,15 @@ async function handleRequestScoped(req, res) {
         if (req.method === "PATCH") {
           const data = await authorizedBody(req, "posts.manage", user.id);
           if (!statuses.includes(data.status)) fail(400, "Invalid status.");
+          const pendingOutcome = await db.prepare(`SELECT id FROM item_outcome_notifications
+            WHERE post_id=? AND reviewed_at IS NULL`).get(post.id);
+          if (pendingOutcome)
+            fail(409, "Review or dismiss the student's request in Student outcome notifications before changing this post's status.");
           const kind = ["Lost", "Found"].includes(data.status)
             ? data.status
             : post.kind;
           await db.exec("BEGIN IMMEDIATE");
+          let outcomeProofs = [];
           try {
             const updated = await db
               .prepare(
@@ -867,12 +960,13 @@ async function handleRequestScoped(req, res) {
             if (!updated.changes)
               fail(403, "Post management is no longer permitted.");
             if (["Claimed", "Returned"].includes(data.status))
-              await resolveOutcomeNotificationsForPost(post.id, user.id);
+              outcomeProofs = await resolveOutcomeNotificationsForPost(post.id, user.id);
             await db.exec("COMMIT");
           } catch (error) {
             try { await db.exec("ROLLBACK"); } catch {}
             throw error;
           }
+          if (postgresMode) await Promise.all(outcomeProofs.map(cleanupImage));
           return json(res, 200, {
             post: publicPost(await db.prepare(queryPosts + " WHERE p.id=?").get(post.id)),
           });

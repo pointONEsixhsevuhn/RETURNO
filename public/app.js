@@ -387,7 +387,7 @@ function adminPostRow(p) {
 function outcomeNotificationPanel(notifications) {
   return `<section class="outcome-notifications" aria-labelledby="outcome-notifications-title"><div class="outcome-notifications-head"><h2 id="outcome-notifications-title" tabindex="-1">Student outcome notifications</h2><div class="outcome-notifications-tools"><span>${notifications.length}</span><button type="button" class="pill" data-refresh-outcome-notifications>Refresh</button></div></div>${notifications.length ? notifications.map((item) => {
     const outcomePhrase = item.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
-    return `<article class="outcome-notification" data-outcome-notification="${esc(item.id)}"><div><h3>${esc(item.item_name)}</h3><p><strong>${esc(item.student_name)}</strong> reported this ${esc(item.kind.toLowerCase())} item as <strong>${esc(outcomePhrase)}</strong>.</p><p class="outcome-notification-location">Location: ${esc(item.location)}</p><p>Current post status: ${esc(item.current_status)}</p><p class="error" role="alert"></p></div><div class="outcome-notification-actions"><button type="button" class="pill" data-review-status="${esc(item.outcome)}" aria-label="Set ${esc(item.outcome)} for ${esc(item.item_name)}">Set ${esc(item.outcome)}</button><button type="button" class="pill" data-review-status="Dismissed">Dismiss</button></div></article>`;
+    return `<article class="outcome-notification" data-outcome-notification="${esc(item.id)}"><div><h3>${esc(item.item_name)}</h3><p><strong>${esc(item.student_name)}</strong> reported this ${esc(item.kind.toLowerCase())} item as <strong>${esc(outcomePhrase)}</strong>.</p><p class="outcome-notification-location">Location: ${esc(item.location)}</p><p>Current post status: ${esc(item.current_status)}</p>${item.has_proof ? `<img class="outcome-proof-image" src="/api/item-outcome-notifications/${encodeURIComponent(item.id)}/proof" alt="Student's proof image for ${esc(item.item_name)}" loading="lazy">` : '<p class="outcome-proof-missing">No proof image is attached. Dismiss this older request and ask the student to submit it again with proof.</p>'}<p class="error" role="alert"></p></div><div class="outcome-notification-actions">${item.has_proof ? `<button type="button" class="pill" data-review-status="${esc(item.outcome)}" aria-label="Set ${esc(item.outcome)} for ${esc(item.item_name)}" disabled>Set ${esc(item.outcome)}</button>` : ''}<button type="button" class="pill" data-review-status="Dismissed">Dismiss</button></div></article>`;
   }).join("") : '<p class="empty">No pending student notifications.</p>'}</section>`;
 }
 function renderOutcomeNotificationsDialog(notifications) {
@@ -402,6 +402,17 @@ function showOutcomeNotificationsDialog(notifications) {
   dialog.querySelector("h2").focus?.({ preventScroll: true });
 }
 function bindOutcomeNotifications() {
+  dialog.querySelectorAll(".outcome-notification").forEach((row) => {
+    const proof = row.querySelector(".outcome-proof-image");
+    const confirm = row.querySelector('[data-review-status="Claimed"], [data-review-status="Returned"]');
+    if (!proof || !confirm) return;
+    const enableAfterLoad = () => { if (proof.naturalWidth > 0) confirm.disabled = false; };
+    if (proof.complete) enableAfterLoad();
+    else proof.addEventListener("load", enableAfterLoad, { once: true });
+    proof.addEventListener("error", () => {
+      row.querySelector("[role=alert]").textContent = "The proof image could not be loaded. Refresh the inbox before reviewing this request.";
+    }, { once: true });
+  });
   dialog.querySelector("[data-refresh-outcome-notifications]").onclick = async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -486,18 +497,77 @@ function showOutcomeNotificationDialog(post) {
   const pageVersion = renderVersion;
   const outcome = post.kind === "Lost" ? "Claimed" : "Returned";
   const outcomePhrase = post.kind === "Lost" ? "claimed by its owner" : "returned to its owner";
-  dialog.innerHTML = `<form id="outcome-notification-form"><h2>Notify administrator</h2><p>Tell an administrator that <strong>${esc(post.item_name)}</strong> was ${esc(outcomePhrase)}. This will not change the post status. An administrator will review it and set the final status.</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Send notification</button></div></form>`;
-  dialog.querySelector("[data-close]").onclick = dismissDialog;
+  dialog.innerHTML = `<form id="outcome-notification-form"><h2>Notify administrator</h2><p>Tell an administrator that <strong>${esc(post.item_name)}</strong> was ${esc(outcomePhrase)}. This will not change the post status. An administrator will review the proof and set the final status.</p><label for="outcome-proof-file">Upload proof image (required)</label><input id="outcome-proof-file" type="file" accept="image/png,image/jpeg,image/webp" required><small>PNG, JPEG, or WebP up to 10 MB. Only administrators can view it. The image is deleted after the request is reviewed.</small><div id="outcome-proof-preview" class="outcome-proof-preview" aria-live="polite"></div><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit">Send notification</button></div></form>`;
+  let proofFile = null;
+  let proofPreview = null;
+  dialog.querySelector("[data-close]").onclick = () => {
+    if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
+    dismissDialog();
+  };
+  const proofInput = dialog.querySelector("#outcome-proof-file");
+  const preview = dialog.querySelector("#outcome-proof-preview");
+  proofInput.onchange = () => {
+    if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
+    proofFile = proofInput.files?.[0] || null;
+    preview.replaceChildren();
+    proofPreview = null;
+    if (!proofFile) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(proofFile.type)) {
+      proofInput.value = "";
+      proofFile = null;
+      return errorAt(dialog.querySelector("[role=alert]"), "Choose a PNG, JPEG, or WebP image.");
+    }
+    if (proofFile.size > 10 * 1024 * 1024) {
+      proofInput.value = "";
+      proofFile = null;
+      return errorAt(dialog.querySelector("[role=alert]"), "Proof image must be 10 MB or smaller.");
+    }
+    if (state.directImageUpload) {
+      proofPreview = URL.createObjectURL(proofFile);
+      preview.innerHTML = `<img src="${esc(proofPreview)}" alt="Selected proof image preview">`;
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        proofPreview = reader.result;
+        preview.innerHTML = `<img src="${esc(proofPreview)}" alt="Selected proof image preview">`;
+      };
+      reader.onerror = () => errorAt(dialog.querySelector("[role=alert]"), "Unable to read the proof image.");
+      reader.readAsDataURL(proofFile);
+    }
+    dialog.querySelector("[role=alert]").textContent = "";
+  };
   dialog.querySelector("form").onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const submit = form.querySelector('[type="submit"]');
+    if (!proofFile) return errorAt(form.querySelector("[role=alert]"), "Choose a proof image before sending the notification.");
     submit.disabled = true;
     try {
+      let proof;
+      if (state.directImageUpload) {
+        const ticket = await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications/proof-upload-ticket`, {
+          method: "POST",
+          body: JSON.stringify({ contentType: proofFile.type, size: proofFile.size }),
+        });
+        const uploadBody = new FormData();
+        uploadBody.append("cacheControl", "3600");
+        uploadBody.append("", proofFile);
+        const uploaded = await fetch(ticket.uploadUrl, {
+          method: "PUT",
+          headers: { "x-upsert": "false" },
+          body: uploadBody,
+        });
+        if (!uploaded.ok) throw new Error("Proof upload failed. Please try again.");
+        proof = { imageKey: ticket.path };
+      } else {
+        if (!proofPreview) throw new Error("Please wait for the proof image preview.");
+        proof = { image: proofPreview };
+      }
       await api(`/posts/${encodeURIComponent(post.id)}/outcome-notifications`, {
         method: "POST",
-        body: JSON.stringify({ outcome }),
+        body: JSON.stringify({ outcome, ...proof }),
       });
+      if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
       if (pageVersion !== renderVersion) return;
       dismissDialog();
       state.notice = "";
@@ -633,7 +703,10 @@ function bindPagination(load) {
 function showAccountDeletionDialog(request, pageVersion) {
   const cancelling = Boolean(request);
   dialog.innerHTML = `<form id="account-deletion-request-form"><h2>${cancelling ? "Cancel deletion request?" : "Request account deletion?"}</h2><p>${cancelling ? `Your request, submitted ${esc(request.requestedAt)}, is pending administrator review. You can cancel it here.` : "This sends a request to an administrator; it does not delete your account now. If an administrator approves it, all your posts and sessions will be deleted with your account."}</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Keep account</button><button type="submit">${cancelling ? "Cancel request" : "Send request"}</button></div></form>`;
-  dialog.querySelector("[data-close]").onclick = dismissDialog;
+  dialog.querySelector("[data-close]").onclick = () => {
+    if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
+    dismissDialog();
+  };
   dialog.querySelector("form").onsubmit = async event => {
     event.preventDefault();
     const submit = event.currentTarget.querySelector('[type="submit"]');

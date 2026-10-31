@@ -1652,6 +1652,14 @@ dialog:has(.detail-layout) h2 { color: #382a1b; font-size: clamp(20px, 3vw, 26px
 .policy-agreement input { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0; }
 .profile-options a { display: flex; align-items: center; min-height: 42px; padding: 9px 12px; border-radius: 9px; color: inherit; font-size: 14px; text-decoration: none; }
 .policy-agreement input { width: 24px; height: 24px; font-size: 16px; }
+dialog #outcome-notification-form { display: grid; gap: 12px; }
+dialog #outcome-notification-form > input[type="file"] { width: 100%; min-height: 46px; padding: 9px; border: 1px solid #bca98f; border-radius: 10px; background: #fff; }
+dialog #outcome-notification-form > small { color: #665744; line-height: 1.5; }
+.outcome-proof-preview { min-height: 0; }
+.outcome-proof-preview img, .outcome-proof-image { display: block; max-width: 100%; max-height: 340px; object-fit: contain; border: 1px solid #e5d9c9; border-radius: 12px; background: #fff; }
+.outcome-notification { min-width: 0; }
+.outcome-notification-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.outcome-proof-missing { color: #79552e; }
 /* Standalone policy documents retain the shared document typography. */
 .policy-page { max-width: 900px; padding: clamp(16px, 4vw, 36px); }
 .policy-card { padding: clamp(18px, 4vw, 32px); border: 1px solid #dfd3c2; border-radius: 18px; background: #fffdf9; box-shadow: 0 4px 18px #51381e0a; }

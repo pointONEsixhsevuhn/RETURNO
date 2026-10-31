@@ -52,6 +52,10 @@ export function requestPermission(route, method) {
     return "posts.manage";
   if (/^\/api\/posts\/[a-zA-Z0-9-]+\/outcome-notifications$/.test(route) && method === "POST")
     return "outcome-notifications.create";
+  if (/^\/api\/posts\/[a-zA-Z0-9-]+\/outcome-notifications\/proof-upload-ticket$/.test(route) && method === "POST")
+    return "outcome-notifications.create";
+  if (/^\/api\/item-outcome-notifications\/[a-zA-Z0-9-]+\/proof$/.test(route) && method === "GET")
+    return "outcome-notifications.read";
   if (/^\/api\/item-outcome-notifications\/[a-zA-Z0-9-]+$/.test(route) && method === "PATCH")
     return "outcome-notifications.review";
   if (/^\/api\/users\/[a-zA-Z0-9-]+$/.test(route) && method === "DELETE")
