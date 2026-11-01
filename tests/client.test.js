@@ -6,12 +6,12 @@ const source = await readFile(
   new URL("../public/api.js", import.meta.url),
   "utf8",
 );
-function client(fetch) {
+function client(fetch, timers = {}) {
   const ctx = vm.createContext({
     fetch,
     AbortController,
-    setTimeout,
-    clearTimeout,
+    setTimeout: timers.setTimeout || setTimeout,
+    clearTimeout: timers.clearTimeout || clearTimeout,
   });
   vm.runInContext(source, ctx);
   return ctx.RetornoAPI.request;
@@ -72,4 +72,51 @@ test("API sends same-origin credentials and accepts created accounts", async () 
     (await api("/register", { method: "POST", body: "{}" })).user.id,
     "new",
   );
+});
+
+test("post and proof-image submissions get enough time for large tunnel uploads", async () => {
+  const delays = [];
+  let finish;
+  const api = client(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    {
+      setTimeout(callback, delay) {
+        delays.push(delay);
+        return { callback };
+      },
+      clearTimeout() {},
+    },
+  );
+
+  const pending = api("/posts", {
+    method: "POST",
+    body: "large image payload",
+  });
+  assert.deepEqual(delays, [90000]);
+  finish(Response.json({ post: { id: "created" } }, { status: 201 }));
+  assert.equal((await pending).post.id, "created");
+
+  const proof = api("/posts/post-id/outcome-notifications", {
+    method: "POST",
+    body: "large proof image payload",
+  });
+  assert.deepEqual(delays, [90000, 90000]);
+  finish(Response.json({ ok: true }, { status: 201 }));
+  await proof;
+});
+
+test("ordinary requests keep the short timeout", async () => {
+  let delay;
+  const api = client(async () => Response.json({ ok: true }), {
+    setTimeout(_callback, ms) {
+      delay = ms;
+      return 1;
+    },
+    clearTimeout() {},
+  });
+  await api("/health");
+  assert.equal(delay, 15000);
 });
