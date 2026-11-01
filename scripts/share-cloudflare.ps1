@@ -36,11 +36,17 @@ $localUrl = "http://127.0.0.1:$port"
 $serverProcess = $null
 $previousCookieSecure = $env:COOKIE_SECURE
 $previousOpenBrowser = $env:OPEN_BROWSER
+$previousHost = $env:HOST
+$previousTrustCloudflareTunnel = $env:RETURNO_TRUST_CLOUDFLARE_TUNNEL
 
 try {
   # Public Quick Tunnel traffic uses HTTPS, so set the session cookie Secure.
   $env:COOKIE_SECURE = "true"
   $env:OPEN_BROWSER = "false"
+  # The local origin must be reachable only through this tunnel before trusting
+  # Cloudflare's visitor-IP header for per-client request limits.
+  $env:HOST = "127.0.0.1"
+  $env:RETURNO_TRUST_CLOUDFLARE_TUNNEL = "true"
   $serverProcess = Start-Process -FilePath $node.Source `
     -ArgumentList @("scripts/start.js") `
     -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
@@ -74,4 +80,6 @@ try {
   }
   $env:COOKIE_SECURE = $previousCookieSecure
   $env:OPEN_BROWSER = $previousOpenBrowser
+  $env:HOST = $previousHost
+  $env:RETURNO_TRUST_CLOUDFLARE_TUNNEL = $previousTrustCloudflareTunnel
 }

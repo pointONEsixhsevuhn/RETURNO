@@ -1,3 +1,27 @@
+import { isIP } from "node:net";
+
+function isLoopback(address) {
+  if (typeof address !== "string") return false;
+  if (address === "::1" || address.toLowerCase().startsWith("::ffff:127."))
+    return true;
+  const octets = address.split(".").map(Number);
+  return (
+    octets.length === 4 &&
+    octets[0] === 127 &&
+    octets.every((octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255)
+  );
+}
+
+export function requestClientAddress(req, { trustCloudflareTunnel = false } = {}) {
+  const remote = req.socket?.remoteAddress;
+  if (trustCloudflareTunnel && isLoopback(remote)) {
+    const cloudflareAddress = req.headers?.["cf-connecting-ip"];
+    if (typeof cloudflareAddress === "string" && isIP(cloudflareAddress))
+      return cloudflareAddress;
+  }
+  return typeof remote === "string" && isIP(remote) ? remote : "unknown";
+}
+
 export function createRequestRateLimiter({
   limit,
   windowMs,

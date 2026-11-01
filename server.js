@@ -2,7 +2,6 @@ import http from "node:http";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { randomUUID, randomBytes, randomInt, createHash } from "node:crypto";
-import { isIP } from "node:net";
 import sharp from "sharp";
 import { db, root, createUser, verifyPassword, hashPassword } from "./db.js";
 import {
@@ -19,7 +18,10 @@ import {
   isCurrentVerificationCodeDigest,
   verifyVerificationCode,
 } from "./verification-codes.js";
-import { createRequestRateLimiter } from "./request-rate-limit.js";
+import {
+  createRequestRateLimiter,
+  requestClientAddress,
+} from "./request-rate-limit.js";
 
 const statuses = ["Lost", "Found", "Claimed", "Returned"];
 const sessionAge = 7 * 24 * 60 * 60 * 1000;
@@ -264,12 +266,11 @@ async function postData(data, previous) {
     contactField(data, "contact_details", previous, 500),
   ];
 }
-function clientAddress(req) {
-  const remote = req.socket?.remoteAddress;
-  return typeof remote === "string" && isIP(remote) ? remote : "unknown";
-}
 async function rateLimit(req) {
-  const address = clientAddress(req);
+  const address = requestClientAddress(req, {
+    trustCloudflareTunnel:
+      process.env.RETURNO_TRUST_CLOUDFLARE_TUNNEL === "true",
+  });
   if (!allowSensitiveRequest(address))
     fail(429, "Too many attempts. Try again later.");
 }

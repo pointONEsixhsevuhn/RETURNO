@@ -1,5 +1,6 @@
 # RETURNO project status and roadmap
 - **Deployment cleanup (2026-11-01):** removed cloud-hosting adapters and provider-only configuration. RETURNO now uses its local SQLite + Node server path; verification is in progress.
+- **Temporary tunnel registration throttling (2026-11-01):** sensitive-request limits now key Cloudflare Quick Tunnel requests by the verified visitor IP when the tunnel launcher explicitly enables trust and binds the origin to loopback. Other deployments ignore proxy IP headers. Full Node suite passed (**128/128**); Playwright passed (**61 passed, 3 intentional skips**); workflow verification, PowerShell syntax parsing, and `git diff --check` passed.
 
 Reviewed: 2026-11-01
 
