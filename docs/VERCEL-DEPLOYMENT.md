@@ -6,7 +6,7 @@ The Vercel request entry point and PostgreSQL/Storage adapters are present. **Th
 
 The selected target is Vercel Hobby with Supabase Postgres and Supabase Storage. Existing local SQLite remains the development and test backend. Supabase SQL migrations `001`–`004` must all be applied before the deployment check passes. Migration `004-outcome-notification-proof.sql` adds the private proof reference used by the current student outcome request flow.
 
-The Supabase transaction pooler for this project is in London (`eu-west-2`); `vercel.json` pins the function to Vercel's London region (`lhr1`) to reduce database round-trip latency. Keep this aligned if the database region changes. The Postgres pool uses Vercel's idle-connection lifecycle hook, and password-reset and password-change emails use Vercel's `waitUntil()` integration so the function can manage database connections and finish mail tasks after a response. This does not make SMTP or a misconfigured deployment succeed by itself.
+The recommended Supabase region for RETURNO's Philippine testers is Southeast Asia (Singapore, `ap-southeast-1`); `vercel.json` pins the function to Vercel's matching Singapore region (`sin1`) to reduce database round-trip latency. Keep both regions aligned if the database region changes. The Postgres pool uses Vercel's idle-connection lifecycle hook, and password-reset and password-change emails use Vercel's `waitUntil()` integration so the function can manage database connections and finish mail tasks after a response. This does not make SMTP or a misconfigured deployment succeed by itself.
 
 ## Migration phases
 
