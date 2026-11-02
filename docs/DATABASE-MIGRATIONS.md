@@ -11,7 +11,7 @@ Startup now calls `migrate()` from `migrations.js` before serving requests. Fres
 3. Test fresh creation, upgrade from the published baseline, data preservation, repeat startup, failure rollback and restart using disposable databases. Do not change prior migration SQL to repair a deployed database; add a new migration.
 4. Before a production schema upgrade, create and verify a SQLite-aware backup. Backup/restore tooling remains a separate task; rollback on migration failure is not a substitute for a backup or a downgrade procedure.
 
-SQLite applies numbered migrations automatically on server startup.
+SQLite applies numbered migrations automatically on server startup. PostgreSQL/Supabase has a separately maintained SQL sequence under `migrations/postgres/`; apply each new PostgreSQL migration manually in order in the Supabase SQL Editor and verify the schema before deploying code that uses it.
 
 ## Atomic upgrade and failures
 

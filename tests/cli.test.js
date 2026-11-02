@@ -247,7 +247,7 @@ test("admin account setup awaits asynchronous database lookups and inserts", asy
   assert.equal(calls.length, 3);
 });
 
-test("admin password recovery awaits database reads and atomically revokes sessions", async () => {
+test("admin password recovery awaits Postgres reads and atomically revokes sessions", async () => {
   const events = [];
   const db = {
     prepare(sql) {

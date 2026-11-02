@@ -4,6 +4,7 @@ const permissions = new Map([
   ["session.logout", ["student", "admin"]],
   ["posts.list", ["student", "admin"]],
   ["posts.create", ["student"]],
+  ["images.upload", ["student", "admin"]],
   ["posts.manage", ["admin"]],
   ["users.list", ["admin"]],
   ["users.delete", ["admin"]],
@@ -31,6 +32,7 @@ export function requestPermission(route, method) {
     ["POST /api/logout", "session.logout"],
     ["GET /api/posts", "posts.list"],
     ["POST /api/posts", "posts.create"],
+    ["POST /api/report-images/upload-ticket", "images.upload"],
     ["GET /api/users", "users.list"],
     ["GET /api/account-deletion-request", "account-deletion.read"],
     ["POST /api/account-deletion-request", "account-deletion.request"],
@@ -40,11 +42,17 @@ export function requestPermission(route, method) {
     ["POST /api/admins", "admins.create"],
   ]);
   if (
+    /^\/api\/post-images\/[a-zA-Z0-9-]+$/.test(route) && method === "GET"
+  )
+    return "posts.list";
+  if (
     /^\/api\/posts\/[a-zA-Z0-9-]+$/.test(route) &&
     ["GET", "PUT", "PATCH", "DELETE"].includes(method)
   )
     return "posts.manage";
   if (/^\/api\/posts\/[a-zA-Z0-9-]+\/outcome-notifications$/.test(route) && method === "POST")
+    return "outcome-notifications.create";
+  if (/^\/api\/posts\/[a-zA-Z0-9-]+\/outcome-notifications\/proof-upload-ticket$/.test(route) && method === "POST")
     return "outcome-notifications.create";
   if (/^\/api\/item-outcome-notifications\/[a-zA-Z0-9-]+\/proof$/.test(route) && method === "GET")
     return "outcome-notifications.read";
