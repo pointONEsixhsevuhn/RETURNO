@@ -416,6 +416,13 @@ test("admin confirms account deletion, removes its reports and invalidates the s
  await deletionMenuItem.click();
  const requestDialog = page.getByRole("dialog", { name: "Request account deletion", exact: true });
  await expect(requestDialog).toContainText("it does not delete your account now");
+ await requestDialog.getByRole("button", { name: "Keep account", exact: true }).click();
+ await expect(requestDialog).not.toBeVisible();
+ await expect(deletionMenuItem).toHaveText("Request account deletion");
+ await expect(page).toHaveURL(/#feed$/);
+ await page.getByRole("button", { name: "Profile options", exact: true }).click();
+ await deletionMenuItem.click();
+ await expect(requestDialog).toBeVisible();
  await page.goBack();
  await expect(requestDialog).not.toBeVisible();
  await expect(page).toHaveURL(/#feed$/);
@@ -435,6 +442,12 @@ test("admin confirms account deletion, removes its reports and invalidates the s
  await deletionMenuItem.click();
  const pendingDialog = page.getByRole("dialog", { name: "Cancel deletion request", exact: true });
  await expect(pendingDialog).toContainText("pending administrator review");
+ await pendingDialog.getByRole("button", { name: "Keep account", exact: true }).click();
+ await expect(pendingDialog).not.toBeVisible();
+ await expect(deletionMenuItem).toHaveText("Cancel account deletion request");
+ await page.getByRole("button", { name: "Profile options", exact: true }).click();
+ await deletionMenuItem.click();
+ await expect(pendingDialog).toBeVisible();
  await pendingDialog.getByRole("button", { name: "Cancel request", exact: true }).click();
  await expect(deletionMenuItem).toHaveText("Request account deletion");
  await expect(page.locator("[data-account-deletion-status]")).toHaveCount(0);

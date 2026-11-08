@@ -726,7 +726,6 @@ function showAccountDeletionDialog(request, pageVersion, deletionButton) {
   const cancelling = Boolean(request);
   dialog.innerHTML = `<form id="account-deletion-request-form"><h2>${cancelling ? "Cancel deletion request?" : "Request account deletion?"}</h2><p>${cancelling ? `Your request, submitted ${esc(request.requestedAt)}, is pending administrator review. You can cancel it here.` : "This sends a request to an administrator; it does not delete your account now. If an administrator approves it, all your posts and sessions will be deleted with your account."}</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Keep account</button><button type="submit">${cancelling ? "Cancel request" : "Send request"}</button></div></form>`;
   dialog.querySelector("[data-close]").onclick = () => {
-    if (proofPreview?.startsWith("blob:")) URL.revokeObjectURL(proofPreview);
     dismissDialog();
   };
   dialog.querySelector("form").onsubmit = async event => {
