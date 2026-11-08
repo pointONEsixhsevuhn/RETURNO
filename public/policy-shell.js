@@ -25,6 +25,25 @@
   });
 
   const profile = document.querySelector(".profile-dropdown");
+  const deletionAction = document.querySelector('[data-policy-action="deletion"]');
+  const updateDeletionLabel = request => {
+    if (deletionAction) deletionAction.textContent = request
+      ? "Cancel account deletion request"
+      : "Request account deletion";
+  };
+  const syncDeletionLabel = async () => {
+    if (role !== "student" || !globalThis.RetornoAPI) return;
+    try {
+      const { request } = await globalThis.RetornoAPI.request("/account-deletion-request");
+      updateDeletionLabel(request);
+    } catch {
+      // Keep the menu available; the action reports the error if the user selects it.
+    }
+  };
+  profile.addEventListener("toggle", () => {
+    if (profile.open) syncDeletionLabel();
+  });
+  if (profile.open) syncDeletionLabel();
   document.addEventListener("click", event => {
     const nav = event.target.closest("[data-policy-nav]");
     if (nav) {
@@ -61,19 +80,22 @@
           });
       } else if (type === "deletion") {
         if (!globalThis.RetornoAPI) return alert("The RETURNO server is unavailable.");
-        globalThis.RetornoAPI.request("/account-deletion-request").then(({ request }) => {
+        action.disabled = true;
+        globalThis.RetornoAPI.request("/account-deletion-request").then(async ({ request }) => {
           const cancelling = Boolean(request);
+          updateDeletionLabel(request);
           const message = cancelling
             ? "Cancel your pending account deletion request?"
             : "Request account deletion? An administrator will review your request, and approval deletes your account and posts.";
           if (!window.confirm(message)) return;
-          return globalThis.RetornoAPI.request("/account-deletion-request", {
+          await globalThis.RetornoAPI.request("/account-deletion-request", {
             method: cancelling ? "DELETE" : "POST",
             ...(cancelling ? {} : { body: JSON.stringify({}) }),
-          }).then(() => {
-            if (!cancelling) alert("Your account deletion request was sent to an administrator.");
           });
-        }).catch(error => alert(error.message || "Could not update your account deletion request."));
+          updateDeletionLabel(!cancelling);
+          if (!cancelling) alert("Your account deletion request was sent to an administrator.");
+        }).catch(error => alert(error.message || "Could not update your account deletion request."))
+          .finally(() => { action.disabled = false; });
       }
       return;
     }

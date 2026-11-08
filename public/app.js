@@ -109,21 +109,47 @@ function header(search = true, welcome = true, backControl = "") {
   }
   const policyContext = `?${policyParams}`;
   const notificationCount = Number.isSafeInteger(state.outcomeNotificationCount) && state.outcomeNotificationCount >= 0 ? state.outcomeNotificationCount : 0;
-  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options' + (admin ? ' admin-profile-options' : '') + '" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-open-outcome-notifications>Student outcome notifications <span class="notification-count" data-notification-count>'+ notificationCount +'</span></button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Account deletion request</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
+  const profile = '<details class="profile-dropdown"' + (location.hash === "#about" ? " open" : "") + '><summary class="icon profile-trigger" role="button" aria-label="Profile options">' + profileIcon + '<span class="profile-chevron" aria-hidden="true"></span></summary><div class="profile-options' + (admin ? ' admin-profile-options' : '') + '" aria-label="Profile options">' + (admin ? '<button type="button" data-go="admin-profile">Admin profile</button><button type="button" data-add-admin>Register admin</button><button type="button" data-open-outcome-notifications>Student outcome notifications <span class="notification-count" data-notification-count>'+ notificationCount +'</span></button>' : '<button type="button" data-go="mine">Your posts</button><button type="button" data-account-deletion-menu>Request account deletion</button>') + '<button type="button" data-logout>Log out</button><details class="profile-about"' + (location.hash === "#about" ? " open" : "") + '><summary>About</summary><a href="/' + policyContext + '#about" data-about-link>About RETURNO</a><a href="/terms.html' + policyContext + '" data-policy-link>Terms and Conditions</a><a href="/privacy.html' + policyContext + '" data-policy-link>Privacy Policy</a></details></div></details>';
   return `<header class="page-header"><button class="home-logo" data-go="${admin ? "admin" : "feed"}" aria-label="Home">${logo}</button><div class="brand-line"></div>${welcome ? `<h1 class="welcome">Welcome, ${esc(state.user.fullName || (admin ? "Admin" : "Student"))}!</h1>` : ""}${backControl || (admin && location.hash === "#admin-profile" ? '<button type="button" class="profile-back-home" data-go="admin" aria-label="Back to home" title="Back to dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg></button>' : "")}<div class="header-actions"><div class="header-icons">${search ? `<button class="icon" data-go="search" aria-label="Search">${searchIcon}</button>` : ""}${profile}</div></div></header>`;
 }
 function bindNavigation() {
   app
     .querySelectorAll("[data-go]")
     .forEach((el) => (el.onclick = () => go(el.dataset.go, { replace: el.hasAttribute("data-return") })));
-  app.querySelectorAll("[data-account-deletion-menu]").forEach(button => button.onclick = () => {
+  app.querySelectorAll("[data-account-deletion-menu]").forEach(button => {
     const menu = app.querySelector(".profile-dropdown");
-    if (menu) menu.open = false;
-    const pageVersion = renderVersion;
-    api("/account-deletion-request").then(({ request }) => {
-      if (pageVersion !== renderVersion) return;
-      showAccountDeletionDialog(request, pageVersion);
-    }).catch(errorDialog);
+    const updateLabel = request => {
+      button.textContent = request ? "Cancel account deletion request" : "Request account deletion";
+    };
+    const syncLabel = async () => {
+      try {
+        const { request } = await api("/account-deletion-request");
+        updateLabel(request);
+      } catch {
+        // The action itself reports errors when clicked; opening the menu remains usable.
+      }
+    };
+    if (menu) {
+      menu.addEventListener("toggle", () => {
+        if (menu.open) syncLabel();
+      });
+      if (menu.open) syncLabel();
+    }
+    button.onclick = async () => {
+      if (menu) menu.open = false;
+      const pageVersion = renderVersion;
+      button.disabled = true;
+      try {
+        const { request } = await api("/account-deletion-request");
+        updateLabel(request);
+        if (pageVersion !== renderVersion) return;
+        showAccountDeletionDialog(request, pageVersion, button);
+      } catch (error) {
+        errorDialog(error);
+      } finally {
+        button.disabled = false;
+      }
+    };
   });
   app.querySelectorAll("[data-open-outcome-notifications]").forEach(button => button.onclick = async () => {
     const menu = app.querySelector(".profile-dropdown");
@@ -696,7 +722,7 @@ function pagination(meta) {
 function bindPagination(load) {
   app.querySelectorAll("[data-page]").forEach(button => button.onclick = () => load(Number(button.dataset.page)));
 }
-function showAccountDeletionDialog(request, pageVersion) {
+function showAccountDeletionDialog(request, pageVersion, deletionButton) {
   const cancelling = Boolean(request);
   dialog.innerHTML = `<form id="account-deletion-request-form"><h2>${cancelling ? "Cancel deletion request?" : "Request account deletion?"}</h2><p>${cancelling ? `Your request, submitted ${esc(request.requestedAt)}, is pending administrator review. You can cancel it here.` : "This sends a request to an administrator; it does not delete your account now. If an administrator approves it, all your posts and sessions will be deleted with your account."}</p><p class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Keep account</button><button type="submit">${cancelling ? "Cancel request" : "Send request"}</button></div></form>`;
   dialog.querySelector("[data-close]").onclick = () => {
@@ -711,6 +737,7 @@ function showAccountDeletionDialog(request, pageVersion) {
     try {
       await api("/account-deletion-request", { method: cancelling ? "DELETE" : "POST", ...(cancelling ? {} : { body: JSON.stringify({}) }) });
       if (pageVersion !== renderVersion) return;
+      if (deletionButton) deletionButton.textContent = cancelling ? "Request account deletion" : "Cancel account deletion request";
       dismissDialog();
       const menu = app.querySelector(".profile-dropdown");
       if (menu) menu.open = false;
