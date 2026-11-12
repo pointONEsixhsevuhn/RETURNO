@@ -10,10 +10,24 @@ if (Number(process.versions.node.split(".")[0]) < 24) {
     const { loadEnvFile } = await import("node:process");
     const { randomBytes } = await import("node:crypto");
     const { mkdir, readFile, writeFile } = await import("node:fs/promises");
+    const { existsSync } = await import("node:fs");
     const path = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     try { loadEnvFile(fileURLToPath(new URL("../.env", import.meta.url))); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (
+      process.env.DATA_DIR === undefined &&
+      process.env.VERCEL !== "1" &&
+      process.env.RETURNO_DATABASE !== "postgres"
+    ) {
+      const recoveredDataDir = fileURLToPath(
+        new URL("../data/recovered-accounts/", import.meta.url),
+      );
+      if (existsSync(path.join(recoveredDataDir, "retorno.sqlite"))) {
+        process.env.DATA_DIR = recoveredDataDir;
+        console.log("Using the recovered local accounts database.");
+      }
+    }
     if (process.env.RETURNO_CODE_PEPPER === undefined) {
       const dataDir = process.env.DATA_DIR
         ? path.resolve(process.env.DATA_DIR)

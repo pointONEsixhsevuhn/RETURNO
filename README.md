@@ -12,6 +12,8 @@ The current project status and next tasks are in [docs/PROJECT-ROADMAP.md](docs/
 
 On Windows, use `npm.cmd start` if PowerShell blocks `npm.ps1`. `start.cmd` is also available. Keep the server terminal open. Do not use VS Code Live Server or open `public/index.html` directly; the backend and UI need the same origin.
 
+In the restored local project folder, startup automatically uses `data/recovered-accounts/retorno.sqlite` when that database exists and no other database is explicitly selected. This preserves the original local account set. An explicit `DATA_DIR` or Postgres configuration takes precedence.
+
 For a temporary free friend test on Windows, double-click `share-cloudflare.cmd`. It starts RETURNO and prints a public HTTPS Quick Tunnel link. Keep the window and computer running while testing; the random link changes each time. See [temporary Cloudflare testing](docs/CLOUDFLARE-QUICK-TUNNEL.md).
 
 ## Offline behavior
