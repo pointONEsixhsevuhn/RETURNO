@@ -21,7 +21,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 - **Architecture:** Same-origin browser and API, local SQLite for development/tests, and an incomplete optional Postgres adapter for the selected Vercel route. Authorization and row scoping are enforced in application code; SQLite native RLS is not used. See [system design](docs/SYSTEM-DESIGN.md), [access control](docs/ACCESS-CONTROL.md), and [Vercel migration status](docs/VERCEL-DEPLOYMENT.md).
 - **Brand and UI:** `public/styles.css`, `public/assets/`, brown/white RETURNO theme; keep status badges at the upper-right of post cards.
 - **Data migrations:** Numbered, immutable SQL migrations in `migrations/`; read [migration procedure](docs/DATABASE-MIGRATIONS.md) before schema work.
-- **Database recovery:** `npm run db:backup`, `npm run db:verify`, and `npm run db:restore` use SQLite's online backup API and validate integrity, foreign keys, and migration history. Stop the server before restore; backups contain personal data and must be stored privately outside the repo.
+- **Database recovery:** `npm run db:backup`, `npm run db:verify`, and `npm run db:restore` use SQLite's online backup API and validate integrity, foreign keys, and migration history. These commands only cover local SQLite. The Vercel/Supabase deployed system has a separate encrypted daily GitHub Actions backup workflow for Postgres and the private Storage bucket; it is not active until its repository secrets/variables are configured and a successful run is verified. See [backup and recovery](docs/BACKUP-RECOVERY.md). Stop the local server before SQLite restore; backups contain personal data and must be stored privately outside the repo.
 
 ## Constraints, sensitive data, and ownership
 
@@ -44,7 +44,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 
 - **Runtime:** Node.js 24+; tested locally on Node.js 24.21.0 Windows (see current roadmap for latest evidence).
 - **CI:** `.github/workflows/ci.yml`, Node 24 on Windows and Linux. Verify the hosted Actions run separately; local tests do not prove CI passed.
-- **Known limits:** A basic production health check is verified; full production login/signup, real SMTP inbox delivery, Storage upload, production-origin CORS, and end-to-end student/admin workflows are not. Physical-device testing, a complete accessibility audit, load testing, and an operational restore rehearsal with a separately stored backup are also outstanding.
+- **Known limits:** A basic production health check is verified; full production login/signup, real SMTP inbox delivery, Storage upload, production-origin CORS, and end-to-end student/admin workflows are not. The scheduled Supabase backup workflow has not yet been configured or run; recovery rehearsal, physical-device testing, a complete accessibility audit, and load testing remain outstanding.
 - **Offline:** There is no PWA/service worker or offline queue. Same-device localhost use can work without internet while the server process is running; remotely hosted use requires a connection to the host.
 
 ## Agent environment

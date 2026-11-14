@@ -74,6 +74,8 @@ docker compose run --rm retorno npm run db:backup -- /app/backups/retorno-YYYY-M
 
 Replace the date with the current date, then copy the backup to separate private storage. The backup contains student account and report information. Keep the pepper in a separate secret store; a database backup without the matching pepper cannot validate outstanding email codes. Follow [database recovery guidance](DATABASE-MIGRATIONS.md) and rehearse recovery before relying on production data.
 
+This SQLite procedure does not back up the Vercel/Supabase production system. For that, configure the encrypted daily database-and-Storage export and recovery drill in [Backup and recovery](BACKUP-RECOVERY.md).
+
 ## What remains an operator responsibility
 
 This repository now includes a reusable container and HTTPS proxy configuration, but it does not create a cloud account, VM, DNS record, SMTP account, or permanent public URL by itself. You must provision and maintain the host, verify the cloud's free-tier terms and resource eligibility, configure secrets, monitor the service, and keep private backups. Before inviting real users, complete the privacy/legal review and the production security work listed in [the project roadmap](PROJECT-ROADMAP.md).
