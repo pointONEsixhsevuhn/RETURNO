@@ -10,13 +10,15 @@ let server,db,createUser,base,directory;
 const messages=[];
 const transport={async sendMail(message){messages.push(message);return {};}};
 const oldPassword="OriginalStudent123!",newPassword="NewStudent123!";
+process.env.RETURNO_TRUST_CLOUDFLARE_TUNNEL="true";
 before(async()=>{
  directory=await mkdtemp(path.join(tmpdir(),"retorno-reset-"));process.env.DATA_DIR=directory;process.env.NODE_ENV="test";
  ({server}=await import("../server.js"));({db,createUser}=await import("../db.js"));setMailTransport(transport);
  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));base=`http://127.0.0.1:${server.address().port}`;
 });
 after(async()=>{await new Promise(resolve=>server.close(resolve));db.close();await rm(directory,{recursive:true,force:true});});
-async function request(route,data){const res=await fetch(base+"/api/"+route,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)});return{status:res.status,data:await res.json(),cookie:res.headers.get("set-cookie")};}
+let requestAddress=1;
+async function request(route,data){const address=`198.51.100.${requestAddress++}`;const res=await fetch(base+"/api/"+route,{method:"POST",headers:{"content-type":"application/json","cf-connecting-ip":address},body:JSON.stringify(data)});return{status:res.status,data:await res.json(),cookie:res.headers.get("set-cookie")};}
 const forgot=email=>request("forgot-password",{email});
 const code=email=>messages.filter(message=>message.to===email&&message.subject==="Reset your RETURNO password").at(-1).text.match(/code is (\d{6})/)[1];
 const reset=(email,value=code(email),password=newPassword)=>request("reset-password",{email,code:value,password,confirmPassword:password});
@@ -40,9 +42,19 @@ test("unknown, admin and student addresses receive the same request response; re
  const email="cooldown@gmail.com";createUser(email,"Cooldown",oldPassword);createUser("admin@reset.example","Admin",oldPassword,"admin");
  const before=messages.length;
  const absent=await forgot("absent@gmail.com"),admin=await forgot("admin@reset.example");
- assert.deepEqual(absent,admin);assert.equal(messages.length,before);
+ assert.deepEqual(absent,admin);assert.equal(messages.length,before+1);
  const student=await forgot(email);assert.deepEqual(student,absent);
  const count=messages.length;assert.deepEqual(await forgot(email),student);assert.equal(messages.length,count);
+});
+test("an admin can recover their password by email code and all existing sessions are revoked",async()=>{
+ const email="admin-recover@example.com",id=createUser(email,"Recovery Admin",oldPassword,"admin");
+ await request("login",{email,password:oldPassword,role:"admin"});
+ assert.equal((await forgot(email)).status,202);
+ assert.equal(messages.filter(message=>message.to===email&&message.subject==="Reset your RETURNO password").length,1);
+ assert.equal((await reset(email)).status,200);
+ assert.equal(db.prepare("SELECT count(*) n FROM sessions WHERE user_id=?").get(id).n,0);
+ assert.equal((await request("login",{email,password:oldPassword,role:"admin"})).status,401);
+ assert.equal((await request("login",{email,password:newPassword,role:"admin"})).status,200);
 });
 test("expired and exhausted codes fail without locking the student's login",async()=>{
  const email="limits@gmail.com",id=createUser(email,"Limits",oldPassword);await forgot(email);

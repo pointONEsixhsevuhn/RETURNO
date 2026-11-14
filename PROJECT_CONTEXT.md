@@ -26,7 +26,7 @@ This is a factual index for agents and contributors. `AGENTS.md` is the canonica
 ## Constraints, sensitive data, and ownership
 
 - Student/admin separation and the exclusion of student claims are product constraints. Do not broaden permissions without an explicit product decision.
-- Student signup and password recovery use emailed codes. Signup email confirmation is not a second authentication factor. Registration requires policy acknowledgment in both UI and API and stores accepted Terms/Privacy versions and time after successful email verification. Admin recovery is a local CLI workflow.
+- Student signup and account password recovery use emailed codes. Signup email confirmation is not a second authentication factor. Registration requires policy acknowledgment in both UI and API and stores accepted Terms/Privacy versions and time after successful email verification. The admin recovery CLI remains available to operators.
 - Post contact information is displayed with the report. Report event time is campus wall time (PHT, UTC+08:00).
 - Secrets: `.env`, SMTP credentials, `RETURNO_CODE_PEPPER` (or local `data/verification-code.key`), session tokens, passwords, and verification/reset codes. Do not print or commit them; keep the code pepper out of SQLite backups.
 - Personal data: SQLite records include account emails/names, reports, and contact information. Use isolated temporary databases and synthetic records in tests.

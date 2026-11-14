@@ -507,6 +507,15 @@ test("student recovers a forgotten password using the emailed code and signs in 
  await expect(page.getByRole("heading",{name:"Welcome, Browser Test Student!"})).toBeVisible();
 });
 
+test("admin login offers the same email-based password recovery flow", async ({ page }) => {
+ await page.goto("/#role");
+ await page.getByRole("button",{name:"Admin",exact:true}).click();
+ await page.getByRole("button",{name:"Forgot password?",exact:true}).click();
+ await expect(page.getByLabel("Enter your registered email",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Back to log in",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Forgot password?",exact:true})).toBeVisible();
+});
+
 test("student login/register switcher supports taps, keyboard arrows and directional swipes", async ({ page }) => {
  await page.goto("/#role");
  await page.getByRole("button",{name:"Student",exact:true}).click();

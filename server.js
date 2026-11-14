@@ -35,6 +35,7 @@ const privacyVersion = "1.2";
 const postgresMode = typeof db.withRequest === "function";
 if (postgresMode) assertCodePepper();
 const hash = (value) => createHash("sha256").update(value).digest("hex");
+const passwordVersion = (user) => `${user.role}:${user.password_hash}`;
 const publicUser = (u) => ({
   id: u.id,
   email: u.email,
@@ -514,7 +515,7 @@ async function handleRequestScoped(req, res) {
         const data = await body(req);
         const email = textField(data, "email", 254).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, "Enter a valid email.");
-        const target = await db.prepare("SELECT id,email,password_hash FROM users WHERE email=? AND role='student'").get(email);
+        const target = await db.prepare("SELECT id,email,password_hash,role FROM users WHERE email=? AND role IN ('student','admin')").get(email);
         const now = Date.now();
         await db.prepare("DELETE FROM password_resets WHERE expires_at<=?").run(now);
         const pending = target && await db.prepare("SELECT sent_at FROM password_resets WHERE user_id=?").get(target.id);
@@ -525,7 +526,7 @@ async function handleRequestScoped(req, res) {
             VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,
             password_version=excluded.password_version,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0
             WHERE password_resets.sent_at <= ? RETURNING user_id`)
-            .get(target.id,codeHash,target.password_hash,now+10*60000,now,now-60000);
+            .get(target.id,codeHash,passwordVersion(target),now+10*60000,now,now-60000);
           if (reservation) {
             // Keep response timing independent of account existence, but let
             // Vercel finish the email task after sending the generic response.
@@ -540,7 +541,7 @@ async function handleRequestScoped(req, res) {
             await scheduleAfterResponse(delivery);
           }
         }
-        return json(res, 202, { message: "If this email belongs to a student account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
+        return json(res, 202, { message: "If this email belongs to a RETURNO account, a reset code will be sent. Check your inbox and spam folder. Wait one minute before requesting another code. If no email arrives, contact the administrator." });
       }
       if (route === "/api/reset-password" && req.method === "POST") {
         await rateLimit(req);
@@ -548,10 +549,10 @@ async function handleRequestScoped(req, res) {
         const { email, password } = credentials(data);
         if (data.confirmPassword !== password) fail(400, "Passwords do not match.");
         const code = textField(data,"code",6);
-        const target = await db.prepare(`SELECT u.id,u.email,u.password_hash,r.code_hash,r.password_version,r.expires_at,r.attempts
-          FROM users u JOIN password_resets r ON r.user_id=u.id WHERE u.email=? AND u.role='student'`).get(email);
+        const target = await db.prepare(`SELECT u.id,u.email,u.password_hash,u.role,r.code_hash,r.password_version,r.expires_at,r.attempts
+          FROM users u JOIN password_resets r ON r.user_id=u.id WHERE u.email=? AND u.role IN ('student','admin')`).get(email);
         const invalid = "Invalid or expired reset code. Request a new code.";
-        if (!target || target.expires_at<=Date.now() || target.attempts>=5 || target.password_hash!==target.password_version) fail(400,invalid);
+        if (!target || target.expires_at<=Date.now() || target.attempts>=5 || passwordVersion(target)!==target.password_version) fail(400,invalid);
         if (!isCurrentVerificationCodeDigest(target.code_hash)) {
           await db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
           fail(400, invalid);
@@ -561,7 +562,7 @@ async function handleRequestScoped(req, res) {
         const passwordHash = hashPassword(password);
         await db.exec("BEGIN IMMEDIATE");
         try {
-          const updated = await db.prepare("UPDATE users SET password_hash=? WHERE id=? AND role='student' AND password_hash=?").run(passwordHash,target.id,target.password_version);
+          const updated = await db.prepare("UPDATE users SET password_hash=? WHERE id=? AND role=? AND password_hash=?").run(passwordHash,target.id,target.role,target.password_hash);
           if (!updated.changes) fail(400,invalid);
           await db.prepare("DELETE FROM sessions WHERE user_id=?").run(target.id);
           await db.prepare("DELETE FROM password_resets WHERE user_id=?").run(target.id);
