@@ -2,6 +2,8 @@
 
 RETURNO is NVSU's lost-and-found prototype. It uses a vanilla JavaScript browser app, a same-origin Node.js HTTP API, and a local SQLite database. There is no frontend build step; Nodemailer is the runtime npm dependency for SMTP delivery.
 
+**Want to start it quickly on Windows?** Open [START-HERE.md](START-HERE.md) or double-click `start.cmd` in this folder.
+
 The current project status and next tasks are in [docs/PROJECT-ROADMAP.md](docs/PROJECT-ROADMAP.md). The system architecture is in [docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md).
 
 ## Run locally
