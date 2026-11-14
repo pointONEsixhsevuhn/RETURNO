@@ -20,6 +20,12 @@ function safeFailureCode(error) {
 // locate the corresponding runtime failure safely.
 export default async function handler(req, res) {
   try {
+    if (process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "true") {
+      throw Object.assign(
+        new Error("Production requires COOKIE_SECURE=true and HTTPS at the hosting layer."),
+        { code: "COOKIE_SECURE_REQUIRED" },
+      );
+    }
     const { handleRequest } = await import("../server.js");
     return await handleRequest(req, res);
   } catch (error) {

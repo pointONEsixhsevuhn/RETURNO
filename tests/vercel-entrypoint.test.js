@@ -12,6 +12,29 @@ test("Vercel function exports the shared request handler", async () => {
   assert.equal(typeof handler, "function");
 });
 
+test("production Vercel requests fail closed when Secure cookies are not enabled", async () => {
+  const { default: handler } = await import("../api/index.js");
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousCookieSecure = process.env.COOKIE_SECURE;
+  let status, payload;
+  const res = {
+    headersSent: false,
+    writeHead(code) { status = code; this.headersSent = true; },
+    end(value) { payload = JSON.parse(value); },
+  };
+  try {
+    process.env.NODE_ENV = "production";
+    delete process.env.COOKIE_SECURE;
+    await handler({ url: "/api/health", method: "GET", headers: {} }, res);
+    assert.equal(status, 503);
+    assert.equal(payload.reason, "COOKIE_SECURE_REQUIRED");
+  } finally {
+    process.env.NODE_ENV = previousNodeEnv;
+    if (previousCookieSecure === undefined) delete process.env.COOKIE_SECURE;
+    else process.env.COOKIE_SECURE = previousCookieSecure;
+  }
+});
+
 test("Vercel refuses to initialize without persistent Postgres configuration", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "retorno-vercel-"));
   try {

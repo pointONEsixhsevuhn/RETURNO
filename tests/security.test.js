@@ -60,6 +60,7 @@ async function send(
     status,
     data: JSON.parse(payload),
     cookie: headers["set-cookie"]?.split(";")[0],
+    setCookie: headers["set-cookie"],
   };
 }
 before(async () => {
@@ -99,6 +100,21 @@ before(async () => {
 after(async () => {
   db.close();
   await rm(directory, { recursive: true, force: true });
+});
+
+test("session cookies carry Secure when COOKIE_SECURE is enabled", async () => {
+ const previous=process.env.COOKIE_SECURE;
+ try {
+  process.env.COOKIE_SECURE="true";
+  const result=await send("/api/login","POST",{email:"student@security.example",password:"Security123!",role:"student"});
+  assert.equal(result.status,200);
+  assert.match(result.setCookie,/; Secure(?:;|$)/);
+  assert.match(result.setCookie,/; HttpOnly(?:;|$)/);
+  assert.match(result.setCookie,/; SameSite=Strict(?:;|$)/);
+ } finally {
+  if(previous===undefined) delete process.env.COOKIE_SECURE;
+  else process.env.COOKIE_SECURE=previous;
+ }
 });
 
 test("sensitive API routes enforce the per-address attempt limit", async () => {
